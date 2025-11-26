@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>2026 International Quarter Scale Competition</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta
+    name="description"
+    content="Official landing page for the 2026 International Quarter Scale Competition. Event info, teams, schedule, and results."
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    :root {
+      --bg: #050816;
+      --bg-alt: #0b1020;
+      --card-bg: #111827;
+      --accent: #38bdf8;
+      --accent-soft: rgba(56, 189, 248, 0.12);
+      --accent-strong: #0ea5e9;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --border: #1f2933;
+      --danger: #f97373;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: radial-gradient(circle at top, #111827 0, #020617 55%, #000 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(14px);
+      background: linear-gradient(to bottom, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.7));
+      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+    }
+
+    .nav {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0.9rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+
+    .nav-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-mark {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: conic-gradient(from 200deg, #38bdf8, #22c55e, #eab308, #38bdf8);
+      padding: 2px;
+    }
+
+    .logo-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: inherit;
+      background: #020617;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.05em;
+    }
+
+    .nav-title {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .nav-title span:first-child {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+    }
+
+    .nav-title span:last-child {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-size: 0.9rem;
+    }
+
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      padding: 0.3rem 0.4rem;
+      border-radius: 999px;
+      transition: background 0.2s ease, color 0.2s ease;
+    }
+
+    .nav-links a:hover {
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text);
+    }
+
+    .nav-cta {
+      padding: 0.4rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.45);
+      background: linear-gradient(to right, rgba(56, 189, 248, 0.15), rgba(37, 99, 235, 0.15));
+      color: var(--accent-strong) !important;
+      font-weight: 600;
+    }
+
+    main {
+      flex: 1;
+    }
+
+    .hero {
+      max-width: 1100px;
+      margin: 2.5rem auto 1.5rem;
+      padding: 0 1.5rem;
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2.3fr);
+      gap: 2.5rem;
+      align-items: center;
+    }
+
+    @media (max-width: 900px) {
+      .hero {
+        grid-template-columns: minmax(0, 1fr);
+        margin-top: 2rem;
+      }
+    }
+
+    .hero-pre {
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--accent);
+      margin-bottom: 0.4rem;
+    }
+
+    .hero-title {
+      font-size: clamp(2rem, 3.2vw + 1rem, 3rem);
+      font-weight: 700;
+      line-height: 1.1;
+      margin-bottom: 0.75rem;
+    }
+
+    .hero-title span {
+      background: linear-gradient(to right, #38bdf8, #22c55e, #eab308);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+
+    .hero-sub {
+      font-size: 0.98rem;
+      color: var(--muted);
+      max-width: 32rem;
+      margin-bottom: 1rem;
+    }
+
+    .hero-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1.8rem;
+    }
+
+    .pill {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: rgba(15, 23, 42, 0.8);
+      color: var(--muted);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .pill-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: radial-gradient(circle, var(--accent-strong), transparent);
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.7);
+    }
+
+    .pill-cta {
+      border-color: rgba(56, 189, 248, 0.8);
+      color: var(--accent-strong);
+      background: linear-gradient(to right, rgba(56, 189, 248, 0.15), rgba(15, 23, 42, 0.95));
+    }
+
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+    }
+
+    .btn {
+      border: none;
+      border-radius: 999px;
+      padding: 0.65rem 1.3rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.2s ease;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      color: #0b1120;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.8), 0 0 0 1px rgba(56, 189, 248, 0.5);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.9);
+    }
+
+    .btn-ghost {
+      background: rgba(15, 23, 42, 0.85);
+      color: var(--muted);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+    }
+
+    .btn-ghost:hover {
+      background: rgba(15, 23, 42, 1);
+    }
+
+    .hero-footnote {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.6rem;
+    }
+
+    .hero-footnote strong {
+      color: var(--accent-strong);
+    }
+
+    .hero-card {
+      border-radius: 1.4rem;
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.16), rgba(15, 23, 42, 0.98));
+      box-shadow:
+        0 18px 40px rgba(15, 23, 42, 0.9),
+        0 0 0 1px rgba(15, 23, 42, 0.7);
+      padding: 1.3rem 1.3rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: radial-gradient(circle at 0 0, rgba(248, 250, 252, 0.08) 0, transparent 50%),
+      radial-gradient(circle at 100% 100%, rgba(8, 47, 73, 0.7) 0, transparent 55%);
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .hero-card-inner {
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.2rem;
+    }
+
+    .scroll-tag {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: rgba(148, 163, 184, 0.75);
+    }
+
+    .pill-soft {
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.85);
+      font-size: 0.78rem;
+      color: var(--accent-strong);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .pill-soft span {
+      color: var(--muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+    }
+
+    .hero-card-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.7rem;
+      margin-top: 0.5rem;
+    }
+
+    .stat-card {
+      background: rgba(15, 23, 42, 0.85);
+      border-radius: 0.9rem;
+      padding: 0.7rem 0.8rem;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      margin-bottom: 0.2rem;
+    }
+
+    .stat-value {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .stat-sub {
+      font-size: 0.7rem;
+      color: rgba(148, 163, 184, 0.9);
+      margin-top: 0.15rem;
+    }
+
+    .hero-card-footer {
+      margin-top: 0.9rem;
+      padding-top: 0.7rem;
+      border-top: 1px dashed rgba(148, 163, 184, 0.3);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+    }
+
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid rgba(34, 197, 94, 0.7);
+      background: rgba(21, 128, 61, 0.24);
+      color: #bbf7d0;
+    }
+
+    .badge-live-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: radial-gradient(circle, #34d399, transparent);
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.9);
+    }
+
+    .badge-coming {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.65rem;
+      border-radius: 999px;
+      border: 1px dashed rgba(148, 163, 184, 0.7);
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.7);
+    }
+
+    .badge-coming span {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+
+    .sections {
+      max-width: 1100px;
+      margin: 0 auto 3rem;
+      padding: 0 1.5rem 0.5rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1.9fr) minmax(0, 2.1fr);
+      gap: 2rem;
+    }
+
+    @media (max-width: 900px) {
+      .sections {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    section {
+      border-radius: 1.1rem;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(15, 23, 42, 0.92);
+      padding: 1.3rem 1.4rem;
+      margin-bottom: 0.9rem;
+      box-shadow: 0 14px 40px rgba(15, 23, 42, 0.8);
+    }
+
+    section h2 {
+      font-size: 1.05rem;
+      margin: 0;
+      margin-bottom: 0.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    section h2 span {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    .section-body {
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    .about-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      gap: 1.1rem;
+      margin-top: 0.3rem;
+    }
+
+    @media (max-width: 700px) {
+      .about-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .about-highlight {
+      padding: 0.7rem 0.8rem;
+      border-radius: 0.85rem;
+      background: radial-gradient(circle at left, rgba(56, 189, 248, 0.14), rgba(15, 23, 42, 0.98));
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+
+    .about-list {
+      margin: 0.4rem 0 0;
+      padding-left: 1rem;
+      font-size: 0.88rem;
+    }
+
+    .about-list li {
+      margin-bottom: 0.2rem;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.7rem;
+      margin-top: 0.3rem;
+    }
+
+    @media (max-width: 600px) {
+      .info-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .info-card {
+      border-radius: 0.8rem;
+      border: 1px solid rgba(148, 163, 184, 0.3);
+      background: radial-gradient(circle at top left, rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.98));
+      padding: 0.65rem 0.75rem;
+      font-size: 0.85rem;
+    }
+
+    .info-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      margin-bottom: 0.15rem;
+    }
+
+    .info-value {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 0.1rem;
+    }
+
+    .info-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    .schedule-table,
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.86rem;
+      margin-top: 0.5rem;
+      background: rgba(15, 23, 42, 0.95);
+      border-radius: 0.85rem;
+      overflow: hidden;
+    }
+
+    .schedule-table th,
+    .schedule-table td,
+    .results-table th,
+    .results-table td {
+      padding: 0.45rem 0.55rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(31, 41, 55, 0.8);
+    }
+
+    .schedule-table th,
+    .results-table th {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    .schedule-table tr:last-child td,
+    .results-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .results-empty {
+      padding: 0.6rem 0.4rem 0.2rem;
+      font-size: 0.85rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.6rem;
+    }
+
+    .results-empty span {
+      color: var(--muted);
+    }
+
+    .results-empty strong {
+      color: var(--accent-strong);
+    }
+
+    .results-empty small {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+
+    .results-status-pill {
+      padding: 0.25rem 0.7rem;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px dashed rgba(148, 163, 184, 0.6);
+      font-size: 0.75rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+    }
+
+    .results-status-pill strong {
+      color: var(--accent-strong);
+    }
+
+    .teams-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.7rem;
+      margin-top: 0.3rem;
+    }
+
+    @media (max-width: 600px) {
+      .teams-grid {
+        grid-template-columns: minmax(0, 1fr);
+      }
+    }
+
+    .team-tag {
+      font-size: 0.8rem;
+      padding: 0.4rem 0.5rem;
+      border-radius: 0.9rem;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .team-tag span {
+      color: var(--muted);
+    }
+
+    .team-tag strong {
+      color: var(--text);
+    }
+
+    .chip {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.5);
+      color: var(--muted);
+      background: rgba(15, 23, 42, 0.9);
+      text-transform: uppercase;
+      letter-spacing: 0.13em;
+    }
+
+    .contact-list {
+      list-style: none;
+      padding: 0;
+      margin: 0.4rem 0 0;
+      font-size: 0.86rem;
+    }
+
+    .contact-list li {
+      margin-bottom: 0.25rem;
+    }
+
+    .contact-list strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    footer {
+      border-top: 1px solid rgba(15, 23, 42, 0.95);
+      padding: 1.2rem 1.5rem 1.5rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+      background: radial-gradient(circle at top, rgba(15, 23, 42, 1), #020617);
+    }
+
+    footer a {
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="nav">
+      <div class="nav-left">
+        <div class="logo-mark">
+          <div class="logo-inner">Q26</div>
+        </div>
+        <div class="nav-title">
+          <span>International Quarter Scale</span>
+          <span>2026 Competition</span>
+        </div>
+      </div>
+      <nav class="nav-links">
+        <a href="#about">About</a>
+        <a href="#info">Event Info</a>
+        <a href="#results">Results</a>
+        <a href="#schedule">Schedule</a>
+        <a href="#teams">Teams</a>
+        <a href="#contact" class="nav-cta">Contact</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO -->
+    <section class="hero" aria-labelledby="hero-heading">
+      <div>
+        <div class="hero-pre">June 2026 &bull; Quarter Scale Tractor Design Challenge</div>
+        <h1 id="hero-heading" class="hero-title">
+          2026 <span>International Quarter Scale Competition</span>
+        </h1>
+        <p class="hero-sub">
+          Follow the world’s top student engineering teams as they design, build, and compete with
+          quarter scale tractors in a multi-event challenge combining design, performance, and
+          durability.
+        </p>
+
+        <div class="hero-meta">
+          <div class="pill">
+            <div class="pill-dot"></div>
+            <span>2026 International</span>
+          </div>
+          <div class="pill pill-cta">
+            Finals weekend &bull; June 2026
+          </div>
+          <div class="pill">
+            Results will update live during the event
+          </div>
+        </div>
+
+        <div class="hero-actions">
+          <a href="#results" class="btn btn-primary">
+            View Results
+            <span aria-hidden="true">↗</span>
+          </a>
+          <a href="#schedule" class="btn btn-ghost">
+            View Event Schedule
+          </a>
+        </div>
+
+        <div class="hero-footnote">
+          Live scoring will be available here once competition sessions begin. <strong>Bookmark this page</strong> for
+          official results and rankings.
+        </div>
+      </div>
+
+      <aside class="hero-card" aria-label="Event snapshot">
+        <div class="hero-card-inner">
+          <div class="card-row">
+            <div class="scroll-tag">2026 Event Snapshot</div>
+            <div class="pill-soft">
+              Overall Competition
+              <span>Multi-Event Scoring</span>
+            </div>
+          </div>
+
+          <div class="hero-card-stats">
+            <div class="stat-card">
+              <div class="stat-label">Teams</div>
+              <div class="stat-value">40+</div>
+              <div class="stat-sub">Universities from around the world</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Events</div>
+              <div class="stat-value">6</div>
+              <div class="stat-sub">Design, performance &amp; durability</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Scoring</div>
+              <div class="stat-value">Live</div>
+              <div class="stat-sub">Overall &amp; event-by-event standings</div>
+            </div>
+          </div>
+
+          <div class="hero-card-footer">
+            <div class="badge-coming">
+              <span>Results Feed</span>
+              <strong>Goes Live During Event</strong>
+            </div>
+            <div class="badge-live" aria-label="Live updates status">
+              <div class="badge-live-dot"></div>
+              <span>Official data source</span>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <div class="sections">
+      <!-- LEFT COLUMN -->
+      <div>
+        <!-- ABOUT -->
+        <section id="about" aria-labelledby="about-heading">
+          <h2 id="about-heading">
+            About the Competition
+            <span>Design &amp; Performance Challenge</span>
+          </h2>
+          <div class="section-body">
+            <p>
+              The International Quarter Scale Competition is a student design event where university teams
+              conceive, build, and validate a quarter-scale tractor. Teams are judged on engineering design,
+              innovation, manufacturability, safety, and performance in a series of dynamic events.
+            </p>
+
+            <div class="about-grid">
+              <div class="about-highlight">
+                <strong>What you’ll find on this site:</strong>
+                <ul class="about-list">
+                  <li>Official overall &amp; event-by-event results</li>
+                  <li>Real-time scoring once events begin</li>
+                  <li>Final rankings and downloadable score sheets</li>
+                </ul>
+              </div>
+              <div>
+                <p style="margin-top: 0;">
+                  As the 2026 competition approaches, this page will be updated with detailed event
+                  information, team lists, and the live scoring dashboard.
+                </p>
+                <p style="margin-bottom: 0;">
+                  Until then, you can review the schedule, venue information, and basic event structure
+                  below.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- EVENT INFO -->
+        <section id="info" aria-labelledby="info-heading">
+          <h2 id="info-heading">
+            Event Information
+            <span>Key Details for 2026</span>
+          </h2>
+          <div class="section-body">
+            <div class="info-grid">
+              <div class="info-card">
+                <div class="info-label">Dates</div>
+                <div class="info-value">June 2026</div>
+                <div class="info-sub">
+                  Official competition dates and detailed daily schedule will be posted once finalized.
+                </div>
+              </div>
+              <div class="info-card">
+                <div class="info-label">Location</div>
+                <div class="info-value">To Be Announced</div>
+                <div class="info-sub">
+                  Venue details, directions, and visitor information will appear here.
+                </div>
+              </div>
+              <div class="info-card">
+                <div class="info-label">Format</div>
+                <div class="info-value">Static &amp; Dynamic Events</div>
+                <div class="info-sub">
+                  Design presentations, technical inspection, and multiple dynamic performance events.
+                </div>
+              </div>
+              <div class="info-card">
+                <div class="info-label">Scoring</div>
+                <div class="info-value">Central Results System</div>
+                <div class="info-sub">
+                  This site will display official scores for all teams, updated live during competition.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- SCHEDULE -->
+        <section id="schedule" aria-labelledby="schedule-heading">
+          <h2 id="schedule-heading">
+            Event Schedule
+            <span>Draft – Subject to Change</span>
+          </h2>
+          <div class="section-body">
+            <p>
+              A detailed, time-of-day schedule will be published closer to the event. The outline below
+              shows the typical flow of the competition:
+            </p>
+            <table class="schedule-table" aria-label="Draft event schedule">
+              <thead>
+              <tr>
+                <th>Day</th>
+                <th>Focus</th>
+                <th>Notes</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr>
+                <td>Day 1</td>
+                <td>Check-in &amp; Technical Inspection</td>
+                <td>Registration, safety &amp; compliance, initial static judging</td>
+              </tr>
+              <tr>
+                <td>Day 2</td>
+                <td>Design &amp; Presentation Events</td>
+                <td>Design judging, innovation, manufacturability, cost reviews</td>
+              </tr>
+              <tr>
+                <td>Day 3</td>
+                <td>Dynamic Performance Events</td>
+                <td>Tractor performance, maneuverability, durability events</td>
+              </tr>
+              <tr>
+                <td>Day 4</td>
+                <td>Final Events &amp; Awards</td>
+                <td>Remaining events, final scoring, awards ceremony</td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <!-- RIGHT COLUMN -->
+      <div>
+        <!-- RESULTS -->
+        <section id="results" aria-labelledby="results-heading">
+          <h2 id="results-heading">
+            Results &amp; Standings
+            <span>Official Live Rankings</span>
+          </h2>
+          <div class="section-body">
+            <div class="results-empty">
+              <div>
+                <span>
+                  <strong>2026 results are not yet available.</strong> This section will display overall
+                  standings and event-by-event scores once the competition begins.
+                </span>
+                <div style="margin-top: 0.3rem;">
+                  <small>
+                    When live, you’ll be able to filter by event, view detailed score breakdowns, and
+                    download official results.
+                  </small>
+                </div>
+              </div>
+              <div class="results-status-pill">
+                <strong>Results feed</strong>&nbsp;• Coming June 2026
+              </div>
+            </div>
+
+            <!-- Placeholder table structure you can populate later -->
+            <table class="results-table" aria-label="Overall competition results (placeholder)">
+              <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Team</th>
+                <th>University</th>
+                <th>Total Points</th>
+              </tr>
+              </thead>
+              <tbody>
+              <tr>
+                <td colspan="4">
+                  Overall rankings table will appear here once scores are posted.
+                </td>
+              </tr>
+              </tbody>
+            </table>
+
+            <p style="margin-top: 0.6rem; font-size: 0.8rem; color: var(--muted);">
+              <strong>Implementation note:</strong> When you’re ready, update this table and/or replace it
+              with your own results rendering (for example, a dynamic table fed from a backend score
+              system).
+            </p>
+          </div>
+        </section>
+
+        <!-- TEAMS -->
+        <section id="teams" aria-labelledby="teams-heading">
+          <h2 id="teams-heading">
+            Participating Teams
+            <span>Sample Layout</span>
+          </h2>
+          <div class="section-body">
+            <p>
+              A full list of registered teams will be added here once registration closes. Below is a
+              sample layout you can populate with real data.
+            </p>
+
+            <div class="teams-grid" aria-label="Sample team entries">
+              <div class="team-tag">
+                <span>
+                  <strong>Example University</strong> &mdash; Team Alpha
+                </span>
+                <span class="chip">Returning</span>
+              </div>
+              <div class="team-tag">
+                <span>
+                  <strong>Sample Tech</strong> &mdash; Quarter Scale Racing
+                </span>
+                <span class="chip">New in 2026</span>
+              </div>
+              <div class="team-tag">
+                <span>
+                  <strong>Placeholder State</strong> &mdash; Torque &amp; Traction
+                </span>
+                <span class="chip">Top 10 2025</span>
+              </div>
+              <div class="team-tag">
+                <span>
+                  <strong>Demo Institute</strong> &mdash; Powertrain Labs</span>
+                <span class="chip">International</span>
+              </div>
+            </div>
+
+            <p style="margin-top: 0.7rem; font-size: 0.8rem;">
+              You can later replace these entries with an automatically generated team list pulled from
+              registration data.
+            </p>
+          </div>
+        </section>
+
+        <!-- CONTACT -->
+        <section id="contact" aria-labelledby="contact-heading">
+          <h2 id="contact-heading">
+            Contact &amp; Updates
+            <span>Organizing Committee</span>
+          </h2>
+          <div class="section-body">
+            <p>
+              For questions about the 2026 International Quarter Scale Competition, sponsorship, or
+              media inquiries, please use the official contact channels provided by the organizers.
+            </p>
+            <ul class="contact-list">
+              <li>
+                <strong>Event Website:</strong>
+                <a href="#" aria-disabled="true">Official 2026 Event Info (link placeholder)</a>
+              </li>
+              <li>
+                <strong>Email:</strong>
+                <a href="mailto:info@example-quarterscale2026.org">info@example-quarterscale2026.org</a>
+              </li>
+              <li>
+                <strong>Updates:</strong> Follow the official channels (to be announced) for rule updates,
+                registration deadlines, and detailed event logistics.
+              </li>
+            </ul>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <div>
+      &copy; 2026 International Quarter Scale Competition. All rights reserved.
+      <br />
+      This page will serve as the <strong>official online home for 2026 results and standings</strong>.
+    </div>
+  </footer>
+</div>
+</body>
+</html>
