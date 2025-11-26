@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>2026 Quarter Scale – Results</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; padding: 1.5rem; background: #020617; color: #e5e7eb; }
+    h1 { margin-bottom: 1rem; }
+    table { border-collapse: collapse; width: 100%; max-width: 900px; background: #0f172a; border-radius: 0.75rem; overflow: hidden; }
+    th, td { padding: 0.6rem 0.8rem; text-align: left; border-bottom: 1px solid #1f2937; font-size: 0.9rem; }
+    th { text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.75rem; color: #9ca3af; }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) { background: #020617; }
+  </style>
+</head>
+<body>
+  <h1>2026 International Quarter Scale Competition – Results</h1>
+
+  {% if results %}
+    <table>
+      <thead>
+        <tr>
+          <th>Team Number</th>
+          <th>Team Name</th>
+          <th>Final Distance</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in results %}
+          <tr>
+            <td>{{ r.team.team_number }}</td>
+            <td>{{ r.team.team_name }}</td>
+            <td>{{ r.final_distance}}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No results have been posted yet.</p>
+  {% endif %}
+</body>
+</html>
