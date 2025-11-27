@@ -32,6 +32,9 @@
             <td>{{ r.team.team_number }}</td>
             <td>{{ r.team.team_name }}</td>
             <td>{{ r.final_distance}}</td>
+            <td>
+              <a href="{{ url_for('pull_detail', pull_id=r.pull_id) }}">View pull</a>
+            </td>
           </tr>
         {% endfor %}
       </tbody>

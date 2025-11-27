@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Pull {{ pull.pull_id }} – {{ pull.team.team_name }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      margin: 0;
+      padding: 1.5rem;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    a { color: #38bdf8; }
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+    header {
+      margin-bottom: 1.5rem;
+    }
+    h1 {
+      margin: 0 0 0.25rem;
+    }
+    .meta {
+      font-size: 0.9rem;
+      color: #9ca3af;
+      margin-bottom: 1rem;
+    }
+    .chart-card {
+      background: #0f172a;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      box-shadow: 0 10px 30px rgba(15,23,42,0.8);
+    }
+    canvas {
+      max-width: 100%;
+      height: 400px;
+    }
+  </style>
+
+  <!-- Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="container">
+  <header>
+    <p><a href="{{ url_for('results') }}">&larr; Back to results</a></p>
+    <h1>Pull {{ pull.pull_id }}</h1>
+    <div class="meta">
+      Team: <strong>{{ pull.team.team_name }}</strong> ({{ pull.team.team_number }})<br>
+      Final distance: {{ pull.final_distance or "N/A" }}<br>
+      Hook ID: {{ pull.hook_id or "N/A" }}
+    </div>
+  </header>
+
+  <section class="chart-card">
+    <h2>Chain Force vs Speed</h2>
+    {% if speeds and forces %}
+      <canvas id="cfChart"></canvas>
+    {% else %}
+      <p>No pull data available for this pull.</p>
+    {% endif %}
+  </section>
+
+  <section class="chart-card">
+    <h2>Chain Force vs Distance</h2>
+    {% if speeds and forces %}
+      <canvas id="cfChartDistance"></canvas>
+    {% else %}
+      <p>No pull data available for this pull.</p>
+    {% endif %}
+  </section>
+</div>
+
+{% if speeds and forces %}
+<script>
+  // Pass data from Flask → JS
+  const speeds = {{ speeds | tojson }};
+  const forces = {{ forces | tojson }};
+
+  // Build scatter points: x = speed, y = chain_force
+  const dataPoints = speeds.map((s, i) => ({
+    x: s,
+    y: forces[i]
+  }));
+
+  const ctx = document.getElementById('cfChart').getContext('2d');
+
+  new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Chain Force vs Speed',
+        data: dataPoints,
+        pointRadius: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: {
+          type: 'linear',
+          title: {
+            display: true,
+            text: 'Speed'
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Chain Force'
+          }
+        }
+      }
+    }
+  });
+</script>
+<script>
+  // Pass data from Flask → JS
+  //const speeds = {{ speeds | tojson }};
+  //const forces = {{ forces | tojson }};
+  const distances = {{ distances | tojson }};
+
+  // Build scatter points: x = speed, y = chain_force
+  const dataPointsDist = distances.map((s, i) => ({
+    x: s,
+    y: speeds[i]
+  }));
+
+  const ctxDistance = document.getElementById('cfChartDistance').getContext('2d');
+
+  new Chart(ctxDistance, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'Speed vs Distance',
+        data: dataPointsDist,
+        pointRadius: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: {
+          type: 'linear',
+          title: {
+            display: true,
+            text: 'Distance'
+          }
+        },
+        y: {
+          title: {
+            display: true,
+            text: 'Speed'
+          }
+        }
+      }
+    }
+  });
+</script>
+{% endif %}
+</body>
+</html>
