@@ -90,6 +90,35 @@ class EventTeam(db.Model):
     total_score=db.Column(db.Integer,nullable=True)
     event = db.relationship("Event", back_populates="event_teams")
     team = db.relationship("Team", back_populates="event_teams")
+    photos = db.relationship(
+        "EventTeamPhoto",
+        back_populates="event_team",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+
+class EventTeamPhoto(db.Model):
+    __tablename__ = "event_team_photos"
+
+    event_team_photo_id = db.Column(db.Integer, primary_key=True)
+    event_team_id = db.Column(
+        db.Integer,
+        db.ForeignKey("event_teams.event_team_id"),
+        nullable=False,
+    )
+
+    # path relative to your /static directory, e.g. "team_photos/iowa_state_2026_1.jpg"
+    photo_path = db.Column(db.String(255), nullable=False)
+
+    # optional extras
+    caption = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow,
+    )
+
+    event_team = db.relationship("EventTeam", back_populates="photos")
 
     
 
@@ -151,25 +180,58 @@ def events():
     )
     return render_template("events.html", events=events)
 
+from sqlalchemy.orm import selectinload
+
 @app.route("/event/<int:event_id>/team/<int:team_id>")
 def team_event_detail(event_id, team_id):
-    event = Event.query.get_or_404(event_id)
+    event = (
+        Event.query
+        .options(
+            selectinload(Event.event_teams).selectinload(EventTeam.team),
+        )
+        .get_or_404(event_id)
+    )
+
     team = Team.query.get_or_404(team_id)
 
-    # EventTeam row (score, etc.)
-    event_team = EventTeam.query.filter_by(
-        event_id=event_id,
-        team_id=team_id,
-    ).first()
+    # Load EventTeam with its photos
+    event_team = (
+        EventTeam.query
+        .options(selectinload(EventTeam.photos))
+        .filter_by(event_id=event_id, team_id=team_id)
+        .first()
+    )
 
-    # Pulls for this team in this event
     pulls = (
         Pull.query
-        .options(selectinload(Pull.pull_data))
+        .options(selectinload(Pull.hook))
         .filter_by(event_id=event_id, team_id=team_id)
-        .order_by(Pull.pull_id)
+        .order_by(Pull.hook_id, Pull.final_distance.desc())
         .all()
     )
+
+    best_pull_overall = (
+        Pull.query
+        .options(selectinload(Pull.team), selectinload(Pull.hook))
+        .filter_by(event_id=event_id)
+        .order_by(Pull.final_distance.desc())
+        .first()
+    )
+
+    top3 = event.event_teams[:3] if event.event_teams else []
+    team_in_top3 = any(et.team_id == team_id for et in top3)
+
+    # chart data
+    labels = []
+    distances = []
+    for p in pulls:
+        label = (
+            p.hook.hook_name
+            if p.hook and p.hook.hook_name
+            else f"Hook {p.hook_id}"
+        )
+        labels.append(label)
+        distances.append(p.final_distance or 0)
 
     return render_template(
         "team_event_detail.html",
@@ -177,6 +239,11 @@ def team_event_detail(event_id, team_id):
         team=team,
         event_team=event_team,
         pulls=pulls,
+        best_pull_overall=best_pull_overall,
+        top3=top3,
+        team_in_top3=team_in_top3,
+        chart_labels=labels,
+        chart_distances=distances,
     )
 
 @app.route("/team/<int:team_id>")
