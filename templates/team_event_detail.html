@@ -244,13 +244,13 @@
       <section class="hero">
         <div class="hero-image">
           {% if event_team and event_team.photos %}
-            {# just show the first photo as the "avatar" #}
             <img src="{{ url_for('static', filename=event_team.photos[0].photo_path) }}"
                 alt="{{ team.team_name }}">
           {% else %}
             No image
           {% endif %}
         </div>
+
 
         <div class="hero-main">
           <h1>{{ team.team_name }} – {{ event.event_name }}</h1>
@@ -369,7 +369,50 @@
         {% endif %}
       </section>
 
+      {% if event_team %}
+  <section class="card" style="margin-top: 1.5rem;">
+    <h3>Event Photos</h3>
+
+    {% if event_team.photos %}
+      <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+        {% for photo in event_team.photos %}
+          <figure style="margin: 0; max-width: 180px;">
+            <img src="{{ url_for('static', filename=photo.image_path) }}"
+                 alt="{{ photo.caption or team.team_name }}"
+                 style="width: 100%; border-radius: 0.5rem; border: 1px solid #1f2937;">
+            {% if photo.caption %}
+              <figcaption style="font-size: 0.8rem; color: #9ca3af; margin-top: 0.25rem;">
+                {{ photo.caption }}
+              </figcaption>
+            {% endif %}
+          </figure>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="empty">No photos uploaded for this team at this event yet.</p>
+    {% endif %}
+
+    <!-- Upload form -->
+    <form action="{{ url_for('upload_team_photo', event_id=event.event_id, team_id=team.team_id) }}"
+          method="post"
+          enctype="multipart/form-data"
+          style="margin-top: 0.5rem; font-size: 0.9rem;">
+      <label for="photo" style="display: block; margin-bottom: 0.25rem;">
+        Upload a new team photo for this event:
+      </label>
+      <input type="file" id="photo" name="photo" accept="image/*"
+             style="margin-bottom: 0.5rem;">
+      <br>
+      <button type="submit"
+              style="padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid #1f2937; background: #0f172a; color: #e5e7eb; cursor: pointer;">
+        Upload
+      </button>
+    </form>
+  </section>
+{% endif %}
+
     </div>
+    
   </main>
 
   <footer>

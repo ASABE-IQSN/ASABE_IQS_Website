@@ -1,9 +1,24 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from flask_sqlalchemy import SQLAlchemy
 import local_secrets
 from sqlalchemy.orm import selectinload
 from datetime import datetime
+from werkzeug.utils import secure_filename
+import os
+
 app = Flask(__name__)
+
+# Put this after app = Flask(__name__)
+app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "photos")
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB max, adjust as needed
+
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+
+def allowed_file(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
 
 app.config["SQLALCHEMY_DATABASE_URI"] = local_secrets.DB_URI
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
@@ -285,3 +300,48 @@ def teams():
     )
     return render_template("teams.html", teams=teams)
 
+@app.route("/event/<int:event_id>/team/<int:team_id>/upload_photo", methods=["POST"])
+def upload_team_photo(event_id, team_id):
+    # Find EventTeam record
+    event_team = (
+        EventTeam.query
+        .options(selectinload(EventTeam.photos))
+        .filter_by(event_id=event_id, team_id=team_id)
+        .first()
+    )
+    if event_team is None:
+        abort(404)
+
+    if "photo" not in request.files:
+        # you can use flash if you have messaging set up; otherwise just redirect
+        return redirect(url_for("team_event_detail", event_id=event_id, team_id=team_id))
+
+    file = request.files["photo"]
+
+    if file.filename == "":
+        return redirect(url_for("team_event_detail", event_id=event_id, team_id=team_id))
+
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+
+        # ensure upload folder exists
+        os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+
+        # Optionally prefix with event/team to reduce collisions
+        name_root, ext = os.path.splitext(filename)
+        filename = f"event{event_id}_team{team_id}_{name_root}{ext}"
+
+        save_path = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+        file.save(save_path)
+
+        # Store path relative to /static
+        rel_path = f"event_team_photos/{filename}"
+
+        photo = EventTeamPhoto(
+            event_team_id=event_team.event_team_id,
+            photo_path=rel_path,
+        )
+        db.session.add(photo)
+        db.session.commit()
+
+    return redirect(url_for("team_event_detail", event_id=event_id, team_id=team_id))
