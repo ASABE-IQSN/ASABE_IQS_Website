@@ -2,6 +2,7 @@ from flask import Flask, render_template
 from flask_sqlalchemy import SQLAlchemy
 import local_secrets
 from sqlalchemy.orm import selectinload
+from datetime import datetime
 app = Flask(__name__)
 
 app.config["SQLALCHEMY_DATABASE_URI"] = local_secrets.DB_URI
@@ -68,6 +69,7 @@ class Event(db.Model):
         cascade="all, delete-orphan"
     )
     pulls = db.relationship("Pull", back_populates="event")
+    event_datetime = db.Column(db.DateTime, nullable=True)
 
 class EventTeam(db.Model):
     __tablename__="event_teams"
@@ -83,13 +85,24 @@ class EventTeam(db.Model):
 @app.route("/results")
 def results():
     query=Pull.query
-    query.filter(Pull.hook_id==1)
+    
     rows = query.order_by(Pull.pull_id).all()
     return render_template("results.html", results=rows)
 
 @app.route("/")
-def hello_world():
-    return "<p> Hello World! </p>"
+def landing():
+    now = datetime.utcnow()  # or datetime.now() if you're thinking in local time
+
+    next_event = (
+        Event.query
+        .options(selectinload(Event.event_teams))
+        .filter(Event.event_datetime != None)
+        .filter(Event.event_datetime >= now)
+        .order_by(Event.event_datetime.asc())
+        .first()
+    )
+
+    return render_template("landing.html", next_event=next_event)
 
 @app.route("/pull/<int:pull_id>")
 def pull_detail(pull_id):
@@ -167,3 +180,12 @@ def team_profile(team_id):
     )
 
     return render_template("team_profile.html", team=team)
+
+@app.route("/teams")
+def teams():
+    teams = (
+        Team.query
+        .order_by(Team.team_name)  # or Team.team_name
+        .all()
+    )
+    return render_template("teams.html", teams=teams)

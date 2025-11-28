@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>2026 International Quarter Scale Competition</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    a { color: #38bdf8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #111827;
+      background: #020617;
+    }
+
+    .logo {
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1.5rem;
+    }
+
+    .hero {
+      max-width: 800px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .hero-title {
+      font-size: clamp(2rem, 3vw + 1rem, 3rem);
+      margin-bottom: 0.5rem;
+    }
+
+    .hero-sub {
+      margin-bottom: 1.5rem;
+      color: #9ca3af;
+      font-size: 0.95rem;
+    }
+
+    .countdown {
+      display: inline-flex;
+      gap: 0.75rem;
+      padding: 1rem 1.2rem;
+      border-radius: 0.9rem;
+      background: #0f172a;
+      border: 1px solid #1f2937;
+      margin-bottom: 1rem;
+    }
+
+    .count-block {
+      min-width: 70px;
+    }
+
+    .count-number {
+      font-size: 1.5rem;
+      font-weight: 600;
+    }
+
+    .count-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: #9ca3af;
+    }
+
+    .next-event-info {
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+
+    .buttons {
+      margin-top: 1.5rem;
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border-radius: 999px;
+      padding: 0.6rem 1.2rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: 1px solid #1f2937;
+      background: #0f172a;
+      color: #e5e7eb;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+      color: #0b1120;
+      border-color: transparent;
+    }
+
+    footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #111827;
+      font-size: 0.8rem;
+      color: #6b7280;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="logo">International Quarter Scale • 2026</div>
+  </header>
+
+  <main>
+    <div class="hero">
+      <h1 class="hero-title">International Quarter Scale Competition</h1>
+      <p class="hero-sub">
+        Official site for event information, results, and team profiles.
+        Stay tuned for live scoring once competition events begin.
+      </p>
+
+      {% if next_event %}
+        <div class="countdown" id="countdown">
+          <div class="count-block">
+            <div class="count-number" id="days">--</div>
+            <div class="count-label">Days</div>
+          </div>
+          <div class="count-block">
+            <div class="count-number" id="hours">--</div>
+            <div class="count-label">Hours</div>
+          </div>
+          <div class="count-block">
+            <div class="count-number" id="minutes">--</div>
+            <div class="count-label">Minutes</div>
+          </div>
+          <div class="count-block">
+            <div class="count-number" id="seconds">--</div>
+            <div class="count-label">Seconds</div>
+          </div>
+        </div>
+
+        <div class="next-event-info">
+          Next event:
+          <strong>{{ next_event.event_name }}</strong><br>
+          <span>
+            {{ next_event.event_datetime.strftime("%B %d, %Y %I:%M %p") }}
+          </span>
+        </div>
+      {% else %}
+        <p class="hero-sub">
+          There are currently no upcoming events scheduled. Please check back later
+          for the latest schedule.
+        </p>
+      {% endif %}
+
+      <div class="buttons">
+        <a class="btn btn-primary" href="{{ url_for('events') }}">View Events</a>
+        <a class="btn" href="{{ url_for('results') }}">View Results</a>
+        <a class="btn" href="{{ url_for('teams') }}">View Teams</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2026 International Quarter Scale Competition • All results and schedules subject to official confirmation.
+  </footer>
+</div>
+
+{% if next_event %}
+<script>
+  // next_event.event_datetime -> ISO string for JS
+  const targetTime = new Date("{{ next_event.event_datetime.isoformat() }}Z");
+
+  function updateCountdown() {
+    const now = new Date();
+    const diff = targetTime - now;
+
+    if (diff <= 0) {
+      document.getElementById('days').textContent = '0';
+      document.getElementById('hours').textContent = '0';
+      document.getElementById('minutes').textContent = '0';
+      document.getElementById('seconds').textContent = '0';
+      return;
+    }
+
+    const totalSeconds = Math.floor(diff / 1000);
+    const days = Math.floor(totalSeconds / (24 * 3600));
+    const hours = Math.floor((totalSeconds % (24 * 3600)) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    document.getElementById('days').textContent = days;
+    document.getElementById('hours').textContent = hours.toString().padStart(2, '0');
+    document.getElementById('minutes').textContent = minutes.toString().padStart(2, '0');
+    document.getElementById('seconds').textContent = seconds.toString().padStart(2, '0');
+  }
+
+  updateCountdown();
+  setInterval(updateCountdown, 1000);
+</script>
+{% endif %}
+</body>
+</html>

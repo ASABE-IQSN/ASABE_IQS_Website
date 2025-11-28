@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Teams – International Quarter Scale</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    a { color: #38bdf8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #111827;
+      background: #020617;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+
+    .nav-links a {
+      margin-left: 1rem;
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+
+    main {
+      flex: 1;
+      padding: 1.5rem;
+    }
+
+    .heading {
+      max-width: 1000px;
+      margin: 0 auto 1rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 1.6rem;
+    }
+
+    .sub {
+      margin: 0;
+      color: #9ca3af;
+      font-size: 0.9rem;
+    }
+
+    .teams-list {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .team-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      border-radius: 0.75rem;
+      background: #0f172a;
+      border: 1px solid #1f2937;
+    }
+
+    .team-main {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .team-number {
+      width: 46px;
+      height: 46px;
+      border-radius: 999px;
+      background: radial-gradient(circle at top left, #38bdf8, #0f172a);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .team-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .team-name {
+      font-weight: 600;
+    }
+
+    .team-meta {
+      font-size: 0.85rem;
+      color: #9ca3af;
+    }
+
+    .team-actions a {
+      font-size: 0.85rem;
+      padding: 0.35rem 0.8rem;
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      white-space: nowrap;
+    }
+
+    footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #111827;
+      font-size: 0.8rem;
+      color: #6b7280;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="logo">International Quarter Scale • Teams</div>
+    <nav class="nav-links">
+      <a href="{{ url_for('landing') }}">Home</a>
+      <a href="{{ url_for('events') }}">Events</a>
+      <a href="{{ url_for('results') }}">Results</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="heading">
+      <div>
+        <h1>Teams</h1>
+        <p class="sub">
+          Scroll through all registered teams. Click a team to view its profile, events, and pulls.
+        </p>
+      </div>
+      <div class="sub">
+        Total teams: <strong>{{ teams|length }}</strong>
+      </div>
+    </div>
+
+    <div class="teams-list">
+      {% for team in teams %}
+        <article class="team-card">
+          <div class="team-main">
+            <div class="team-number">
+              {{ team.team_number }}
+            </div>
+            <div class="team-text">
+              <div class="team-name">
+                <a href="{{ url_for('team_profile', team_id=team.team_id) }}">
+                  {{ team.team_name }}
+                </a>
+              </div>
+              <div class="team-meta">
+                Team ID: {{ team.team_id }}
+              </div>
+            </div>
+          </div>
+          <div class="team-actions">
+            <a href="{{ url_for('team_profile', team_id=team.team_id) }}">
+              View team
+            </a>
+          </div>
+        </article>
+      {% else %}
+        <p>No teams found.</p>
+      {% endfor %}
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2026 International Quarter Scale Competition
+  </footer>
+</div>
+</body>
+</html>
