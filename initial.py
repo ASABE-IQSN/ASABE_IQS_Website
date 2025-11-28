@@ -21,12 +21,14 @@ class Pull(db.Model):
         db.ForeignKey("teams.team_id"),
         nullable=False
     )
+    event_id = db.Column(db.Integer, db.ForeignKey("events.event_id"), nullable=True)
 
     # ORM relationship – lets you say result.team.team_name
     team = db.relationship("Team", lazy="joined")  # joined = eager load via JOIN
+    event = db.relationship("Event", back_populates="pulls")
     pull_data = db.relationship(
         "PullData",
-        back_populates="Pull",
+        back_populates="pull",
         lazy="selectin",     # loads in batches; good default
         cascade="all, delete-orphan"  # optional, for cleanup
     )
@@ -42,7 +44,7 @@ class PullData(db.Model):
     chain_force=db.Column(db.Float)
     speed=db.Column(db.Float)
     distance=db.Column(db.Float)
-    Pull = db.relationship("Pull", back_populates="pull_data")
+    pull = db.relationship("Pull", back_populates="pull_data")
     
 
 class Team(db.Model):
@@ -51,13 +53,38 @@ class Team(db.Model):
     team_id = db.Column(db.Integer, primary_key=True)
     team_name = db.Column(db.String(255), nullable=False)
     team_number = db.Column(db.String(255), nullable=False)
-    # add other columns if you have them: university, number, etc.
+    pulls = db.relationship("Pull", back_populates="team")
+    event_teams = db.relationship("EventTeam", back_populates="team")
+
+
+class Event(db.Model):
+    __tablename__ = "events"
+    event_id = db.Column(db.Integer, primary_key=True)
+    event_name = db.Column(db.String)
+    event_teams = db.relationship(
+        "EventTeam",
+        back_populates="event",
+        lazy="selectin",
+        cascade="all, delete-orphan"
+    )
+    pulls = db.relationship("Pull", back_populates="event")
+
+class EventTeam(db.Model):
+    __tablename__="event_teams"
+    event_team_id=db.Column(db.Integer,primary_key=True)
+    event_id=db.Column(db.Integer,db.ForeignKey("events.event_id"),nullable=False)
+    team_id=db.Column(db.Integer,db.ForeignKey("teams.team_id"),nullable=False)
+    total_score=db.Column(db.Integer,nullable=True)
+    event = db.relationship("Event", back_populates="event_teams")
+    team = db.relationship("Team", back_populates="event_teams")
+
+    
 
 @app.route("/results")
 def results():
     query=Pull.query
     query.filter(Pull.hook_id==1)
-    rows = query.order_by(Pull.final_distance).all()
+    rows = query.order_by(Pull.pull_id).all()
     return render_template("results.html", results=rows)
 
 @app.route("/")
@@ -87,3 +114,56 @@ def pull_detail(pull_id):
         forces=forces,
         distances=distances,
     )
+
+@app.route("/events")
+def events():
+    events = (
+        Event.query
+        .options(
+            selectinload(Event.event_teams).selectinload(EventTeam.team)
+        )
+        .order_by(Event.event_name)
+        .all()
+    )
+    return render_template("events.html", events=events)
+
+@app.route("/event/<int:event_id>/team/<int:team_id>")
+def team_event_detail(event_id, team_id):
+    event = Event.query.get_or_404(event_id)
+    team = Team.query.get_or_404(team_id)
+
+    # EventTeam row (score, etc.)
+    event_team = EventTeam.query.filter_by(
+        event_id=event_id,
+        team_id=team_id,
+    ).first()
+
+    # Pulls for this team in this event
+    pulls = (
+        Pull.query
+        .options(selectinload(Pull.pull_data))
+        .filter_by(event_id=event_id, team_id=team_id)
+        .order_by(Pull.pull_id)
+        .all()
+    )
+
+    return render_template(
+        "team_event_detail.html",
+        event=event,
+        team=team,
+        event_team=event_team,
+        pulls=pulls,
+    )
+
+@app.route("/team/<int:team_id>")
+def team_profile(team_id):
+    team = (
+        Team.query
+        .options(
+            selectinload(Team.event_teams).selectinload(EventTeam.event),
+            selectinload(Team.pulls),
+        )
+        .get_or_404(team_id)
+    )
+
+    return render_template("team_profile.html", team=team)

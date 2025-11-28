@@ -1,0 +1,29 @@
+<h1>{{ team.team_name }} ({{ team.team_number }})</h1>
+
+{% if team.image_filename %}
+  <img src="{{ url_for('static', filename='team_images/' ~ team.image_filename) }}"
+       alt="{{ team.team_name }} image"
+       style="max-width: 300px;">
+{% endif %}
+
+{% if team.bio %}
+  <p>{{ team.bio }}</p>
+{% else %}
+  <p>Team bio coming soon.</p>
+{% endif %}
+
+<h2>Events</h2>
+{% if team.event_teams %}
+  <ul>
+    {% for et in team.event_teams %}
+      <li>
+        <a href="{{ url_for('team_event_detail', event_id=et.event_id, team_id=team.team_id) }}">
+          {{ et.event.event_name }}
+        </a>
+        – Score: {{ et.total_score or 'N/A' }}
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No events recorded for this team.</p>
+{% endif %}

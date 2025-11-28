@@ -1,0 +1,34 @@
+<h1>{{ team.team_name }} – {{ event.event_name }}</h1>
+
+<p>
+  Team #: {{ team.team_number }}<br>
+  Overall event score: {{ event_team.total_score if event_team else 'N/A' }}
+</p>
+
+<h2>Pulls</h2>
+{% if pulls %}
+  <table>
+    <thead>
+      <tr>
+        <th>Pull ID</th>
+        <th>Final Distance</th>
+        <th>Hook</th>
+        <th>Detail</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pulls %}
+        <tr>
+          <td>{{ p.pull_id }}</td>
+          <td>{{ p.final_distance or 'N/A' }}</td>
+          <td>{{ p.hook_id or 'N/A' }}</td>
+          <td>
+            <a href="{{ url_for('pull_detail', pull_id=p.pull_id) }}">Charts / Data</a>
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No pulls recorded for this team in this event.</p>
+{% endif %}

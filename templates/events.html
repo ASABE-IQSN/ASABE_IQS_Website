@@ -1,0 +1,33 @@
+<h1>Events</h1>
+
+{% for event in events %}
+  <section>
+    <h2>{{ event.event_name }}</h2>
+    {% if event.event_teams %}
+      <table>
+        <thead>
+          <tr>
+            <th>Team</th>
+            <th>Team #</th>
+            <th>Total Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for et in event.event_teams %}
+            <tr>
+              <td>
+                <a href="{{ url_for('team_event_detail', event_id=event.event_id, team_id=et.team_id) }}">
+                  {{ et.team.team_name }}
+                </a>
+              </td>
+              <td>{{ et.team.team_number }}</td>
+              <td>{{ et.total_score or 'N/A' }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No teams for this event yet.</p>
+    {% endif %}
+  </section>
+{% endfor %}
