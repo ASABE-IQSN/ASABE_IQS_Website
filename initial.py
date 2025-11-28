@@ -247,7 +247,6 @@ def team_event_detail(event_id, team_id):
         )
         labels.append(label)
         distances.append(p.final_distance or 0)
-    print(event_team.photos[0].photo_path)
     return render_template(
         "team_event_detail.html",
         event=event,
