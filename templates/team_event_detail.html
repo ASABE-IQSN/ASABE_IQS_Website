@@ -245,7 +245,7 @@
         <div class="hero-image">
           {% if event_team and event_team.photos %}
             {# just show the first photo as the "avatar" #}
-            <img src="{{ url_for('static', filename=event_team.photos[0].image_path) }}"
+            <img src="{{ url_for('static', filename=event_team.photos[0].photo_path) }}"
                 alt="{{ team.team_name }}">
           {% else %}
             No image
