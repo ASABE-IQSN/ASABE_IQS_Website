@@ -16,7 +16,7 @@ class Pull(db.Model):
     pull_id = db.Column(db.Integer, primary_key=True)
     #team_id = db.Column(db.Integer, nullable=False)
     final_distance = db.Column(db.Float, nullable=True)
-    hook_id = db.Column(db.Integer, nullable=True)
+    hook_id = db.Column(db.Integer, db.ForeignKey("hooks.hook_id"),nullable=True)
     team_id = db.Column(
         db.Integer,
         db.ForeignKey("teams.team_id"),
@@ -33,6 +33,7 @@ class Pull(db.Model):
         lazy="selectin",     # loads in batches; good default
         cascade="all, delete-orphan"  # optional, for cleanup
     )
+    hook = db.relationship("Hook", back_populates="pulls")
 
 class PullData(db.Model):
     __tablename__="pull_data"
@@ -46,6 +47,14 @@ class PullData(db.Model):
     speed=db.Column(db.Float)
     distance=db.Column(db.Float)
     pull = db.relationship("Pull", back_populates="pull_data")
+
+class Hook(db.Model):
+    __tablename__="hooks"
+    hook_id=db.Column(db.Integer,primary_key=True)
+    event_id=db.Column(db.Integer,db.ForeignKey("events.event_id"))
+    event=db.relationship("Event",back_populates="hooks")
+    hook_name=db.Column(db.String,nullable=True)
+    pulls = db.relationship("Pull", back_populates="hook", lazy="selectin",order_by="Pull.final_distance.desc()")
     
 
 class Team(db.Model):
@@ -66,9 +75,11 @@ class Event(db.Model):
         "EventTeam",
         back_populates="event",
         lazy="selectin",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        order_by="EventTeam.total_score.desc()",
     )
     pulls = db.relationship("Pull", back_populates="event")
+    hooks = db.relationship("Hook",back_populates="event",lazy="selectin",cascade="all, delete-orphan")
     event_datetime = db.Column(db.DateTime, nullable=True)
 
 class EventTeam(db.Model):
@@ -135,7 +146,7 @@ def events():
         .options(
             selectinload(Event.event_teams).selectinload(EventTeam.team)
         )
-        .order_by(Event.event_name)
+        .order_by(Event.event_datetime.desc())
         .all()
     )
     return render_template("events.html", events=events)
@@ -181,6 +192,23 @@ def team_profile(team_id):
 
     return render_template("team_profile.html", team=team)
 
+@app.route("/event/<int:event_id>")
+def event_detail(event_id):
+    event = (
+        Event.query
+        .options(
+            # rankings
+            selectinload(Event.event_teams).selectinload(EventTeam.team),
+            # hooks → pulls → team
+            selectinload(Event.hooks)
+                .selectinload(Hook.pulls)
+                .selectinload(Pull.team),
+        )
+        .get_or_404(event_id)
+    )
+
+    return render_template("event_detail.html", event=event)
+
 @app.route("/teams")
 def teams():
     teams = (
@@ -189,3 +217,4 @@ def teams():
         .all()
     )
     return render_template("teams.html", teams=teams)
+

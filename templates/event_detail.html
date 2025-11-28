@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ event.event_name }} – Event Overview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    a { color: #38bdf8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #111827;
+      background: #020617;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+
+    .nav-links a {
+      margin-left: 1rem;
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+
+    main {
+      flex: 1;
+      padding: 1.5rem;
+    }
+
+    .wrap {
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .hero {
+      margin-bottom: 1.5rem;
+      padding: 1rem 1.25rem;
+      border-radius: 0.9rem;
+      background: #0f172a;
+      border: 1px solid #1f2937;
+    }
+
+    .hero h1 {
+      margin: 0 0 0.4rem;
+      font-size: 1.6rem;
+    }
+
+    .hero-meta {
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+
+    h2 {
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+      font-size: 1.2rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #020617;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+
+    th, td {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid #1f2937;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+
+    th {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #9ca3af;
+      background: #030712;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #020617;
+    }
+
+    .empty {
+      font-size: 0.9rem;
+      color: #9ca3af;
+      margin-bottom: 1rem;
+    }
+
+    .hook-section {
+      margin-bottom: 1.5rem;
+      padding: 1rem 1.25rem;
+      border-radius: 0.9rem;
+      background: #0b1120;
+      border: 1px solid #1f2937;
+    }
+
+    .hook-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .hook-header h3 {
+      margin: 0;
+      font-size: 1.05rem;
+    }
+
+    .hook-winner {
+      font-size: 0.85rem;
+      color: #9ca3af;
+      text-align: right;
+    }
+
+    .hook-winner span {
+      font-weight: 600;
+      color: #e5e7eb;
+    }
+
+    footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #111827;
+      font-size: 0.8rem;
+      color: #6b7280;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="logo">International Quarter Scale • Event</div>
+    <nav class="nav-links">
+      <a href="{{ url_for('landing') }}">Home</a>
+      <a href="{{ url_for('events') }}">Events</a>
+      <a href="{{ url_for('results') }}">Results</a>
+      <a href="{{ url_for('teams') }}">Teams</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <!-- Event hero -->
+      <section class="hero">
+        <h1>{{ event.event_name }}</h1>
+        <div class="hero-meta">
+          {% if event.event_datetime %}
+            <div>
+              Date &amp; time:
+              {{ event.event_datetime.strftime("%B %d, %Y %I:%M %p") }}
+            </div>
+          {% endif %}
+          <div>
+            Total teams in this event: <strong>{{ event.event_teams|length }}</strong>
+          </div>
+          <div>
+            Total hooks: <strong>{{ event.hooks|length }}</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- Rankings -->
+      <section>
+        <h2>Rankings</h2>
+        {% if event.event_teams %}
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Team</th>
+                <th>Team #</th>
+                <th>Total Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for et in event.event_teams %}
+                <tr>
+                  <td>{{ loop.index }}</td>
+                  <td>
+                    <a href="{{ url_for('team_event_detail', event_id=event.event_id, team_id=et.team_id) }}">
+                      {{ et.team.team_name }}
+                    </a>
+                  </td>
+                  <td>{{ et.team.team_number }}</td>
+                  <td>{{ et.total_score if et.total_score is not none else 'N/A' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p class="empty">No rankings available for this event yet.</p>
+        {% endif %}
+      </section>
+
+      <!-- Hook results -->
+      <section>
+        <h2>Hook results</h2>
+
+        {% if event.hooks %}
+          {% for hook in event.hooks %}
+            <div class="hook-section">
+              <div class="hook-header">
+                <h3>{{ hook.hook_name or ("Hook " ~ hook.hook_id) }}</h3>
+
+                <div class="hook-winner">
+                  {% if hook.pulls %}
+                    {# pulls ordered by final_distance desc in relationship #}
+                    {% set best = hook.pulls[0] %}
+                    Best pull:
+                    <span>{{ best.team.team_name }}</span>
+                    – {{ best.final_distance if best.final_distance is not none else 'N/A' }}
+                  {% else %}
+                    No pulls yet.
+                  {% endif %}
+                </div>
+              </div>
+
+              {% if hook.pulls %}
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Team</th>
+                      <th>Team #</th>
+                      <th>Final Distance</th>
+                      <th>Details</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for pull in hook.pulls %}
+                      <tr>
+                        <td>{{ pull.team.team_name }}</td>
+                        <td>{{ pull.team.team_number }}</td>
+                        <td>{{ pull.final_distance or 'N/A' }}</td>
+                        <td>
+                          <a href="{{ url_for('pull_detail', pull_id=pull.pull_id) }}">
+                            View pull
+                          </a>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              {% else %}
+                <p class="empty">No pulls for this hook yet.</p>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% else %}
+          <p class="empty">No hooks defined for this event.</p>
+        {% endif %}
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2026 International Quarter Scale Competition
+  </footer>
+</div>
+</body>
+</html>
