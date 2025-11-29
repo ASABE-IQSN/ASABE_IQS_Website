@@ -339,14 +339,27 @@ def events():
     events = (
         Event.query
         .options(
-            selectinload(Event.event_teams).selectinload(EventTeam.team)
+            selectinload(Event.event_teams)
+                .selectinload(EventTeam.team)
+                .selectinload(Team.team_class)
         )
         .order_by(Event.event_datetime.desc())
         .all()
     )
-    return render_template("events.html", events=events)
 
-from sqlalchemy.orm import selectinload
+    # First 2 team classes (by name); adjust ordering if you prefer
+    top_classes = (
+        TeamClass.query
+        .order_by(TeamClass.name)
+        .limit(2)
+        .all()
+    )
+
+    return render_template(
+        "events.html",
+        events=events,
+        top_classes=top_classes,
+    )
 
 @app.route("/cache/reset/events")
 def cache_buster_events():
