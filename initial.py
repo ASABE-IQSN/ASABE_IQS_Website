@@ -133,7 +133,7 @@ class EventTeamPhoto(db.Model):
         nullable=False,
         default=datetime.utcnow,
     )
-
+    arroved=db.Column(db.Boolean, nullable=False)
     event_team = db.relationship("EventTeam", back_populates="photos")
 
     
