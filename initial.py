@@ -12,7 +12,7 @@ app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = os.path.join("/var","www","quarterscale", "static", "photos")
 print(app.config["UPLOAD_FOLDER"])
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB max, adjust as needed
-
+app.config["SQLALCHEMY_ECHO"] = True
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 
@@ -46,7 +46,7 @@ class Pull(db.Model):
     pull_data = db.relationship(
         "PullData",
         back_populates="pull",
-        lazy="selectin",     # loads in batches; good default
+        lazy="noload",     # loads in batches; good default
         cascade="all, delete-orphan"  # optional, for cleanup
     )
     hook = db.relationship("Hook", back_populates="pulls")
@@ -68,7 +68,7 @@ class PullData(db.Model):
     chain_force=db.Column(db.Float)
     speed=db.Column(db.Float)
     distance=db.Column(db.Float)
-    pull = db.relationship("Pull", back_populates="pull_data",lazy="noload")
+    pull = db.relationship("Pull", back_populates="pull_data",lazy="selectin")
 
 class Hook(db.Model):
     __tablename__="hooks"
