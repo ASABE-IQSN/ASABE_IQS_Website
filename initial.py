@@ -68,7 +68,7 @@ class PullData(db.Model):
     chain_force=db.Column(db.Float)
     speed=db.Column(db.Float)
     distance=db.Column(db.Float)
-    pull = db.relationship("Pull", back_populates="pull_data")
+    pull = db.relationship("Pull", back_populates="pull_data",lazy="selectin")
 
 class Hook(db.Model):
     __tablename__="hooks"
