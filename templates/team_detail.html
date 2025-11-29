@@ -321,7 +321,35 @@
           {% endif %}
         </div>
       </section>
+{% if team_photos %}
+        <section class="card" style="margin-top: 1.5rem;">
+          <h3>Team Photos</h3>
 
+          <div class="photo-grid">
+            {% for photo in team_photos %}
+              <figure>
+                <img src="{{ url_for('static', filename=photo.photo_path) }}"
+                     alt="{{ photo.caption or team.team_name }}">
+
+                <figcaption>
+                  {% if photo.caption %}
+                    {{ photo.caption }}
+                    <br>
+                  {% endif %}
+                  {% if photo.event_team and photo.event_team.event %}
+                    <span>
+                      {{ photo.event_team.event.event_name }}
+                      {% if photo.event_team.event.event_datetime %}
+                        – {{ photo.event_team.event.event_datetime.strftime("%b %Y") }}
+                      {% endif %}
+                    </span>
+                  {% endif %}
+                </figcaption>
+              </figure>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
     </div>
   </main>
 
@@ -369,34 +397,6 @@
   });
 </script>
 {% endif %}
-{% if team_photos %}
-        <section class="card" style="margin-top: 1.5rem;">
-          <h3>Team Photos</h3>
 
-          <div class="photo-grid">
-            {% for photo in team_photos %}
-              <figure>
-                <img src="{{ url_for('static', filename=photo.photo_path) }}"
-                     alt="{{ photo.caption or team.team_name }}">
-
-                <figcaption>
-                  {% if photo.caption %}
-                    {{ photo.caption }}
-                    <br>
-                  {% endif %}
-                  {% if photo.event_team and photo.event_team.event %}
-                    <span>
-                      {{ photo.event_team.event.event_name }}
-                      {% if photo.event_team.event.event_datetime %}
-                        – {{ photo.event_team.event.event_datetime.strftime("%b %Y") }}
-                      {% endif %}
-                    </span>
-                  {% endif %}
-                </figcaption>
-              </figure>
-            {% endfor %}
-          </div>
-        </section>
-      {% endif %}
 </body>
 </html>
