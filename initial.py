@@ -166,7 +166,7 @@ class EventTeamPhoto(db.Model):
         db.ForeignKey("event_teams.event_team_id"),
         nullable=False,
     )
-
+    submitted_from_ip=db.Column(db.String,nullable=True)
     # path relative to /static directory, e.g. "team_photos/iowa_state_2026_1.jpg"
     photo_path = db.Column(db.String(255), nullable=False)
 
@@ -483,7 +483,10 @@ def upload_team_photo(event_id, team_id):
         return redirect(url_for("team_event_detail", event_id=event_id, team_id=team_id))
 
     file = request.files["photo"]
-
+    if request.headers.getlist("X-Forwarded-For"):
+        ip = request.headers.getlist("X-Forwarded-For")[0]
+    else:
+        ip = request.remote_addr
     if file.filename == "":
         return redirect(url_for("team_event_detail", event_id=event_id, team_id=team_id))
 
@@ -506,6 +509,7 @@ def upload_team_photo(event_id, team_id):
         photo = EventTeamPhoto(
             event_team_id=event_team.event_team_id,
             photo_path=rel_path,
+            submitted_from_ip=ip,
         )
         db.session.add(photo)
         db.session.commit()
@@ -587,11 +591,3 @@ def tractor_detail(tractor_id):
         events=events,
         teams=teams,
     )
-
-@app.route("/example")
-def example():
-    if request.headers.getlist("X-Forwarded-For"):
-        ip = request.headers.getlist("X-Forwarded-For")[0]
-    else:
-        ip = request.remote_addr
-    return f"Your IP is {ip}"
