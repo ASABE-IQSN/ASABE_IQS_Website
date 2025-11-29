@@ -12,7 +12,7 @@ app = Flask(__name__)
 app.config["UPLOAD_FOLDER"] = os.path.join("/var","www","quarterscale", "static", "photos")
 print(app.config["UPLOAD_FOLDER"])
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB max, adjust as needed
-app.config["SQLALCHEMY_ECHO"] = True
+#app.config["SQLALCHEMY_ECHO"] = True
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 
@@ -587,3 +587,11 @@ def tractor_detail(tractor_id):
         events=events,
         teams=teams,
     )
+
+@app.route("/example")
+def example():
+    if request.headers.getlist("X-Forwarded-For"):
+        ip = request.headers.getlist("X-Forwarded-For")[0]
+    else:
+        ip = request.remote_addr
+    return f"Your IP is {ip}"
