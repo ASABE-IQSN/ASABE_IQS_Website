@@ -257,8 +257,8 @@
       <section class="hero">
         <div class="hero-image">
           {% if team_photos %}
-            <img src="{{ url_for('static', filename=photo[0].photo_path) }}"
-                     alt="{{ photo.caption or team.team_name }}">
+            <img src="{{ url_for('static', filename=team_photos[0].photo_path) }}"
+                     alt="{{ team.team_name }}">
           {% else %}
             No image
           {% endif %}
