@@ -15,11 +15,7 @@
     a { color: #38bdf8; text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-    .page {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+    .page { min-height: 100vh; display: flex; flex-direction: column; }
 
     header {
       padding: 1rem 1.5rem;
@@ -29,7 +25,6 @@
       justify-content: space-between;
       align-items: center;
     }
-
     .logo {
       font-weight: 700;
       letter-spacing: 0.08em;
@@ -37,95 +32,130 @@
       font-size: 0.9rem;
       color: #9ca3af;
     }
-
     .nav-links a {
       margin-left: 1rem;
       font-size: 0.9rem;
       color: #9ca3af;
     }
 
-    main {
-      flex: 1;
-      padding: 1.5rem;
-    }
+    main { flex: 1; padding: 1.5rem; }
+    .wrap { max-width: 1000px; margin: 0 auto; }
 
-    .heading {
-      max-width: 1000px;
-      margin: 0 auto 1rem;
+    h1 { margin-bottom: 1rem; font-size: 1.8rem; }
+
+    /* Top anchor nav */
+    .class-nav {
       display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 1rem;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
     }
-
-    h1 {
-      margin: 0;
-      font-size: 1.6rem;
-    }
-
-    .sub {
-      margin: 0;
-      color: #9ca3af;
-      font-size: 0.9rem;
-    }
-
-    .teams-list {
-      max-width: 1000px;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-    }
-
-    .team-card {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0.75rem 1rem;
-      border-radius: 0.75rem;
-      background: #0f172a;
-      border: 1px solid #1f2937;
-    }
-
-    .team-main {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-
-    .team-number {
-      width: 46px;
-      height: 46px;
-      border-radius: 999px;
-      background: radial-gradient(circle at top left, #38bdf8, #0f172a);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
-
-    .team-text {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .team-name {
-      font-weight: 600;
-    }
-
-    .team-meta {
+    .class-nav a {
       font-size: 0.85rem;
-      color: #9ca3af;
-    }
-
-    .team-actions a {
-      font-size: 0.85rem;
-      padding: 0.35rem 0.8rem;
+      padding: 0.25rem 0.6rem;
       border-radius: 999px;
       border: 1px solid #1f2937;
       background: #020617;
+      color: #e5e7eb;
+      text-decoration: none;
+    }
+    .class-nav a:hover {
+      background: #0f172a;
+    }
+
+    .class-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 1.25rem;
+    }
+
+    @media (min-width: 900px) {
+      .class-grid {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+    }
+
+    .class-card {
+      padding: 1rem 1.25rem;
+      border-radius: 0.9rem;
+      background: #0b1120;
+      border: 1px solid #1f2937;
+    }
+
+    .class-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 0.75rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .class-card h2 {
+      margin: 0;
+      font-size: 1.25rem;
+    }
+
+    .class-badge {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      padding: 0.15rem 0.6rem;
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      color: #9ca3af;
       white-space: nowrap;
+    }
+
+    /* You can tweak these color hints per class later if you want */
+    .class-badge.primary {
+      border-color: #38bdf8;
+      color: #bae6fd;
+    }
+    .class-badge.secondary {
+      border-color: #a855f7;
+      color: #e9d5ff;
+    }
+
+    .class-meta {
+      font-size: 0.85rem;
+      color: #9ca3af;
+      margin-bottom: 0.6rem;
+    }
+
+    ul.team-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    ul.team-list li {
+      padding: 0.4rem 0;
+      border-bottom: 1px solid #1f2937;
+      font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+      align-items: baseline;
+    }
+
+    ul.team-list li:last-child {
+      border-bottom: none;
+    }
+
+    .team-name {
+      flex: 1;
+    }
+
+    .team-number {
+      font-size: 0.85rem;
+      color: #9ca3af;
+      white-space: nowrap;
+    }
+
+    .empty {
+      font-size: 0.9rem;
+      color: #9ca3af;
     }
 
     footer {
@@ -145,49 +175,109 @@
       <a href="{{ url_for('landing') }}">Home</a>
       <a href="{{ url_for('events') }}">Events</a>
       <a href="{{ url_for('results') }}">Results</a>
+      <a href="{{ url_for('teams') }}">Teams</a>
+      <a href="{{ url_for('tractors') }}">Tractors</a>
     </nav>
   </header>
 
   <main>
-    <div class="heading">
-      <div>
-        <h1>Teams</h1>
-        <p class="sub">
-          Scroll through all registered teams. Click a team to view its profile, events, and pulls.
-        </p>
-      </div>
-      <div class="sub">
-        Total teams: <strong>{{ teams|length }}</strong>
-      </div>
-    </div>
+    <div class="wrap">
+      <h1>Teams</h1>
 
-    <div class="teams-list">
-      {% for team in teams %}
-        <article class="team-card">
-          <div class="team-main">
-            <div class="team-number">
-              {{ team.team_number }}
+      <!-- Anchor nav -->
+      <div class="class-nav">
+        {% for tc in team_classes %}
+          <a href="#class-{{ tc.team_class_id }}">
+            {{ tc.name }}
+          </a>
+        {% endfor %}
+        {% if unclassified_teams %}
+          <a href="#class-unclassified">Unclassified</a>
+        {% endif %}
+      </div>
+
+      <div class="class-grid">
+        {% for tc in team_classes %}
+          {% set stats = class_stats.get(tc.team_class_id) %}
+          <section class="class-card" id="class-{{ tc.team_class_id }}">
+            <div class="class-header">
+              <h2>{{ tc.name }}</h2>
+              {# Simple heuristic to vary badge style by name, optional #}
+              {% set badge_class = 'primary' if loop.index == 1 else 'secondary' %}
+              <span class="class-badge {{ badge_class }}">
+                {{ tc.name }}
+              </span>
             </div>
-            <div class="team-text">
-              <div class="team-name">
-                <a href="{{ url_for('team_detail', team_id=team.team_id) }}">
-                  {{ team.team_name }}
-                </a>
-              </div>
-              <div class="team-meta">
-                Team ID: {{ team.team_id }}
-              </div>
+
+            <div class="class-meta">
+              {% set num_teams = stats.num_teams if stats else (tc.teams|length) %}
+              {% set num_events = stats.num_events if stats else 0 %}
+              {% set avg_score = stats.avg_score if stats else None %}
+
+              {{ num_teams }} team{{ '' if num_teams == 1 else 's' }}
+              • {{ num_events }} event entr{{ 'y' if num_events == 1 else 'ies' }}
+              {% if avg_score is not none %}
+                • Avg score: {{ "%.1f"|format(avg_score) }}
+              {% endif %}
             </div>
-          </div>
-          <div class="team-actions">
-            <a href="{{ url_for('team_detail', team_id=team.team_id) }}">
-              View team
-            </a>
-          </div>
-        </article>
-      {% else %}
-        <p>No teams found.</p>
-      {% endfor %}
+
+            {% if tc.teams %}
+              <ul class="team-list">
+                {% for team in tc.teams|sort(attribute='team_name') %}
+                  <li>
+                    <div class="team-name">
+                      <a href="{{ url_for('team_detail', team_id=team.team_id) }}">
+                        {{ team.team_name }}
+                      </a>
+                    </div>
+                    <div class="team-number">
+                      #{{ team.team_number }}
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <p class="empty">No teams in this class yet.</p>
+            {% endif %}
+          </section>
+        {% endfor %}
+
+        {% if unclassified_teams %}
+          <section class="class-card" id="class-unclassified">
+            <div class="class-header">
+              <h2>Unclassified Teams</h2>
+              <span class="class-badge">
+                Unclassified
+              </span>
+            </div>
+
+            {% if unclassified_stats %}
+              <div class="class-meta">
+                {{ unclassified_stats.num_teams }} team{{ '' if unclassified_stats.num_teams == 1 else 's' }}
+                • {{ unclassified_stats.num_events }} event entr{{ 'y' if unclassified_stats.num_events == 1 else 'ies' }}
+                {% if unclassified_stats.avg_score is not none %}
+                  • Avg score: {{ "%.1f"|format(unclassified_stats.avg_score) }}
+                {% endif %}
+              </div>
+            {% endif %}
+
+            <ul class="team-list">
+              {% for team in unclassified_teams %}
+                <li>
+                  <div class="team-name">
+                    <a href="{{ url_for('team_detail', team_id=team.team_id) }}">
+                      {{ team.team_name }}
+                    </a>
+                  </div>
+                  <div class="team-number">
+                    #{{ team.team_number }}
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          </section>
+        {% endif %}
+      </div>
     </div>
   </main>
 

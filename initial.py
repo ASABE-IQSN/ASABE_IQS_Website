@@ -4,6 +4,7 @@ import local_secrets
 from sqlalchemy.orm import selectinload
 from datetime import datetime
 from werkzeug.utils import secure_filename
+from flask_caching import Cache
 import os
 
 app = Flask(__name__)
@@ -15,6 +16,11 @@ app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB max, adjust as need
 #app.config["SQLALCHEMY_ECHO"] = True
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
+#app.config["DEBUG"]=True
+app.config["CACHE_TYPE"]="SimpleCache"
+app.config["CACHE_DEFAULT_TIMEOUT"]=300
+
+cache=Cache(app)
 
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -87,7 +93,8 @@ class Team(db.Model):
     team_number = db.Column(db.String(255), nullable=False)
     pulls = db.relationship("Pull", back_populates="team")
     event_teams = db.relationship("EventTeam", back_populates="team")
-
+    team_class_id = db.Column(db.Integer,db.ForeignKey("team_class.team_class_id"))
+    team_class = db.relationship("TeamClass",back_populates="teams",lazy="joined")
     tractor_events = db.relationship(
         "TractorEvent",
         back_populates="team",
@@ -259,7 +266,18 @@ class TractorEvent(db.Model):
     team = db.relationship("Team", back_populates="tractor_events")
     event = db.relationship("Event", back_populates="tractor_events")
 
-    
+class TeamClass(db.Model):
+    __tablename__="team_class"
+
+    team_class_id=db.Column(db.Integer,primary_key=True)
+
+    name=db.Column(db.String)
+
+    teams = db.relationship(
+        "Team",
+        back_populates="team_class",
+        lazy="noload",
+    )
 
 @app.route("/results")
 def results():
@@ -269,9 +287,10 @@ def results():
     return render_template("results.html", results=rows)
 
 @app.route("/")
+@cache.cached(timeout=300)
 def landing():
-    now = datetime.utcnow()  # or datetime.now() if you're thinking in local time
-
+    now = datetime.now()  # or datetime.now() if you're thinking in local time
+    print("Main Page")
     next_event = (
         Event.query
         .options(selectinload(Event.event_teams))
@@ -284,7 +303,9 @@ def landing():
     return render_template("landing.html", next_event=next_event)
 
 @app.route("/pull/<int:pull_id>")
+@cache.memoize()
 def pull_detail(pull_id):
+    print(f"Serving Pull:{pull_id}")
     pull = (
         Pull.query
         .options(
@@ -307,7 +328,13 @@ def pull_detail(pull_id):
         distances=distances,
     )
 
+@app.route("/cache/reset/pull/<int:pull_id>")
+def cache_buster_pull(pull_id):
+    cache.delete_memoized(pull_detail,pull_id)
+    return "Success"
+
 @app.route("/events")
+@cache.memoize()
 def events():
     events = (
         Event.query
@@ -321,7 +348,13 @@ def events():
 
 from sqlalchemy.orm import selectinload
 
+@app.route("/cache/reset/events")
+def cache_buster_events():
+    cache.delete_memoized(events)
+    return "Success"
+
 @app.route("/event/<int:event_id>/team/<int:team_id>")
+@cache.memoize()
 def team_event_detail(event_id, team_id):
     event = (
         Event.query
@@ -384,7 +417,13 @@ def team_event_detail(event_id, team_id):
         chart_distances=distances,
     )
 
+@app.route("/cache/reset/event/<int:event_id>/team/<int:team_id>")
+def cache_buster_event_team(event_id,team_id):
+    cache.delete_memoized(team_event_detail,event_id,team_id)
+    return "Success"
+
 @app.route("/team/<int:team_id>")
+@cache.memoize()
 def team_detail(team_id):
     team = (
         Team.query
@@ -437,10 +476,16 @@ def team_detail(team_id):
         event_teams=event_teams,
         chart_labels=labels,
         chart_scores=scores,
-        team_photos=team_photos,   # 👈 pass to template
+        team_photos=team_photos,
     )
 
+@app.route("/cache/reset/team/<int:team_id>")
+def cache_buster_team(team_id):
+    cache.delete_memoized(team_detail,team_id)
+    return "Success"
+
 @app.route("/event/<int:event_id>")
+@cache.memoize()
 def event_detail(event_id):
     event = (
         Event.query
@@ -457,14 +502,96 @@ def event_detail(event_id):
 
     return render_template("event_detail.html", event=event)
 
+@app.route("/cache/reset/event/<int:event_id>")
+def cache_buster_event(event_id):
+    cache.delete_memoized(event_detail,event_id)
+    return "Success"
+
 @app.route("/teams")
+@cache.memoize()
 def teams():
-    teams = (
-        Team.query
-        .order_by(Team.team_name)  # or Team.team_name
+    # Load all classes and their teams + event_teams
+    team_classes = (
+        TeamClass.query
+        .options(
+            selectinload(TeamClass.teams)
+                .selectinload(Team.event_teams)
+                .selectinload(EventTeam.event)
+        )
+        .order_by(TeamClass.team_class_id)
         .all()
     )
-    return render_template("teams.html", teams=teams)
+
+    # Teams without a class
+    unclassified_teams = (
+        Team.query
+        .options(
+            selectinload(Team.event_teams)
+                .selectinload(EventTeam.event)
+        )
+        .filter(Team.team_class_id.is_(None))
+        .order_by(Team.team_name)
+        .all()
+    )
+
+    # Build stats per class
+    class_stats = {}
+    for tc in team_classes:
+        teams = tc.teams or []
+        num_teams = len(teams)
+
+        event_entries = []
+        scores = []
+
+        for team in teams:
+            for et in team.event_teams:
+                event_entries.append(et)
+                if et.total_score is not None:
+                    scores.append(et.total_score)
+
+        num_events = len(event_entries)
+        avg_score = sum(scores) / len(scores) if scores else None
+
+        class_stats[tc.team_class_id] = {
+            "num_teams": num_teams,
+            "num_events": num_events,
+            "avg_score": avg_score,
+        }
+
+    # Stats for unclassified
+    unclassified_stats = None
+    if unclassified_teams:
+        event_entries = []
+        scores = []
+        for team in unclassified_teams:
+            for et in team.event_teams:
+                event_entries.append(et)
+                if et.total_score is not None:
+                    scores.append(et.total_score)
+
+        num_teams = len(unclassified_teams)
+        num_events = len(event_entries)
+        avg_score = sum(scores) / len(scores) if scores else None
+
+        unclassified_stats = {
+            "num_teams": num_teams,
+            "num_events": num_events,
+            "avg_score": avg_score,
+        }
+
+    return render_template(
+        "teams.html",
+        team_classes=team_classes,
+        unclassified_teams=unclassified_teams,
+        class_stats=class_stats,
+        unclassified_stats=unclassified_stats,
+    )
+
+
+@app.route("/cache/reset/teams")
+def cache_buster_teams():
+    cache.delete_memoized(teams)
+    return "Success"
 
 @app.route("/event/<int:event_id>/team/<int:team_id>/upload_photo", methods=["POST"])
 def upload_team_photo(event_id, team_id):
@@ -517,6 +644,7 @@ def upload_team_photo(event_id, team_id):
     return redirect(url_for("team_event_detail", event_id=event_id, team_id=team_id))
 
 @app.route("/tractors")
+@cache.memoize()
 def tractors():
     tractors = (
         Tractor.query
@@ -531,7 +659,13 @@ def tractors():
     )
     return render_template("tractors.html", tractors=tractors)
 
+@app.route("/cache/reset/tractors")
+def cache_buster_tractors():
+    cache.delete_memoized(tractors)
+    return "Success"
+
 @app.route("/tractor/<int:tractor_id>")
+@cache.memoize()
 def tractor_detail(tractor_id):
     tractor = (
         Tractor.query
@@ -591,3 +725,8 @@ def tractor_detail(tractor_id):
         events=events,
         teams=teams,
     )
+
+@app.route("/cache/reset/tractor/<int:tractor_id>")
+def cache_buster_tractor(tractor_id):
+    cache.delete_memoized(tractor_detail,tractor_id)
+    return "Success"
