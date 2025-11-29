@@ -9,7 +9,8 @@ import os
 app = Flask(__name__)
 
 # Put this after app = Flask(__name__)
-app.config["UPLOAD_FOLDER"] = os.path.join(app.root_path, "static", "photos")
+app.config["UPLOAD_FOLDER"] = os.path.join("/var","www","quarterscale", "static", "photos")
+print(app.config["UPLOAD_FOLDER"])
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB max, adjust as needed
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
