@@ -25,7 +25,7 @@ for i,row in df.iterrows():
     else:
         sql="INSERT INTO event_teams (event_id,team_id,total_score) VALUES (%s,%s,%s)"
         values=(24,team_id,row["TOTAL"])
-        #cursor.execute(sql,values)
+        cursor.execute(sql,values)
 
         sql="INSERT INTO tractors (year,team_id) VALUES (%s,%s)"
         values=(24,team_id)

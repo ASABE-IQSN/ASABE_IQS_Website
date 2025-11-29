@@ -262,17 +262,60 @@ def team_event_detail(event_id, team_id):
     )
 
 @app.route("/team/<int:team_id>")
-def team_profile(team_id):
+def team_detail(team_id):
     team = (
         Team.query
         .options(
-            selectinload(Team.event_teams).selectinload(EventTeam.event),
-            selectinload(Team.pulls),
+            selectinload(Team.event_teams).selectinload(EventTeam.event)
         )
         .get_or_404(team_id)
     )
 
-    return render_template("team_profile.html", team=team)
+    # Sort team.event_teams for the events list + chart
+    event_teams = sorted(
+        team.event_teams,
+        key=lambda et: (et.event.event_datetime or et.event_id)
+    )
+
+    labels = [
+        (et.event.event_datetime.strftime("%b %Y")
+         if et.event.event_datetime
+         else et.event.event_name)
+        for et in event_teams
+    ]
+    scores = [
+        et.total_score or 0
+        for et in event_teams
+    ]
+
+    # NEW: all approved EventTeamPhoto rows for this team across events
+    team_photos = (
+        EventTeamPhoto.query
+        .join(EventTeam, EventTeamPhoto.event_team)   # use relationship
+        .join(Event, EventTeam.event)
+        .options(
+            selectinload(EventTeamPhoto.event_team)
+                .selectinload(EventTeam.event)
+        )
+        .filter(
+            EventTeam.team_id == team_id,
+            EventTeamPhoto.approved == True
+        )
+        .order_by(
+            Event.event_datetime.desc(),
+            EventTeamPhoto.event_team_photo_id.desc()
+        )
+        .all()
+    )
+
+    return render_template(
+        "team_detail.html",
+        team=team,
+        event_teams=event_teams,
+        chart_labels=labels,
+        chart_scores=scores,
+        team_photos=team_photos,   # 👈 pass to template
+    )
 
 @app.route("/event/<int:event_id>")
 def event_detail(event_id):
