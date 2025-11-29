@@ -256,16 +256,16 @@
       <!-- Hero -->
       <section class="hero">
         <div class="hero-image">
-          {% if team.image_filename %}
-            <img src="{{ url_for('static', filename='team_images/' ~ team.image_filename) }}"
-                 alt="{{ team.team_name }} image">
+          {% if team_photos %}
+            <img src="{{ url_for('static', filename=photo[0].photo_path) }}"
+                     alt="{{ photo.caption or team.team_name }}">
           {% else %}
             No image
           {% endif %}
         </div>
 
         <div class="hero-main">
-          <h1>{{ team.team_name }} ({{ team.team_number }})</h1>
+          <h1>{{ team.team_name }}</h1>
           <div class="hero-meta">
             <div><strong>Team #:</strong> {{ team.team_number }}</div>
           </div>
