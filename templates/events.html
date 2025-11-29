@@ -79,7 +79,7 @@
     }
 
     h3 {
-      margin-top: 1rem;
+      margin-top: 0.8rem;
       margin-bottom: 0.4rem;
       font-size: 1.0rem;
     }
@@ -120,20 +120,17 @@
       color: #9ca3af;
     }
 
-    /* Layout for per-class tables */
+    /* Two class tables side by side */
     .class-tables {
       display: flex;
-      flex-wrap: wrap;
       gap: 1rem;
-      margin-top: 1rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
     }
 
     .class-table {
-      flex: 1 1 260px;
-    }
-
-    .class-table table {
-      margin-top: 0.25rem;
+      flex: 1 1 0;
+      min-width: 0;
     }
 
     footer {
@@ -176,36 +173,10 @@
           {% endif %}
 
           {% if event.event_teams %}
-            <!-- Overall Top 3 (existing behavior) -->
-            <h3>Overall Top 3</h3>
-            <table>
-              <thead>
-                <tr>
-                  <th>Team</th>
-                  <th>Team #</th>
-                  <th>Total Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for et in event.event_teams[:3] %}
-                  <tr>
-                    <td>
-                      <a href="{{ url_for('team_event_detail', event_id=event.event_id, team_id=et.team_id) }}">
-                        {{ et.team.team_name }}
-                      </a>
-                    </td>
-                    <td>{{ et.team.team_number }}</td>
-                    <td>{{ et.total_score or 'N/A' }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-
-            <!-- Per-class top 3 for first 2 team classes -->
             {% if top_classes %}
               <div class="class-tables">
                 {% for tc in top_classes %}
-                  {# Filter event_teams to this class #}
+                  {# Filter this event's teams to this class #}
                   {% set class_entries = event.event_teams
                       | selectattr('team.team_class_id', 'equalto', tc.team_class_id)
                       | list %}
@@ -238,8 +209,9 @@
                   {% endif %}
                 {% endfor %}
               </div>
+            {% else %}
+              <p class="empty">No team classes defined yet.</p>
             {% endif %}
-
           {% else %}
             <p class="empty">No teams for this event yet.</p>
           {% endif %}

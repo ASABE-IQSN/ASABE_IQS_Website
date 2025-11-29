@@ -5,6 +5,7 @@ from sqlalchemy.orm import selectinload
 from datetime import datetime
 from werkzeug.utils import secure_filename
 from flask_caching import Cache
+import flask_monitoringdashboard as dashboard
 import os
 
 app = Flask(__name__)
@@ -21,7 +22,8 @@ app.config["CACHE_TYPE"]="SimpleCache"
 app.config["CACHE_DEFAULT_TIMEOUT"]=300
 
 cache=Cache(app)
-
+dashboard.config.init_from(file='dashboard_config.cfg')
+dashboard.bind(app)
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -347,10 +349,10 @@ def events():
         .all()
     )
 
-    # First 2 team classes (by name); adjust ordering if you prefer
+    # Only the first 2 classes
     top_classes = (
         TeamClass.query
-        .order_by(TeamClass.name)
+        .order_by(TeamClass.team_class_id)
         .limit(2)
         .all()
     )
