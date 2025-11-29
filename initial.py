@@ -108,9 +108,9 @@ class EventTeam(db.Model):
     team = db.relationship("Team", back_populates="event_teams")
     photos = db.relationship(
         "EventTeamPhoto",
-        back_populates="event_team",
+        primaryjoin="and_(EventTeamPhoto.event_team_id == EventTeam.event_team_id, "
+                    "EventTeamPhoto.approved == True)",
         lazy="selectin",
-        cascade="all, delete-orphan",
     )
 
 class EventTeamPhoto(db.Model):
