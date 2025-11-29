@@ -30,6 +30,7 @@ for file in files:
             pull_df={}
             patern=r"__\d+_(.+)\.csv$"
             match=re.search(patern,pull)
+            print(pull)
             team=match.group(1)
             #print(f"Pull: {file} Team: {team}")
             #teams.append(team)

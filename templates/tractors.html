@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tractors – International Quarter Scale</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+    }
+    a { color: #38bdf8; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .page { min-height: 100vh; display: flex; flex-direction: column; }
+
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #111827;
+      background: #020617;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+    .nav-links a {
+      margin-left: 1rem;
+      font-size: 0.9rem;
+      color: #9ca3af;
+    }
+
+    main { flex: 1; padding: 1.5rem; }
+    .wrap { max-width: 1000px; margin: 0 auto; }
+
+    h1 { margin-bottom: 1.5rem; font-size: 1.8rem; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #0f172a;
+      border-radius: 0.9rem;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid #1f2937;
+      font-size: 0.9rem;
+      text-align: left;
+    }
+    th {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: #9ca3af;
+      background: #030712;
+    }
+    tr:last-child td { border-bottom: none; }
+    tbody tr:nth-child(even) { background: #020617; }
+
+    .empty { font-size: 0.9rem; color: #9ca3af; }
+
+    footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #111827;
+      font-size: 0.8rem;
+      color: #6b7280;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="logo">International Quarter Scale • Tractors</div>
+    <nav class="nav-links">
+      <a href="{{ url_for('landing') }}">Home</a>
+      <a href="{{ url_for('events') }}">Events</a>
+      <a href="{{ url_for('results') }}">Results</a>
+      <a href="{{ url_for('teams') }}">Teams</a>
+      <a href="{{ url_for('tractors') }}">Tractors</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <h1>Tractors</h1>
+
+      {% if tractors %}
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Original Team</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for tractor in tractors %}
+              <tr>
+                <td>{{ tractor.tractor_name or 'Unnamed Tractor' }}</td>
+                <td>{{tractor.original_team.team_name}}</td>
+                <td>
+                  <a href="{{ url_for('tractor_detail', tractor_id=tractor.tractor_id) }}">
+                    View details
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="empty">No tractors recorded yet.</p>
+      {% endif %}
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2026 International Quarter Scale Competition
+  </footer>
+</div>
+</body>
+</html>

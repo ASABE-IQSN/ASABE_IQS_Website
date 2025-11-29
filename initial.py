@@ -50,6 +50,12 @@ class Pull(db.Model):
         cascade="all, delete-orphan"  # optional, for cleanup
     )
     hook = db.relationship("Hook", back_populates="pulls")
+    tractor_id = db.Column(
+        db.Integer,
+        db.ForeignKey("tractors.tractor_id"),
+        nullable=True,   # or False if you want to enforce
+    )
+    tractor = db.relationship("Tractor", back_populates="pulls")
 
 class PullData(db.Model):
     __tablename__="pull_data"
@@ -82,6 +88,28 @@ class Team(db.Model):
     pulls = db.relationship("Pull", back_populates="team")
     event_teams = db.relationship("EventTeam", back_populates="team")
 
+    tractor_events = db.relationship(
+        "TractorEvent",
+        back_populates="team",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+
+    tractors = db.relationship(
+        "Tractor",
+        secondary="tractor_events",
+        primaryjoin="Team.team_id == TractorEvent.team_id",
+        secondaryjoin="Tractor.tractor_id == TractorEvent.tractor_id",
+        viewonly=True,
+        lazy="selectin",
+    )
+
+    original_tractors = db.relationship(
+        "Tractor",
+        back_populates="original_team",
+        foreign_keys="Tractor.original_team_id",
+    )
+
 
 class Event(db.Model):
     __tablename__ = "events"
@@ -97,6 +125,22 @@ class Event(db.Model):
     pulls = db.relationship("Pull", back_populates="event")
     hooks = db.relationship("Hook",back_populates="event",lazy="selectin",cascade="all, delete-orphan")
     event_datetime = db.Column(db.DateTime, nullable=True)
+
+    tractor_events = db.relationship(
+        "TractorEvent",
+        back_populates="event",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+
+    tractors = db.relationship(
+        "Tractor",
+        secondary="tractor_events",
+        primaryjoin="Event.event_id == TractorEvent.event_id",
+        secondaryjoin="Tractor.tractor_id == TractorEvent.tractor_id",
+        viewonly=True,
+        lazy="selectin",
+    )
 
 class EventTeam(db.Model):
     __tablename__="event_teams"
@@ -123,10 +167,9 @@ class EventTeamPhoto(db.Model):
         nullable=False,
     )
 
-    # path relative to your /static directory, e.g. "team_photos/iowa_state_2026_1.jpg"
+    # path relative to /static directory, e.g. "team_photos/iowa_state_2026_1.jpg"
     photo_path = db.Column(db.String(255), nullable=False)
 
-    # optional extras
     caption = db.Column(db.String(255), nullable=True)
     created_at = db.Column(
         db.DateTime,
@@ -135,6 +178,86 @@ class EventTeamPhoto(db.Model):
     )
     approved=db.Column(db.Boolean, nullable=False)
     event_team = db.relationship("EventTeam", back_populates="photos")
+
+class Tractor(db.Model):
+    __tablename__="tractors"
+
+    tractor_id=db.Column(db.Integer, primary_key=True)
+    tractor_name = db.Column(db.String(255), nullable=True)
+    original_team_id=db.Column(db.Integer,db.ForeignKey("teams.team_id"))
+
+    # Association rows
+    tractor_events = db.relationship(
+        "TractorEvent",
+        back_populates="tractor",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+
+    # Convenience many-to-many: all teams this tractor has run under
+    teams = db.relationship(
+        "Team",
+        secondary="tractor_events",
+        primaryjoin="Tractor.tractor_id == TractorEvent.tractor_id",
+        secondaryjoin="Team.team_id == TractorEvent.team_id",
+        viewonly=True,
+        lazy="selectin",
+    )
+
+    # Convenience many-to-many: all events this tractor has appeared in
+    events = db.relationship(
+        "Event",
+        secondary="tractor_events",
+        primaryjoin="Tractor.tractor_id == TractorEvent.tractor_id",
+        secondaryjoin="Event.event_id == TractorEvent.event_id",
+        viewonly=True,
+        lazy="selectin",
+    )
+    pulls = db.relationship(
+        "Pull",
+        back_populates="tractor",
+        lazy="selectin",
+    )
+
+    original_team = db.relationship(
+        "Team",
+        foreign_keys=[original_team_id],
+        back_populates="original_tractors",
+    )
+
+
+class TractorEvent(db.Model):
+    __tablename__="tractor_events"
+
+    tractor_event_id = db.Column(db.Integer, primary_key=True)
+
+    tractor_id = db.Column(
+        db.Integer,
+        db.ForeignKey("tractors.tractor_id"),
+        nullable=False,
+    )
+    team_id = db.Column(
+        db.Integer,
+        db.ForeignKey("teams.team_id"),
+        nullable=False,
+    )
+    event_id = db.Column(
+        db.Integer,
+        db.ForeignKey("events.event_id"),
+        nullable=False,
+    )
+
+    # Optional: enforce uniqueness so you don't get duplicate rows:
+    __table_args__ = (
+        db.UniqueConstraint(
+            "tractor_id", "team_id", "event_id",
+            name="uix_tractor_team_event",
+        ),
+    )
+
+    tractor = db.relationship("Tractor", back_populates="tractor_events")
+    team = db.relationship("Team", back_populates="tractor_events")
+    event = db.relationship("Event", back_populates="tractor_events")
 
     
 
@@ -388,3 +511,79 @@ def upload_team_photo(event_id, team_id):
         db.session.commit()
 
     return redirect(url_for("team_event_detail", event_id=event_id, team_id=team_id))
+
+@app.route("/tractors")
+def tractors():
+    tractors = (
+        Tractor.query
+        .options(
+            selectinload(Tractor.tractor_events)
+                .selectinload(TractorEvent.team),
+            selectinload(Tractor.tractor_events)
+                .selectinload(TractorEvent.event),
+        )
+        .order_by(Tractor.tractor_name.is_(None), Tractor.tractor_name, Tractor.tractor_id)
+        .all()
+    )
+    return render_template("tractors.html", tractors=tractors)
+
+@app.route("/tractor/<int:tractor_id>")
+def tractor_detail(tractor_id):
+    tractor = (
+        Tractor.query
+        .options(
+            selectinload(Tractor.pulls)
+                .selectinload(Pull.event),
+            selectinload(Tractor.pulls)
+                .selectinload(Pull.team),
+            selectinload(Tractor.tractor_events)
+                .selectinload(TractorEvent.team),
+            selectinload(Tractor.tractor_events)
+                .selectinload(TractorEvent.event),
+        )
+        .get_or_404(tractor_id)
+    )
+
+    # Sort pulls by event date then hook/pull_id
+    pulls = sorted(
+        tractor.pulls,
+        key=lambda p: (
+            p.event.event_datetime if p.event and p.event.event_datetime else None,
+            p.event_id,
+            p.pull_id,
+        )
+    )
+
+    # Build a list of (team, event, year) usages
+    usages = []
+    for te in tractor.tractor_events:
+        year = None
+        if te.event and te.event.event_datetime:
+            year = te.event.event_datetime.year
+        usages.append({
+            "team": te.team,
+            "event": te.event,
+            "year": year,
+        })
+
+    # Sort usages by year desc then event name
+    usages.sort(key=lambda u: (u["year"] or 0, u["event"].event_name if u["event"] else ""), reverse=True)
+
+    # Distinct events/teams if you want them separately
+    events = sorted(
+        {te.event for te in tractor.tractor_events if te.event},
+        key=lambda e: (e.event_datetime or None, e.event_name)
+    )
+    teams = sorted(
+        {te.team for te in tractor.tractor_events if te.team},
+        key=lambda t: t.team_name
+    )
+
+    return render_template(
+        "tractor_detail.html",
+        tractor=tractor,
+        pulls=pulls,
+        usages=usages,
+        events=events,
+        teams=teams,
+    )

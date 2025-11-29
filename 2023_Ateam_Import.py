@@ -3,12 +3,12 @@ import mysql.connector
 import local_secrets
 import re
 import pandas as pd
-# cnx = mysql.connector.connect(
-#     host=local_secrets.DB_IP,
-#     port=3306,
-#     user=local_secrets.ADMINUNAME,
-#     password=local_secrets.ADMINPWORD,
-#     database="IQS_Test_Environment")
+cnx = mysql.connector.connect(
+    host=local_secrets.DB_IP,
+    port=3306,
+    user=local_secrets.ADMINUNAME,
+    password=local_secrets.ADMINPWORD,
+    database="IQS_Test_Environment")
 parent="sql_management/data/2023/Pulling Data/A-Team Data"
 files=os.listdir(parent)
 
@@ -18,7 +18,7 @@ team_ids={'Caly Poly':20,'UT-Martin':13,'Kansas State':2,'Kentucky':8,'UW-Platte
 
 teams=[]
 
-#cursor=cnx.cursor()
+cursor=cnx.cursor()
 hooks=[]
 id=0
 for file in files:
@@ -45,17 +45,26 @@ for file in files:
             pull_df["Hook ID"]=hook_ids[file]
             pull_df["Event ID"]=23
             pull_df["Pull ID"]=id
-            
-            #sql="INSERT INTO pulls (event_id, team_id, hook_id) VALUES (%s,%s,%s)"
-            #values=(23,team_id,hook_ids[file])
+            sql="SELECT tractor_id FROM tractor_events WHERE team_id=%s and event_id=%s"
+            values=(team_id,23)
+            cursor.execute(sql,values)
+            res=cursor.fetchall()
+            if res:
+                tractor_id=res[0][0]
+                print(tractor_id)
+            else:
+                tractor_id=-1
+                print(f"Couldn't find tractor: {team_id} {23}")
+            sql="INSERT INTO pulls (event_id, team_id, hook_id, tractor_id) VALUES (%s,%s,%s,%s)"
+            values=(23,team_id,hook_ids[file],tractor_id)
             if team_id>0:
-                #cursor.execute(sql,values)
-                #sql="SELECT LAST_INSERT_ID();"
-                #cursor.execute(sql)
-                #id=1#cursor.fetchone()
-                
+                cursor.execute(sql,values)
+                sql="SELECT LAST_INSERT_ID();"
+                cursor.execute(sql)
+                id=cursor.fetchone()
+                id=id[0]
                 pull_data=[]
-                
+                val_ar=[]
                 for i,fileline in enumerate(data):
                     if i>33:
                         di={}
@@ -68,13 +77,14 @@ for file in files:
                         distance.append(float(dsp[3]))
                         speed.append(float(dsp[4][:-1]))
                         force.append(float(dsp[2]))
-                        #sql="INSERT INTO pull_data (pull_id,pull_time,chain_force,speed,distance) VALUES (%s,%s,%s,%s,%s)"
-                        #values=(id,di["pull_time"],di["chain_force"],di["speed"],di["distance"])
+                        
+                        values=(id,di["pull_time"],di["chain_force"],di["speed"],di["distance"])
+                        val_ar.append(values)
                         #cursor.execute(sql,values)
-                
-                pull_data_df=pd.DataFrame(pull_data)
-                pull_data_df.to_hdf("sql_management/data/2023/Pulling Data/A-Team Data/"+file+"/"+str(id)+'.h5', key='df', mode='w')
-
+                sql="INSERT INTO pull_data (pull_id,pull_time,chain_force,speed,distance) VALUES (%s,%s,%s,%s,%s)"
+                #pull_data_df=pd.DataFrame(pull_data)
+                #pull_data_df.to_hdf("sql_management/data/2023/Pulling Data/A-Team Data/"+file+"/"+str(id)+'.h5', key='df', mode='w')
+                cursor.executemany(sql,val_ar)
                 max_force=max(force)
                 max_speed=max(speed)
                 max_distance=max(distance)
@@ -82,15 +92,15 @@ for file in files:
                 pull_df["max_force"]=max_force
                 pull_df["max_distance"]=max_distance
                 pulls.append(pull_df)
-                #sql="UPDATE pulls SET final_distance=%s WHERE pull_id=%s"
-                #values=(max_distance,id)
-                #cursor.execute(sql,values)
+                sql="UPDATE pulls SET final_distance=%s WHERE pull_id=%s"
+                values=(max_distance,id)
+                cursor.execute(sql,values)
 
-                #sql="UPDATE pulls SET top_speed=%s WHERE pull_id=%s"
-                #values=(max_speed,id)
-                #cursor.execute(sql,values)
-                id+=1
-        #cnx.commit()
+                sql="UPDATE pulls SET top_speed=%s WHERE pull_id=%s"
+                values=(max_speed,id)
+                cursor.execute(sql,values)
+                #id+=1
+        cnx.commit()
     pulls_df=pd.DataFrame(pulls)
     pulls_df.to_hdf("sql_management/data/2023/Pulling Data/A-Team Data/"+file+"/"+'pulls.h5', key='df', mode='w')
 
