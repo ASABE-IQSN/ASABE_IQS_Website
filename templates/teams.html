@@ -4,8 +4,38 @@
 
 {% block extra_styles %}
   h1 {
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
     font-size: 1.8rem;
+  }
+
+  /* Search bar */
+  .team-search-wrapper {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .team-search-input {
+    flex: 1;
+    min-width: 220px;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid #1f2937;
+    background: #020617;
+    color: #e5e7eb;
+    font-size: 0.9rem;
+  }
+
+  .team-search-input::placeholder {
+    color: #6b7280;
+  }
+
+  .team-search-hint {
+    font-size: 0.8rem;
+    color: #9ca3af;
   }
 
   /* Top anchor nav */
@@ -122,10 +152,29 @@
     font-size: 0.9rem;
     color: #9ca3af;
   }
+
+  .no-search-results {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin-top: 0.75rem;
+  }
 {% endblock %}
 
 {% block content %}
   <h1>Teams</h1>
+
+  <div class="team-search-wrapper">
+    <input
+      id="teamSearchInput"
+      class="team-search-input"
+      type="text"
+      placeholder="Search teams by name or number..."
+      autocomplete="off"
+    >
+    <div class="team-search-hint">
+      <!--Type to filter teams across all classes.-->
+    </div>
+  </div>
 
   <!-- Anchor nav -->
   <div class="class-nav">
@@ -139,7 +188,7 @@
     {% endif %}
   </div>
 
-  <div class="class-grid">
+  <div class="class-grid" id="classGrid">
     {% for tc in team_classes %}
       {% set stats = class_stats.get(tc.team_class_id) %}
       <section class="class-card" id="class-{{ tc.team_class_id }}">
@@ -167,7 +216,11 @@
         {% if tc.teams %}
           <ul class="team-list">
             {% for team in tc.teams|sort(attribute='team_name') %}
-              <li>
+              <li
+                class="team-row"
+                data-team-name="{{ team.team_name | lower }}"
+                data-team-number="{{ team.team_number }}"
+              >
                 <div class="team-name">
                   <a href="{{ url_for('team_detail', team_id=team.team_id) }}">
                     {{ team.team_name }}
@@ -206,7 +259,11 @@
 
         <ul class="team-list">
           {% for team in unclassified_teams %}
-            <li>
+            <li
+              class="team-row"
+              data-team-name="{{ team.team_name | lower }}"
+              data-team-number="{{ team.team_number }}"
+            >
               <div class="team-name">
                 <a href="{{ url_for('team_detail', team_id=team.team_id) }}">
                   {{ team.team_name }}
@@ -221,4 +278,59 @@
       </section>
     {% endif %}
   </div>
+
+  <p id="noSearchResults" class="no-search-results" style="display:none;">
+    No teams match your search.
+  </p>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script>
+    (function () {
+      const input = document.getElementById('teamSearchInput');
+      const classCards = Array.from(document.querySelectorAll('.class-card'));
+      const noResultsEl = document.getElementById('noSearchResults');
+
+      if (!input || !classCards.length) return;
+
+      function applyFilter() {
+        const query = input.value.trim().toLowerCase();
+        let anyVisibleTeam = false;
+
+        classCards.forEach(card => {
+          const rows = Array.from(card.querySelectorAll('.team-row'));
+          if (!rows.length) {
+            // If class has no teams at all, leave it as-is (likely "No teams in this class yet")
+            return;
+          }
+
+          let cardHasVisible = false;
+          rows.forEach(row => {
+            const name = row.getAttribute('data-team-name') || '';
+            const number = (row.getAttribute('data-team-number') || '').toString().toLowerCase();
+
+            const match =
+              !query ||
+              name.includes(query) ||
+              number.includes(query);
+
+            row.style.display = match ? '' : 'none';
+            if (match) {
+              cardHasVisible = true;
+              anyVisibleTeam = true;
+            }
+          });
+
+          // Hide card if no rows in this class match (but only if there were rows to start with)
+          card.style.display = cardHasVisible || !query ? '' : 'none';
+        });
+
+        if (noResultsEl) {
+          noResultsEl.style.display = query && !anyVisibleTeam ? '' : 'none';
+        }
+      }
+
+      input.addEventListener('input', applyFilter);
+    })();
+  </script>
 {% endblock %}

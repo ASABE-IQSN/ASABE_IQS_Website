@@ -4,8 +4,38 @@
 
 {% block extra_styles %}
   h1 {
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.75rem;
     font-size: 1.8rem;
+  }
+
+  /* Search bar */
+  .tractor-search-wrapper {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .tractor-search-input {
+    flex: 1;
+    min-width: 220px;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid #1f2937;
+    background: #020617;
+    color: #e5e7eb;
+    font-size: 0.9rem;
+  }
+
+  .tractor-search-input::placeholder {
+    color: #6b7280;
+  }
+
+  .tractor-search-hint {
+    font-size: 0.8rem;
+    color: #9ca3af;
   }
 
   table {
@@ -43,13 +73,32 @@
     font-size: 0.9rem;
     color: #9ca3af;
   }
+
+  .no-search-results {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin-top: 0.75rem;
+  }
 {% endblock %}
 
 {% block content %}
   <h1>Tractors</h1>
 
+  <div class="tractor-search-wrapper">
+    <input
+      id="tractorSearchInput"
+      class="tractor-search-input"
+      type="text"
+      placeholder="Search by tractor name or team..."
+      autocomplete="off"
+    >
+    <div class="tractor-search-hint">
+      Type to filter tractors.
+    </div>
+  </div>
+
   {% if tractors %}
-    <table>
+    <table id="tractorTable">
       <thead>
         <tr>
           <th>Name</th>
@@ -59,8 +108,11 @@
       </thead>
       <tbody>
         {% for tractor in tractors %}
-          <tr>
+          <tr class="tractor-row"
+              data-tractor-name="{{ (tractor.tractor_name or 'Unnamed Tractor')|lower }}"
+              data-team-name="{{ tractor.original_team.team_name|lower if tractor.original_team else '' }}">
             <td>{{ tractor.tractor_name or 'Unnamed Tractor' }}</td>
+
             <td>
               {% if tractor.original_team %}
                 {{ tractor.original_team.team_name }}
@@ -68,6 +120,7 @@
                 N/A
               {% endif %}
             </td>
+
             <td>
               <a href="{{ url_for('tractor_detail', tractor_id=tractor.tractor_id) }}">
                 View details
@@ -77,7 +130,47 @@
         {% endfor %}
       </tbody>
     </table>
+
+    <p id="noSearchResults" class="no-search-results" style="display:none;">
+      No tractors match your search.
+    </p>
   {% else %}
     <p class="empty">No tractors recorded yet.</p>
   {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  (function () {
+    const input = document.getElementById('tractorSearchInput');
+    const rows = Array.from(document.querySelectorAll('.tractor-row'));
+    const noResultsEl = document.getElementById('noSearchResults');
+
+    if (!input || !rows.length) return;
+
+    function applyFilter() {
+      const query = input.value.trim().toLowerCase();
+      let anyVisible = false;
+
+      rows.forEach(row => {
+        const name = row.getAttribute('data-tractor-name') || '';
+        const team = row.getAttribute('data-team-name') || '';
+
+        const match =
+          !query ||
+          name.includes(query) ||
+          team.includes(query);
+
+        row.style.display = match ? '' : 'none';
+        if (match) anyVisible = true;
+      });
+
+      if (noResultsEl) {
+        noResultsEl.style.display = query && !anyVisible ? '' : 'none';
+      }
+    }
+
+    input.addEventListener('input', applyFilter);
+  })();
+</script>
 {% endblock %}
