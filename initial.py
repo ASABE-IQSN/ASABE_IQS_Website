@@ -6,6 +6,7 @@ from datetime import datetime
 from werkzeug.utils import secure_filename
 from flask_caching import Cache
 import flask_monitoringdashboard as dashboard
+from collections import defaultdict
 import os
 
 app = Flask(__name__)
@@ -502,20 +503,32 @@ def cache_buster_team(team_id):
 @app.route("/event/<int:event_id>")
 @cache.memoize()
 def event_detail(event_id):
-    event = (
-        Event.query
-        .options(
-            # rankings
-            selectinload(Event.event_teams).selectinload(EventTeam.team),
-            # hooks → pulls → team
-            selectinload(Event.hooks)
-                .selectinload(Hook.pulls)
-                .selectinload(Pull.team),
-        )
-        .get_or_404(event_id)
-    )
+    event = Event.query.get_or_404(event_id)
 
-    return render_template("event_detail.html", event=event)
+    # Assuming event.event_teams is a relationship of EventTeam objects
+    # and each EventTeam has .team with .team_class and .total_score
+    rankings_by_class = defaultdict(list)
+    
+    for et in event.event_teams:
+        tc = getattr(et.team, "team_class", None)
+        class_name = tc.name if tc and getattr(tc, "name", None) else "Unclassified"
+        rankings_by_class[class_name].append(et)
+
+    # sort each class by total_score (descending), None at bottom
+    for class_name, items in rankings_by_class.items():
+        items.sort(
+            key=lambda et: (et.total_score is None, -(et.total_score or 0))
+        )
+
+    # If you truly only ever want the first 2 classes:
+    # rankings_by_class = dict(list(rankings_by_class.items())[:2])
+
+    return render_template(
+        "event_detail.html",
+        event=event,
+        rankings_by_class=rankings_by_class,
+        active_page="events",
+    )
 
 @app.route("/cache/reset/event/<int:event_id>")
 def cache_buster_event(event_id):

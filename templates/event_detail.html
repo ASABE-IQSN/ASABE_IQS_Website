@@ -96,6 +96,52 @@
     font-weight: 600;
     color: #e5e7eb;
   }
+
+  /* Rankings grid for per-class leaderboards */
+  .rankings-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (min-width: 900px) {
+    .rankings-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+
+  .rankings-card {
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+  }
+
+  .rankings-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .rankings-card-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .class-badge {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid #1f2937;
+    background: #020617;
+    color: #9ca3af;
+    white-space: nowrap;
+  }
 {% endblock %}
 
 {% block content %}
@@ -118,10 +164,53 @@
     </div>
   </section>
 
-  <!-- Rankings -->
+  <!-- Rankings by class -->
   <section>
-    <h2>Rankings</h2>
-    {% if event.event_teams %}
+    <h2>Rankings by class</h2>
+
+    {% if rankings_by_class and rankings_by_class|length > 0 %}
+      <div class="rankings-grid">
+        {# rankings_by_class is a dict: {class_name: [EventTeam, ...]} #}
+        {% for class_name, entries in rankings_by_class.items() %}
+          <div class="rankings-card">
+            <div class="rankings-card-header">
+              <h3>{{ class_name }}</h3>
+              <span class="class-badge">{{ class_name }}</span>
+            </div>
+
+            {% if entries %}
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Team</th>
+                    <th>Team #</th>
+                    <th>Total Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for et in entries %}
+                    <tr>
+                      <td>{{ loop.index }}</td>
+                      <td>
+                        <a href="{{ url_for('team_event_detail', event_id=event.event_id, team_id=et.team_id) }}">
+                          {{ et.team.team_name }}
+                        </a>
+                      </td>
+                      <td>{{ et.team.team_number }}</td>
+                      <td>{{ et.total_score if et.total_score is not none else 'N/A' }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% else %}
+              <p class="empty">No teams in this class for this event.</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% elif event.event_teams %}
+      {# Fallback: single leaderboard if you don't pass rankings_by_class #}
       <table>
         <thead>
           <tr>
