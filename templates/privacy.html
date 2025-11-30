@@ -1,0 +1,186 @@
+{% extends "layout.html" %}
+
+{% block title %}Privacy Policy – International Quarter Scale{% endblock %}
+
+{% block extra_styles %}
+  .policy {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #e5e7eb;
+  }
+
+  .policy h1 {
+    font-size: 1.7rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .policy h2 {
+    font-size: 1.2rem;
+    margin-top: 1.5rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .policy h3 {
+    font-size: 1rem;
+    margin-top: 1rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .policy p {
+    margin: 0.4rem 0;
+  }
+
+  .policy ul {
+    margin: 0.3rem 0 0.7rem 1.2rem;
+    padding: 0;
+  }
+
+  .policy li {
+    margin: 0.2rem 0;
+  }
+
+  .policy small {
+    color: #9ca3af;
+  }
+{% endblock %}
+
+{% block content %}
+  <section class="policy">
+    <h1>Privacy Policy</h1>
+    <p><small>Last updated: {{ last_updated or "January 1, 2026" }}</small></p>
+
+    <p>
+      This website is operated for the International Quarter Scale Competition (“we”, “us”, “our”).
+      This Privacy Policy explains how we collect, use, and protect information when you use this site.
+    </p>
+
+    <h2>Information we collect</h2>
+
+    <h3>Analytics and usage data</h3>
+    <p>
+      We use Google Analytics to help us understand how visitors use this site, including which pages
+      are visited, how long visitors stay, and what devices and browsers are used. Google Analytics
+      collects information such as:
+    </p>
+    <ul>
+      <li>Pages and content you view</li>
+      <li>Your approximate location (based on IP address)</li>
+      <li>Device and browser information</li>
+      <li>Referring website or link</li>
+      <li>Session duration and general interaction with the site</li>
+    </ul>
+
+    <h3>Google Analytics “Google Signals” and logged-in Google accounts</h3>
+    <p>
+      We have enabled certain Google Analytics features that allow Google to collect additional data
+      from users who are signed in to their Google accounts and have turned on Ads Personalization.
+      This is sometimes referred to as <strong>Google Signals</strong>.
+    </p>
+    <p>
+      When these features are active, Google may associate your visit to this site with your Google
+      account and combine this information with data from other sites that use Google services.
+      Google then provides us with aggregated and anonymized reports, such as:
+    </p>
+    <ul>
+      <li>More detailed demographics and interests reports</li>
+      <li>Cross-device reporting (for example, when users visit from both mobile and desktop)</li>
+      <li>Better understanding of how visitors return to and move through the site over time</li>
+    </ul>
+    <p>
+      We only see this information in aggregated form and never receive your individual Google account
+      information or identity from Google.
+    </p>
+
+    <h2>Cookies and similar technologies</h2>
+    <p>
+      Google Analytics uses cookies and similar technologies to collect and store analytics data.
+      Cookies are small text files stored on your device by your browser.
+    </p>
+    <p>
+      You can control or delete cookies through your browser settings. If you disable cookies,
+      some features of this site may not work as intended, but basic browsing should still be possible.
+    </p>
+
+    <h2>How we use this information</h2>
+    <p>We use the analytics information described above to:</p>
+    <ul>
+      <li>Understand how visitors find and use the site</li>
+      <li>Monitor site performance and fix issues</li>
+      <li>Improve layout, navigation, and content</li>
+      <li>Plan and prioritize features related to events, teams, tractors, and results</li>
+    </ul>
+    <p>
+      We do <strong>not</strong> sell your personal information, and we do not attempt to identify
+      individual visitors from analytics data.
+    </p>
+
+    <h2>Google’s use of data</h2>
+    <p>
+      Google’s use of information collected through Google Analytics is governed by Google’s own
+      policies. For more information, please see:
+    </p>
+    <ul>
+      <li><a href="https://policies.google.com/privacy" target="_blank" rel="noopener">Google Privacy Policy</a></li>
+      <li><a href="https://policies.google.com/technologies/partner-sites" target="_blank" rel="noopener">
+        How Google uses information from sites or apps that use their services
+      </a></li>
+    </ul>
+
+    <h2>How to opt out of Google Analytics</h2>
+    <p>You can opt out of Google Analytics in several ways:</p>
+    <ul>
+      <li>
+        Adjust your Google Ads Personalization settings in your Google account:
+        <a href="https://adssettings.google.com" target="_blank" rel="noopener">
+          https://adssettings.google.com
+        </a>
+      </li>
+      <li>
+        Install the Google Analytics Opt-out Browser Add-on:
+        <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener">
+          https://tools.google.com/dlpage/gaoptout
+        </a>
+      </li>
+      <li>
+        Use your browser’s settings to block or delete cookies.
+      </li>
+    </ul>
+
+    <h2>Other data you may provide</h2>
+    <p>
+      If you contact us directly (for example, by email or through a form), we may receive information
+      such as your name, email address, and the contents of your message. We use this information only
+      to respond to your inquiry and manage our communication with you.
+    </p>
+
+    <h2>Data retention</h2>
+    <p>
+      Analytics data is retained in Google Analytics according to the retention settings configured in
+      our Google Analytics account. These settings may change over time as we review our needs and
+      obligations.
+    </p>
+
+    <h2>Children’s privacy</h2>
+    <p>
+      This site is not specifically directed at children under the age of 13. We do not knowingly collect
+      personal information from children. If you believe a child has provided us with personal information,
+      please contact us so we can remove it.
+    </p>
+
+    <h2>Changes to this policy</h2>
+    <p>
+      We may update this Privacy Policy from time to time. When we do, we will update the “Last updated”
+      date at the top of this page. Your continued use of the site after changes have been posted
+      constitutes your acceptance of the updated policy.
+    </p>
+
+    <h2>Contact</h2>
+    <p>
+      If you have any questions about this Privacy Policy or how your data is used, you can contact us at:
+    </p>
+    <p>
+      <strong>Email:</strong> {{ contact_email or "info@example.com" }}<br>
+      <strong>Organization:</strong> International Quarter Scale Competition
+    </p>
+  </section>
+{% endblock %}

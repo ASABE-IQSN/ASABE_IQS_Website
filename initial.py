@@ -745,3 +745,14 @@ def tractor_detail(tractor_id):
 def cache_buster_tractor(tractor_id):
     cache.delete_memoized(tractor_detail,tractor_id)
     return "Success"
+
+@app.route("/privacy")
+@cache.memoize()
+def privacy():
+    return render_template(
+        "privacy.html",
+        active_page=None,  # or "privacy" if you later add a nav link
+        last_updated="January 1, 2026",
+        contact_email="youremail@example.com",
+    )
+
