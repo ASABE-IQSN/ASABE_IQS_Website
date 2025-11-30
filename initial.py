@@ -7,6 +7,7 @@ from werkzeug.utils import secure_filename
 from flask_caching import Cache
 import flask_monitoringdashboard as dashboard
 from collections import defaultdict
+from sqlalchemy import and_
 import os
 
 app = Flask(__name__)
@@ -695,63 +696,44 @@ def cache_buster_tractors():
 @app.route("/tractor/<int:tractor_id>")
 @cache.memoize()
 def tractor_detail(tractor_id):
-    tractor = (
-        Tractor.query
-        .options(
-            selectinload(Tractor.pulls)
-                .selectinload(Pull.event),
-            selectinload(Tractor.pulls)
-                .selectinload(Pull.team),
-            selectinload(Tractor.tractor_events)
-                .selectinload(TractorEvent.team),
-            selectinload(Tractor.tractor_events)
-                .selectinload(TractorEvent.event),
+    tractor = Tractor.query.get_or_404(tractor_id)
+
+    # Convenience shortcuts from your relationships
+    pulls = tractor.pulls          # all Pulls that used this tractor
+    events = tractor.events        # all Events this tractor appeared in
+    usages = tractor.tractor_events  # TractorEvent rows (team+event+year-ish)
+    teams = tractor.teams          # all Teams that have used this tractor
+
+    # Photos from events where this tractor was used
+    # EventTeamPhoto -> EventTeam (event_id, team_id)
+    # EventTeam + TractorEvent matched on (event_id, team_id) for this tractor
+    tractor_photos = (
+        db.session.query(EventTeamPhoto)
+        .join(EventTeamPhoto.event_team)  # joins to EventTeam
+        .join(
+            TractorEvent,
+            and_(
+                TractorEvent.event_id == EventTeam.event_id,
+                TractorEvent.team_id == EventTeam.team_id,
+            ),
         )
-        .get_or_404(tractor_id)
-    )
-
-    # Sort pulls by event date then hook/pull_id
-    pulls = sorted(
-        tractor.pulls,
-        key=lambda p: (
-            p.event.event_datetime if p.event and p.event.event_datetime else None,
-            p.event_id,
-            p.pull_id,
+        .filter(
+            TractorEvent.tractor_id == tractor.tractor_id,
+            EventTeamPhoto.approved.is_(True),
         )
-    )
-
-    # Build a list of (team, event, year) usages
-    usages = []
-    for te in tractor.tractor_events:
-        year = None
-        if te.event and te.event.event_datetime:
-            year = te.event.event_datetime.year
-        usages.append({
-            "team": te.team,
-            "event": te.event,
-            "year": year,
-        })
-
-    # Sort usages by year desc then event name
-    usages.sort(key=lambda u: (u["year"] or 0, u["event"].event_name if u["event"] else ""), reverse=True)
-
-    # Distinct events/teams if you want them separately
-    events = sorted(
-        {te.event for te in tractor.tractor_events if te.event},
-        key=lambda e: (e.event_datetime or None, e.event_name)
-    )
-    teams = sorted(
-        {te.team for te in tractor.tractor_events if te.team},
-        key=lambda t: t.team_name
+        .order_by(EventTeamPhoto.created_at.desc())
+        .all()
     )
 
     return render_template(
         "tractor_detail.html",
         tractor=tractor,
         pulls=pulls,
-        usages=usages,
         events=events,
+        usages=usages,
         teams=teams,
+        tractor_photos=tractor_photos,   # <-- used by the template
+        active_page="tractors",
     )
 
 @app.route("/cache/reset/tractor/<int:tractor_id>")
