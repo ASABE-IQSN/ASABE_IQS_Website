@@ -34,8 +34,8 @@
   }
 
   .hero-image {
-    width: 72px;
-    height: 72px;
+    width: 200px;
+    height: 200px;
     border-radius: 999px;
     overflow: hidden;
     flex-shrink: 0;
@@ -313,8 +313,13 @@
     </div>
 
     <div class="hero-main">
-      <h1>{{ team.team_name }} <br> {{ event.event_name }}</h1>
-
+      <style>
+        h1 + h2 {
+          margin-top: -0.25rem;   /* pull h2 closer to h1 */
+        }
+      </style>
+      <h1>{{ team.team_name }}</h1>
+      <h2>{{ event.event_name }}</h2>
       <div class="hero-meta">
         <div><strong>Team #:</strong> {{ team.team_number }}</div>
         <div>
