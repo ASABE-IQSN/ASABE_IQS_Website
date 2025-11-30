@@ -1,300 +1,252 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Tractor {{ tractor.tractor_id }} – Details</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends "layout.html" %}
 
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #020617;
-      color: #e5e7eb;
-    }
-    a { color: #38bdf8; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+{% block title %}Tractor {{ tractor.tractor_id }} – Details{% endblock %}
 
-    .page { min-height: 100vh; display: flex; flex-direction: column; }
+{% block extra_styles %}
+  .breadcrumbs {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-bottom: 0.75rem;
+  }
 
-    header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid #111827;
-      background: #020617;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .logo {
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      font-size: 0.9rem;
-      color: #9ca3af;
-    }
-    .nav-links a {
-      margin-left: 1rem;
-      font-size: 0.9rem;
-      color: #9ca3af;
-    }
+  .breadcrumbs a {
+    color: #9ca3af;
+  }
 
-    main { flex: 1; padding: 1.5rem; }
-    .wrap { max-width: 1000px; margin: 0 auto; }
+  .breadcrumbs span {
+    margin: 0 0.25rem;
+  }
 
-    .breadcrumbs {
-      font-size: 0.8rem;
-      color: #9ca3af;
-      margin-bottom: 0.75rem;
-    }
-    .breadcrumbs a { color: #9ca3af; }
-    .breadcrumbs span { margin: 0 0.25rem; }
+  .hero {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0f172a;
+    border: 1px solid #1f2937;
+  }
 
-    .hero {
-      margin-bottom: 1.5rem;
-      padding: 1rem 1.25rem;
-      border-radius: 0.9rem;
-      background: #0f172a;
-      border: 1px solid #1f2937;
-    }
-    .hero h1 {
-      margin: 0 0 0.3rem;
-      font-size: 1.6rem;
-    }
-    .hero-meta {
-      font-size: 0.95rem;
-      color: #9ca3af;
-      line-height: 1.5;
-    }
+  .hero h1 {
+    margin: 0 0 0.3rem;
+    font-size: 1.6rem;
+  }
 
-    h2 {
-      margin-top: 1.5rem;
-      margin-bottom: 0.5rem;
-      font-size: 1.3rem;
-    }
+  .hero-meta {
+    font-size: 0.95rem;
+    color: #9ca3af;
+    line-height: 1.5;
+  }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #020617;
-      border-radius: 0.75rem;
-      overflow: hidden;
-      margin-bottom: 1.5rem;
-    }
-    th, td {
-      padding: 0.55rem 0.75rem;
-      border-bottom: 1px solid #1f2937;
-      font-size: 0.9rem;
-      text-align: left;
-    }
-    th {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: #9ca3af;
-      background: #030712;
-    }
-    tr:last-child td { border-bottom: none; }
-    tbody tr:nth-child(even) { background: #0b1220; }
+  h2 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.3rem;
+  }
 
-    .empty { font-size: 0.9rem; color: #9ca3af; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #020617;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
 
-    .grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr);
-      gap: 1.25rem;
-      margin-top: 1rem;
-    }
+  th, td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #1f2937;
+    font-size: 0.9rem;
+    text-align: left;
+  }
 
-    .card {
-      padding: 1rem 1.25rem;
-      border-radius: 0.9rem;
-      background: #0b1120;
-      border: 1px solid #1f2937;
-    }
-    .card h3 {
-      margin-top: 0;
-      margin-bottom: 0.5rem;
-      font-size: 1.05rem;
-    }
+  th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #9ca3af;
+    background: #030712;
+  }
 
-    footer {
-      padding: 1rem 1.5rem;
-      border-top: 1px solid #111827;
-      font-size: 0.8rem;
-      color: #6b7280;
-      text-align: center;
-    }
-  </style>
-</head>
-<body>
-<div class="page">
-  <header>
-    <div class="logo">International Quarter Scale • Tractor</div>
-    <nav class="nav-links">
-      <a href="{{ url_for('landing') }}">Home</a>
-      <a href="{{ url_for('events') }}">Events</a>
-      <a href="{{ url_for('results') }}">Results</a>
-      <a href="{{ url_for('teams') }}">Teams</a>
-      <a href="{{ url_for('tractors') }}">Tractors</a>
-    </nav>
-  </header>
+  tr:last-child td {
+    border-bottom: none;
+  }
 
-  <main>
-    <div class="wrap">
+  tbody tr:nth-child(even) {
+    background: #0b1220;
+  }
 
-      <div class="breadcrumbs">
-        <a href="{{ url_for('tractors') }}">Tractors</a>
-        <span>›</span>
-        <span>{{ tractor.tractor_name }}</span>
-      </div>
+  .empty {
+    font-size: 0.9rem;
+    color: #9ca3af;
+  }
 
-      <section class="hero">
-        <h1>{{ tractor.tractor_name or ("Tractor " ~ tractor.tractor_id) }}</h1>
-        <div class="hero-meta">
-          <div><strong>ID:</strong> {{ tractor.tractor_id }}</div>
-          <div><strong>Events:</strong> {{ tractor.tractor_events|length }}</div>
-          <div><strong>Teams:</strong> {{ teams|length }}</div>
-        </div>
-      </section>
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr);
+    gap: 1.25rem;
+    margin-top: 1rem;
+  }
 
-      <!-- Pulls -->
-      <section>
-        <h2>Pulls</h2>
-        {% if pulls %}
-          <table>
-            <thead>
-              <tr>
-                <th>Event</th>
-                <th>Team</th>
-                <th>Hook</th>
-                <th>Final Distance</th>
-                <th>Pull</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for p in pulls %}
-                <tr>
-                  <td>
-                    {% if p.event %}
-                      <a href="{{ url_for('event_detail', event_id=p.event_id) }}">
-                        {{ p.event.event_name }}
-                      </a>
-                    {% else %}
-                      N/A
-                    {% endif %}
-                  </td>
-                  <td>
-                    <a href="{{ url_for('team_event_detail', event_id=p.event_id, team_id=p.team_id) }}">
-                      {{ p.team.team_name }}
-                    </a>
-                  </td>
-                  <td>
-                    {% if p.hook %}
-                      {{ p.hook.hook_name or ("Hook " ~ p.hook_id) }}
-                    {% else %}
-                      {{ p.hook_id or 'N/A' }}
-                    {% endif %}
-                  </td>
-                  <td>{{ p.final_distance or 'N/A' }}</td>
-                  <td>
-                    <a href="{{ url_for('pull_detail', pull_id=p.pull_id) }}">
-                      Charts / Data
-                    </a>
-                  </td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        {% else %}
-          <p class="empty">No pulls recorded for this tractor.</p>
-        {% endif %}
-      </section>
+  .card {
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+  }
 
-      <!-- Events & Teams summary -->
-      <section class="grid">
-        <div class="card">
-          <h3>Events</h3>
-          {% if events %}
-            <table>
-              <thead>
-                <tr>
-                  <th>Event</th>
-                  <th>Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for e in events %}
-                  <tr>
-                    <td>
-                      <a href="{{ url_for('event_detail', event_id=e.event_id) }}">
-                        {{ e.event_name }}
-                      </a>
-                    </td>
-                    <td>
-                      {% if e.event_datetime %}
-                        {{ e.event_datetime.strftime("%B %Y") }}
-                      {% else %}
-                        N/A
-                      {% endif %}
-                    </td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          {% else %}
-            <p class="empty">No events recorded for this tractor.</p>
-          {% endif %}
-        </div>
+  .card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+  }
+{% endblock %}
 
-        <div class="card">
-          <h3>Teams & Years Used</h3>
-          {% if usages %}
-            <table>
-              <thead>
-                <tr>
-                  <th>Team</th>
-                  <th>Event</th>
-                  <th>Year</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for u in usages %}
-                  <tr>
-                    <td>
-                      {% if u.team %}
-                        <a href="{{ url_for('team_detail', team_id=u.team.team_id) }}">
-                          {{ u.team.team_name }}
-                        </a>
-                      {% else %}
-                        N/A
-                      {% endif %}
-                    </td>
-                    <td>
-                      {% if u.event %}
-                        <a href="{{ url_for('event_detail', event_id=u.event.event_id) }}">
-                          {{ u.event.event_name }}
-                        </a>
-                      {% else %}
-                        N/A
-                      {% endif %}
-                    </td>
-                    <td>{{ u.year or 'N/A' }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          {% else %}
-            <p class="empty">No team usage recorded for this tractor.</p>
-          {% endif %}
-        </div>
-      </section>
+{% block content %}
 
+  <div class="breadcrumbs">
+    <a href="{{ url_for('tractors') }}">Tractors</a>
+    <span>›</span>
+    <span>{{ tractor.tractor_name }}</span>
+  </div>
+
+  <section class="hero">
+    <h1>{{ tractor.tractor_name or ("Tractor " ~ tractor.tractor_id) }}</h1>
+    <div class="hero-meta">
+      <div><strong>ID:</strong> {{ tractor.tractor_id }}</div>
+      <div><strong>Events:</strong> {{ tractor.tractor_events|length }}</div>
+      <div><strong>Teams:</strong> {{ teams|length }}</div>
     </div>
-  </main>
+  </section>
 
-  <footer>
-    &copy; 2026 International Quarter Scale Competition
-  </footer>
-</div>
-</body>
-</html>
+  <!-- Pulls -->
+  <section>
+    <h2>Pulls</h2>
+    {% if pulls %}
+      <table>
+        <thead>
+          <tr>
+            <th>Event</th>
+            <th>Team</th>
+            <th>Hook</th>
+            <th>Final Distance</th>
+            <th>Pull</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pulls %}
+            <tr>
+              <td>
+                {% if p.event %}
+                  <a href="{{ url_for('event_detail', event_id=p.event_id) }}">
+                    {{ p.event.event_name }}
+                  </a>
+                {% else %}
+                  N/A
+                {% endif %}
+              </td>
+              <td>
+                <a href="{{ url_for('team_event_detail', event_id=p.event_id, team_id=p.team_id) }}">
+                  {{ p.team.team_name }}
+                </a>
+              </td>
+              <td>
+                {% if p.hook %}
+                  {{ p.hook.hook_name or ("Hook " ~ p.hook_id) }}
+                {% else %}
+                  {{ p.hook_id or 'N/A' }}
+                {% endif %}
+              </td>
+              <td>{{ p.final_distance or 'N/A' }}</td>
+              <td>
+                <a href="{{ url_for('pull_detail', pull_id=p.pull_id) }}">
+                  Charts / Data
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">No pulls recorded for this tractor.</p>
+    {% endif %}
+  </section>
+
+  <!-- Events & Teams summary -->
+  <section class="grid">
+    <div class="card">
+      <h3>Events</h3>
+      {% if events %}
+        <table>
+          <thead>
+            <tr>
+              <th>Event</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in events %}
+              <tr>
+                <td>
+                  <a href="{{ url_for('event_detail', event_id=e.event_id) }}">
+                    {{ e.event_name }}
+                  </a>
+                </td>
+                <td>
+                  {% if e.event_datetime %}
+                    {{ e.event_datetime.strftime("%B %Y") }}
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="empty">No events recorded for this tractor.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <h3>Teams & Years Used</h3>
+      {% if usages %}
+        <table>
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th>Event</th>
+              <th>Year</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in usages %}
+              <tr>
+                <td>
+                  {% if u.team %}
+                    <a href="{{ url_for('team_detail', team_id=u.team.team_id) }}">
+                      {{ u.team.team_name }}
+                    </a>
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </td>
+                <td>
+                  {% if u.event %}
+                    <a href="{{ url_for('event_detail', event_id=u.event.event_id) }}">
+                      {{ u.event.event_name }}
+                    </a>
+                  {% else %}
+                    N/A
+                  {% endif %}
+                </td>
+                <td>{{ u.year or 'N/A' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="empty">No team usage recorded for this tractor.</p>
+      {% endif %}
+    </div>
+  </section>
+
+{% endblock %}

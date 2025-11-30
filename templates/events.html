@@ -1,228 +1,141 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Events – International Quarter Scale</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends "layout.html" %}
 
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #020617;
-      color: #e5e7eb;
-    }
-    a { color: #38bdf8; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+{% block title %}Events – International Quarter Scale{% endblock %}
 
-    .page {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+{% block extra_styles %}
+  .event-card {
+    background: #0f172a;
+    border-radius: 0.9rem;
+    border: 1px solid #1f2937;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
 
-    header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid #111827;
-      background: #020617;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+  .event-card h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.35rem;
+  }
 
-    .logo {
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      font-size: 0.9rem;
-      color: #9ca3af;
-    }
+  .event-meta {
+    color: #9ca3af;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+  }
 
-    .nav-links a {
-      margin-left: 1rem;
-      font-size: 0.9rem;
-      color: #9ca3af;
-    }
+  h1 {
+    margin-bottom: 1.5rem;
+    font-size: 1.8rem;
+  }
 
-    main {
-      flex: 1;
-      padding: 1.5rem;
-    }
+  h3 {
+    margin-top: 0.8rem;
+    margin-bottom: 0.4rem;
+    font-size: 1.0rem;
+  }
 
-    .wrap {
-      max-width: 1000px;
-      margin: 0 auto;
-    }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #020617;
+    border-radius: 0.75rem;
+    overflow: hidden;
+  }
 
-    h1 {
-      margin-bottom: 1.5rem;
-      font-size: 1.8rem;
-    }
+  th, td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #1f2937;
+    font-size: 0.9rem;
+    text-align: left;
+  }
 
-    .event-card {
-      background: #0f172a;
-      border-radius: 0.9rem;
-      border: 1px solid #1f2937;
-      padding: 1.25rem 1.5rem;
-      margin-bottom: 1.5rem;
-    }
+  th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #9ca3af;
+    background: #030712;
+  }
 
-    .event-card h2 {
-      margin: 0 0 0.25rem;
-      font-size: 1.35rem;
-    }
+  tr:last-child td {
+    border-bottom: none;
+  }
 
-    .event-meta {
-      color: #9ca3af;
-      font-size: 0.85rem;
-      margin-bottom: 0.75rem;
-    }
+  tbody tr:nth-child(even) {
+    background: #020617;
+  }
 
-    h3 {
-      margin-top: 0.8rem;
-      margin-bottom: 0.4rem;
-      font-size: 1.0rem;
-    }
+  .class-tables {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+  }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #020617;
-      border-radius: 0.75rem;
-      overflow: hidden;
-    }
+  .class-table {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+{% endblock %}
 
-    th, td {
-      padding: 0.55rem 0.75rem;
-      border-bottom: 1px solid #1f2937;
-      font-size: 0.9rem;
-      text-align: left;
-    }
+{% block content %}
+  <h1>Events</h1>
 
-    th {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: #9ca3af;
-      background: #030712;
-    }
+  {% for event in events %}
+    <section class="event-card">
+      <h2>
+        <a href="{{ url_for('event_detail', event_id=event.event_id) }}">
+          {{ event.event_name }}
+        </a>
+      </h2>
 
-    tr:last-child td {
-      border-bottom: none;
-    }
+      {% if event.event_datetime %}
+        <div class="event-meta">
+          {{ event.event_datetime.strftime("%B %Y") }}
+        </div>
+      {% endif %}
 
-    tbody tr:nth-child(even) {
-      background: #020617;
-    }
-
-    .empty {
-      font-size: 0.9rem;
-      color: #9ca3af;
-    }
-
-    /* Two class tables side by side */
-    .class-tables {
-      display: flex;
-      gap: 1rem;
-      margin-top: 0.75rem;
-      flex-wrap: wrap;
-    }
-
-    .class-table {
-      flex: 1 1 0;
-      min-width: 0;
-    }
-
-    footer {
-      padding: 1rem 1.5rem;
-      border-top: 1px solid #111827;
-      font-size: 0.8rem;
-      color: #6b7280;
-      text-align: center;
-    }
-  </style>
-</head>
-<body>
-<div class="page">
-  <header>
-    <div class="logo">International Quarter Scale • Events</div>
-    <nav class="nav-links">
-      <a href="{{ url_for('landing') }}">Home</a>
-      <a href="{{ url_for('events') }}">Events</a>
-      <a href="{{ url_for('results') }}">Results</a>
-      <a href="{{ url_for('teams') }}">Teams</a>
-    </nav>
-  </header>
-
-  <main>
-    <div class="wrap">
-      <h1>Events</h1>
-
-      {% for event in events %}
-        <section class="event-card">
-          <h2>
-            <a href="{{ url_for('event_detail', event_id=event.event_id) }}">
-              {{ event.event_name }}
-            </a>
-          </h2>
-
-          {% if event.event_datetime %}
-            <div class="event-meta">
-              {{ event.event_datetime.strftime("%B %Y") }}
-            </div>
-          {% endif %}
-
-          {% if event.event_teams %}
-            {% if top_classes %}
-              <div class="class-tables">
-                {% for tc in top_classes %}
-                  {# Filter this event's teams to this class #}
-                  {% set class_entries = event.event_teams
-                      | selectattr('team.team_class_id', 'equalto', tc.team_class_id)
-                      | list %}
-                  {% if class_entries %}
-                    <div class="class-table">
-                      <h3>{{ tc.name }} – Top 3</h3>
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Team</th>
-                            <th>Team #</th>
-                            <th>Total Score</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {% for et in class_entries[:3] %}
-                            <tr>
-                              <td>
-                                <a href="{{ url_for('team_event_detail', event_id=event.event_id, team_id=et.team_id) }}">
-                                  {{ et.team.team_name }}
-                                </a>
-                              </td>
-                              <td>{{ et.team.team_number }}</td>
-                              <td>{{ et.total_score or 'N/A' }}</td>
-                            </tr>
-                          {% endfor %}
-                        </tbody>
-                      </table>
-                    </div>
-                  {% endif %}
-                {% endfor %}
-              </div>
-            {% else %}
-              <p class="empty">No team classes defined yet.</p>
-            {% endif %}
-          {% else %}
-            <p class="empty">No teams for this event yet.</p>
-          {% endif %}
-        </section>
-      {% endfor %}
-    </div>
-  </main>
-
-  <footer>
-    &copy; 2026 International Quarter Scale Competition
-  </footer>
-</div>
-</body>
-</html>
+      {% if event.event_teams %}
+        {% if top_classes %}
+          <div class="class-tables">
+            {% for tc in top_classes %}
+              {% set class_entries = event.event_teams
+                    | selectattr('team.team_class_id', 'equalto', tc.team_class_id)
+                    | list %}
+              {% if class_entries %}
+                <div class="class-table">
+                  <h3>{{ tc.name }} – Top 3</h3>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Team</th>
+                        <th>Team #</th>
+                        <th>Total Score</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for et in class_entries[:3] %}
+                        <tr>
+                          <td>
+                            <a href="{{ url_for('team_event_detail', event_id=event.event_id, team_id=et.team_id) }}">
+                              {{ et.team.team_name }}
+                            </a>
+                          </td>
+                          <td>{{ et.team.team_number }}</td>
+                          <td>{{ et.total_score or 'N/A' }}</td>
+                        </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="empty">No team classes defined yet.</p>
+        {% endif %}
+      {% else %}
+        <p class="empty">No teams for this event yet.</p>
+      {% endif %}
+    </section>
+  {% endfor %}
+{% endblock %}

@@ -1,402 +1,326 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>{{ team.team_name }} – Team Profile</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends "layout.html" %}
 
+{% block title %}{{ team.team_name }} – Team Profile{% endblock %}
+
+{% block extra_head %}
   <!-- Chart.js for scores plot -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
 
-  <style>
-        .photo-grid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.75rem;
-      margin-top: 0.5rem;
-    }
+{% block extra_styles %}
+  .photo-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
 
-    .photo-grid figure {
-      margin: 0;
-      max-width: 180px;
-    }
+  .photo-grid figure {
+    margin: 0;
+    max-width: 180px;
+  }
 
-    .photo-grid img {
-      width: 100%;
-      border-radius: 0.5rem;
-      border: 1px solid #1f2937;
-      display: block;
-    }
+  .photo-grid img {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid #1f2937;
+    display: block;
+  }
 
-    .photo-grid figcaption {
-      font-size: 0.8rem;
-      color: #9ca3af;
-      margin-top: 0.25rem;
-      line-height: 1.3;
-    }
+  .photo-grid figcaption {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-top: 0.25rem;
+    line-height: 1.3;
+  }
 
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #020617;
-      color: #e5e7eb;
-    }
-    a { color: #38bdf8; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+  .breadcrumbs {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-bottom: 0.75rem;
+  }
 
-    .page {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+  .breadcrumbs a {
+    color: #9ca3af;
+  }
 
-    header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid #111827;
-      background: #020617;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+  .breadcrumbs span {
+    margin: 0 0.25rem;
+  }
 
-    .logo {
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      font-size: 0.9rem;
-      color: #9ca3af;
-    }
+  .hero {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0f172a;
+    border: 1px solid #1f2937;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
 
-    .nav-links a {
-      margin-left: 1rem;
-      font-size: 0.9rem;
-      color: #9ca3af;
-    }
+  .hero-image {
+    width: 96px;
+    height: 96px;
+    border-radius: 0.9rem;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #020617;
+    border: 1px solid #1f2937;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: #6b7280;
+  }
 
-    main {
-      flex: 1;
-      padding: 1.5rem;
-    }
+  .hero-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 
-    .wrap {
-      max-width: 1000px;
-      margin: 0 auto;
-    }
+  .hero-main {
+    flex: 1;
+  }
 
-    .breadcrumbs {
-      font-size: 0.8rem;
-      color: #9ca3af;
-      margin-bottom: 0.75rem;
-    }
-    .breadcrumbs a {
-      color: #9ca3af;
-    }
-    .breadcrumbs span {
-      margin: 0 0.25rem;
-    }
+  .hero-main h1 {
+    margin: 0 0 0.3rem;
+    font-size: 1.6rem;
+  }
 
-    .hero {
-      margin-bottom: 1.5rem;
-      padding: 1rem 1.25rem;
-      border-radius: 0.9rem;
-      background: #0f172a;
-      border: 1px solid #1f2937;
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
+  .hero-meta {
+    font-size: 0.95rem;
+    color: #9ca3af;
+    line-height: 1.5;
+  }
 
-    .hero-image {
-      width: 96px;
-      height: 96px;
-      border-radius: 0.9rem;
-      overflow: hidden;
-      flex-shrink: 0;
-      background: #020617;
-      border: 1px solid #1f2937;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.8rem;
-      color: #6b7280;
-    }
+  .hero-bio {
+    margin-top: 0.6rem;
+    font-size: 0.9rem;
+    color: #e5e7eb;
+  }
 
-    .hero-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+  h2 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.3rem;
+  }
 
-    .hero-main {
-      flex: 1;
-    }
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr);
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+  }
 
-    .hero-main h1 {
-      margin: 0 0 0.3rem;
-      font-size: 1.6rem;
-    }
+  .card {
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+  }
 
-    .hero-meta {
-      font-size: 0.95rem;
-      color: #9ca3af;
-      line-height: 1.5;
-    }
+  .card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+  }
 
-    .hero-bio {
-      margin-top: 0.6rem;
-      font-size: 0.9rem;
-      color: #e5e7eb;
-    }
+  ul.event-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
 
-    h2 {
-      margin-top: 1.5rem;
-      margin-bottom: 0.5rem;
-      font-size: 1.3rem;
-    }
+  ul.event-list li {
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #1f2937;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: baseline;
+  }
 
-    .grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr);
-      gap: 1.25rem;
-      margin-top: 1.5rem;
-    }
+  ul.event-list li:last-child {
+    border-bottom: none;
+  }
 
-    .card {
-      padding: 1rem 1.25rem;
-      border-radius: 0.9rem;
-      background: #0b1120;
-      border: 1px solid #1f2937;
-    }
+  .event-name {
+    flex: 1;
+  }
 
-    .card h3 {
-      margin-top: 0;
-      margin-bottom: 0.5rem;
-      font-size: 1.05rem;
-    }
+  .event-score {
+    font-weight: 600;
+    color: #e5e7eb;
+  }
 
-    ul.event-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
+  .event-score-label {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-right: 0.25rem;
+  }
 
-    ul.event-list li {
-      padding: 0.4rem 0;
-      border-bottom: 1px solid #1f2937;
-      font-size: 0.9rem;
-      display: flex;
-      justify-content: space-between;
-      gap: 0.75rem;
-      align-items: baseline;
-    }
+  .empty {
+    font-size: 0.9rem;
+    color: #9ca3af;
+  }
 
-    ul.event-list li:last-child {
-      border-bottom: none;
-    }
+  canvas {
+    width: 100%;
+    max-width: 100%;
+    height: 260px;
+  }
+{% endblock %}
 
-    .event-name {
-      flex: 1;
-    }
+{% block content %}
 
-    .event-score {
-      font-weight: 600;
-      color: #e5e7eb;
-    }
+  <!-- Breadcrumbs -->
+  <div class="breadcrumbs">
+    <a href="{{ url_for('teams') }}">Teams</a>
+    <span>›</span>
+    <span>{{ team.team_name }}</span>
+  </div>
 
-    .event-score-label {
-      font-size: 0.8rem;
-      color: #9ca3af;
-      margin-right: 0.25rem;
-    }
-
-    .empty {
-      font-size: 0.9rem;
-      color: #9ca3af;
-    }
-
-    canvas {
-      width: 100%;
-      max-width: 100%;
-      height: 260px;
-    }
-
-    footer {
-      padding: 1rem 1.5rem;
-      border-top: 1px solid #111827;
-      font-size: 0.8rem;
-      color: #6b7280;
-      text-align: center;
-    }
-  </style>
-</head>
-
-<body>
-<div class="page">
-
-  <header>
-    <div class="logo">International Quarter Scale • Team</div>
-    <nav class="nav-links">
-      <a href="{{ url_for('landing') }}">Home</a>
-      <a href="{{ url_for('events') }}">Events</a>
-      <a href="{{ url_for('results') }}">Results</a>
-      <a href="{{ url_for('teams') }}">Teams</a>
-    </nav>
-  </header>
-
-  <main>
-    <div class="wrap">
-
-      <!-- Breadcrumbs -->
-      <div class="breadcrumbs">
-        <a href="{{ url_for('teams') }}">Teams</a>
-        <span>›</span>
-        <span>{{ team.team_name }}</span>
-      </div>
-
-      <!-- Hero -->
-      <section class="hero">
-        <div class="hero-image">
-          {% if team_photos %}
-            <img src="{{ url_for('static', filename=team_photos[0].photo_path) }}"
-                     alt="{{ team.team_name }}">
-          {% else %}
-            No image
-          {% endif %}
-        </div>
-
-        <div class="hero-main">
-          <h1>{{ team.team_name }}</h1>
-          <div class="hero-meta">
-            <div><strong>Team #:</strong> {{ team.team_number }}</div>
-          </div>
-
-          <div class="hero-bio">
-            {% if team.bio %}
-              {{ team.bio }}
-            {% else %}
-              <span style="color:#9ca3af;">Team bio coming soon.</span>
-            {% endif %}
-          </div>
-        </div>
-      </section>
-
-      <!-- Events + Scores layout -->
-      <section class="grid">
-        <!-- Left: event list -->
-        <div class="card">
-          <h3>Events</h3>
-          {% if event_teams %}
-            <ul class="event-list">
-              {% for et in event_teams %}
-                <li>
-                  <div class="event-name">
-                    <a href="{{ url_for('team_event_detail', event_id=et.event_id, team_id=team.team_id) }}">
-                      {{ et.event.event_name }}
-                    </a>
-                    {% if et.event.event_datetime %}
-                      <div style="font-size: 0.8rem; color: #9ca3af;">
-                        {{ et.event.event_datetime.strftime("%B %Y") }}
-                      </div>
-                    {% endif %}
-                  </div>
-                  <div class="event-score">
-                    <span class="event-score-label">Score</span>
-                    {{ et.total_score if et.total_score is not none else 'N/A' }}
-                  </div>
-                </li>
-              {% endfor %}
-            </ul>
-          {% else %}
-            <p class="empty">No events recorded for this team.</p>
-          {% endif %}
-        </div>
-
-        <!-- Right: score plot -->
-        <div class="card">
-          <h3>Scores Over Events</h3>
-          {% if chart_labels and chart_scores %}
-            <canvas id="scoreChart"></canvas>
-          {% else %}
-            <p class="empty">No scores available yet to plot.</p>
-          {% endif %}
-        </div>
-      </section>
-{% if team_photos %}
-        <section class="card" style="margin-top: 1.5rem;">
-          <h3>Team Photos</h3>
-
-          <div class="photo-grid">
-            {% for photo in team_photos %}
-              <figure>
-                <img src="{{ url_for('static', filename=photo.photo_path) }}"
-                     alt="{{ photo.caption or team.team_name }}">
-
-                <figcaption>
-                  {% if photo.caption %}
-                    {{ photo.caption }}
-                    <br>
-                  {% endif %}
-                  {% if photo.event_team and photo.event_team.event %}
-                    <span>
-                      {{ photo.event_team.event.event_name }}
-                      {% if photo.event_team.event.event_datetime %}
-                        – {{ photo.event_team.event.event_datetime.strftime("%b %Y") }}
-                      {% endif %}
-                    </span>
-                  {% endif %}
-                </figcaption>
-              </figure>
-            {% endfor %}
-          </div>
-        </section>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-image">
+      {% if team_photos %}
+        <img src="{{ url_for('static', filename=team_photos[0].photo_path) }}"
+             alt="{{ team.team_name }}">
+      {% else %}
+        No image
       {% endif %}
     </div>
-  </main>
 
-  <footer>
-    &copy; 2026 International Quarter Scale Competition
-  </footer>
+    <div class="hero-main">
+      <h1>{{ team.team_name }}</h1>
+      <div class="hero-meta">
+        <div><strong>Team #:</strong> {{ team.team_number }}</div>
+      </div>
 
-</div>
+      <div class="hero-bio">
+        {% if team.bio %}
+          {{ team.bio }}
+        {% else %}
+          <span style="color:#9ca3af;">Team bio coming soon.</span>
+        {% endif %}
+      </div>
+    </div>
+  </section>
 
-{% if chart_labels and chart_scores %}
-<script>
-  const labels = {{ chart_labels | tojson }};
-  const scores = {{ chart_scores | tojson }};
+  <!-- Events + Scores layout -->
+  <section class="grid">
+    <!-- Left: event list -->
+    <div class="card">
+      <h3>Events</h3>
+      {% if event_teams %}
+        <ul class="event-list">
+          {% for et in event_teams %}
+            <li>
+              <div class="event-name">
+                <a href="{{ url_for('team_event_detail', event_id=et.event_id, team_id=team.team_id) }}">
+                  {{ et.event.event_name }}
+                </a>
+                {% if et.event.event_datetime %}
+                  <div style="font-size: 0.8rem; color: #9ca3af;">
+                    {{ et.event.event_datetime.strftime("%B %Y") }}
+                  </div>
+                {% endif %}
+              </div>
+              <div class="event-score">
+                <span class="event-score-label">Score</span>
+                {{ et.total_score if et.total_score is not none else 'N/A' }}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">No events recorded for this team.</p>
+      {% endif %}
+    </div>
 
-  const ctx = document.getElementById('scoreChart').getContext('2d');
-  new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Event Score',
-        data: scores,
-        tension: 0.3,
-        pointRadius: 3
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: 'Event'
-          }
-        },
-        y: {
-          title: {
-            display: true,
-            text: 'Score'
+    <!-- Right: score plot -->
+    <div class="card">
+      <h3>Scores Over Events</h3>
+      {% if chart_labels and chart_scores %}
+        <canvas id="scoreChart"></canvas>
+      {% else %}
+        <p class="empty">No scores available yet to plot.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if team_photos %}
+    <section class="card" style="margin-top: 1.5rem;">
+      <h3>Team Photos</h3>
+
+      <div class="photo-grid">
+        {% for photo in team_photos %}
+          <figure>
+            <img src="{{ url_for('static', filename=photo.photo_path) }}"
+                 alt="{{ photo.caption or team.team_name }}">
+
+            <figcaption>
+              {% if photo.caption %}
+                {{ photo.caption }}
+                <br>
+              {% endif %}
+              {% if photo.event_team and photo.event_team.event %}
+                <span>
+                  {{ photo.event_team.event.event_name }}
+                  {% if photo.event_team.event.event_datetime %}
+                    – {{ photo.event_team.event.event_datetime.strftime("%b %Y") }}
+                  {% endif %}
+                </span>
+              {% endif %}
+            </figcaption>
+          </figure>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+  {% if chart_labels and chart_scores %}
+  <script>
+    const labels = {{ chart_labels | tojson }};
+    const scores = {{ chart_scores | tojson }};
+
+    const ctx = document.getElementById('scoreChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Event Score',
+          data: scores,
+          tension: 0.3,
+          pointRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Event'
+            }
           },
-          beginAtZero: true
+          y: {
+            title: {
+              display: true,
+              text: 'Score'
+            },
+            beginAtZero: true
+          }
         }
       }
-    }
-  });
-</script>
-{% endif %}
-
-</body>
-</html>
+    });
+  </script>
+  {% endif %}
+{% endblock %}

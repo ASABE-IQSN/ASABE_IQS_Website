@@ -1,461 +1,380 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>{{ team.team_name }} – {{ event.event_name }}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+{% extends "layout.html" %}
 
+{% block title %}{{ team.team_name }} – {{ event.event_name }}{% endblock %}
+
+{% block extra_head %}
   <!-- Chart.js for the pull distance chart -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
 
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #020617;
-      color: #e5e7eb;
-    }
-    a { color: #38bdf8; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+{% block extra_styles %}
+  .breadcrumbs {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-bottom: 0.75rem;
+  }
 
-    .page {
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
+  .breadcrumbs a {
+    color: #9ca3af;
+  }
 
-    header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid #111827;
-      background: #020617;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+  .breadcrumbs span {
+    margin: 0 0.25rem;
+  }
 
-    .logo {
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      font-size: 0.9rem;
-      color: #9ca3af;
-    }
+  .hero {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0f172a;
+    border: 1px solid #1f2937;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
 
-    .nav-links a {
-      margin-left: 1rem;
-      font-size: 0.9rem;
-      color: #9ca3af;
-    }
+  .hero-image {
+    width: 72px;
+    height: 72px;
+    border-radius: 999px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #020617;
+    border: 1px solid #1f2937;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: #6b7280;
+  }
 
-    main {
-      flex: 1;
-      padding: 1.5rem;
-    }
+  .hero-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 
-    .wrap {
-      max-width: 1000px;
-      margin: 0 auto;
-    }
+  .hero-main {
+    flex: 1;
+  }
 
-    .breadcrumbs {
-      font-size: 0.8rem;
-      color: #9ca3af;
-      margin-bottom: 0.75rem;
-    }
+  .hero-main h1 {
+    margin: 0 0 0.4rem;
+    font-size: 1.6rem;
+  }
 
-    .breadcrumbs a {
-      color: #9ca3af;
-    }
+  .hero-meta {
+    font-size: 0.95rem;
+    color: #9ca3af;
+    line-height: 1.5;
+  }
 
-    .breadcrumbs span {
-      margin: 0 0.25rem;
-    }
+  .hero-badge {
+    margin-top: 0.6rem;
+    display: inline-block;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    border: 1px solid #1f2937;
+    color: #9ca3af;
+  }
 
-    .hero {
-      margin-bottom: 1.5rem;
-      padding: 1rem 1.25rem;
-      border-radius: 0.9rem;
-      background: #0f172a;
-      border: 1px solid #1f2937;
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
+  .hero-badge.highlight {
+    border-color: #22c55e;
+    color: #bbf7d0;
+  }
 
-    .hero-image {
-      width: 72px;
-      height: 72px;
-      border-radius: 999px;
-      overflow: hidden;
-      flex-shrink: 0;
-      background: #020617;
-      border: 1px solid #1f2937;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.75rem;
-      color: #6b7280;
-    }
+  h2 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.3rem;
+  }
 
-    .hero-image img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #020617;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
 
-    .hero-main {
-      flex: 1;
-    }
+  th, td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #1f2937;
+    font-size: 0.9rem;
+    text-align: left;
+  }
 
-    .hero-main h1 {
-      margin: 0 0 0.4rem;
-      font-size: 1.6rem;
-    }
+  th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #9ca3af;
+    background: #030712;
+  }
 
-    .hero-meta {
-      font-size: 0.95rem;
-      color: #9ca3af;
-      line-height: 1.5;
-    }
+  tr:last-child td {
+    border-bottom: none;
+  }
 
-    .hero-badge {
-      margin-top: 0.6rem;
-      display: inline-block;
-      padding: 0.25rem 0.7rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.14em;
-      border: 1px solid #1f2937;
-      color: #9ca3af;
-    }
+  tbody tr:nth-child(even) {
+    background: #0b1220;
+  }
 
-    .hero-badge.highlight {
-      border-color: #22c55e;
-      color: #bbf7d0;
-    }
+  .empty {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin-bottom: 1.5rem;
+  }
 
-    h2 {
-      margin-top: 1.5rem;
-      margin-bottom: 0.5rem;
-      font-size: 1.3rem;
-    }
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+  }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      background: #020617;
-      border-radius: 0.75rem;
-      overflow: hidden;
-      margin-bottom: 1.5rem;
-    }
+  .card {
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+  }
 
-    th, td {
-      padding: 0.55rem 0.75rem;
-      border-bottom: 1px solid #1f2937;
-      font-size: 0.9rem;
-      text-align: left;
-    }
+  .card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+  }
 
-    th {
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: #9ca3af;
-      background: #030712;
-    }
+  canvas {
+    width: 100%;
+    max-width: 100%;
+    height: 280px;
+  }
+{% endblock %}
 
-    tr:last-child td {
-      border-bottom: none;
-    }
+{% block content %}
 
-    tbody tr:nth-child(even) {
-      background: #0b1220;
-    }
+  <!-- Breadcrumbs -->
+  <div class="breadcrumbs">
+    <a href="{{ url_for('events') }}">Events</a>
+    <span>›</span>
+    <a href="{{ url_for('event_detail', event_id=event.event_id) }}">{{ event.event_name }}</a>
+    <span>›</span>
+    <span>{{ team.team_name }}</span>
+  </div>
 
-    .empty {
-      font-size: 0.9rem;
-      color: #9ca3af;
-      margin-bottom: 1.5rem;
-    }
+  <!-- Hero area -->
+  <section class="hero">
+    <div class="hero-image">
+      {% if event_team and event_team.photos %}
+        <img src="{{ url_for('static', filename=event_team.photos[0].photo_path) }}"
+             alt="{{ team.team_name }}">
+      {% else %}
+        No image
+      {% endif %}
+    </div>
 
-    .grid {
-      display: grid;
-      grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
-      gap: 1.25rem;
-      margin-top: 1.5rem;
-    }
+    <div class="hero-main">
+      <h1>{{ team.team_name }} – {{ event.event_name }}</h1>
 
-    .card {
-      padding: 1rem 1.25rem;
-      border-radius: 0.9rem;
-      background: #0b1120;
-      border: 1px solid #1f2937;
-    }
-
-    .card h3 {
-      margin-top: 0;
-      margin-bottom: 0.5rem;
-      font-size: 1.05rem;
-    }
-
-    canvas {
-      width: 100%;
-      max-width: 100%;
-      height: 280px;
-    }
-
-    footer {
-      padding: 1rem 1.5rem;
-      border-top: 1px solid #111827;
-      font-size: 0.8rem;
-      color: #6b7280;
-      text-align: center;
-    }
-  </style>
-</head>
-
-<body>
-<div class="page">
-
-  <header>
-    <div class="logo">International Quarter Scale • Team Event</div>
-    <nav class="nav-links">
-      <a href="{{ url_for('landing') }}">Home</a>
-      <a href="{{ url_for('events') }}">Events</a>
-      <a href="{{ url_for('results') }}">Results</a>
-      <a href="{{ url_for('teams') }}">Teams</a>
-    </nav>
-  </header>
-
-  <main>
-    <div class="wrap">
-
-      <!-- Breadcrumbs -->
-      <div class="breadcrumbs">
-        <a href="{{ url_for('events') }}">Events</a>
-        <span>›</span>
-        <a href="{{ url_for('event_detail', event_id=event.event_id) }}">{{ event.event_name }}</a>
-        <span>›</span>
-        <span>{{ team.team_name }}</span>
+      <div class="hero-meta">
+        <div><strong>Team #:</strong> {{ team.team_number }}</div>
+        <div>
+          <strong>Overall Event Score:</strong>
+          {{ event_team.total_score if event_team else 'N/A' }}
+        </div>
+        {% if event.event_datetime %}
+          <div>
+            <strong>Date:</strong> {{ event.event_datetime.strftime("%B %Y") }}
+          </div>
+        {% endif %}
       </div>
 
-      <!-- Hero area -->
-      <section class="hero">
-        <div class="hero-image">
-          {% if event_team and event_team.photos %}
-            <img src="{{ url_for('static', filename=event_team.photos[0].photo_path) }}"
-                alt="{{ team.team_name }}">
-          {% else %}
-            No image
-          {% endif %}
+      {% if team_in_top3 %}
+        <div class="hero-badge highlight">
+          Top 3 in Event
         </div>
-
-
-        <div class="hero-main">
-          <h1>{{ team.team_name }} – {{ event.event_name }}</h1>
-
-          <div class="hero-meta">
-            <div><strong>Team #:</strong> {{ team.team_number }}</div>
-            <div>
-              <strong>Overall Event Score:</strong>
-              {{ event_team.total_score if event_team else 'N/A' }}
-            </div>
-            {% if event.event_datetime %}
-              <div>
-                <strong>Date:</strong> {{ event.event_datetime.strftime("%B %Y") }}
-              </div>
-            {% endif %}
-          </div>
-
-          {% if team_in_top3 %}
-            <div class="hero-badge highlight">
-              Top 3 in Event
-            </div>
-          {% else %}
-            <div class="hero-badge">
-              Event Standings
-            </div>
-          {% endif %}
+      {% else %}
+        <div class="hero-badge">
+          Event Standings
         </div>
-      </section>
+      {% endif %}
+    </div>
+  </section>
 
-      <!-- Comparison vs top 3 + Best pull info + Chart -->
-      <section class="grid">
-        <!-- Left: comparison vs top 3 -->
-        <div class="card">
-          <h3>Event Standings (Top 3)</h3>
-          {% if top3 %}
-            <table>
-              <thead>
-                <tr>
-                  <th>Rank</th>
-                  <th>Team</th>
-                  <th>Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for et in top3 %}
-                  <tr {% if et.team_id == team.team_id %}style="font-weight: 600;"{% endif %}>
-                    <td>{{ loop.index }}</td>
-                    <td>{{ et.team.team_name }}</td>
-                    <td>{{ et.total_score if et.total_score is not none else 'N/A' }}</td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          {% else %}
-            <p class="empty">No standings available.</p>
-          {% endif %}
-        </div>
-
-        <!-- Right: best pull of event + chart header -->
-        <div class="card">
-          <h3>Best Pull of Event</h3>
-          {% if best_pull_overall %}
-            <p class="hero-meta" style="margin-bottom: 0.75rem;">
-              <strong>Team:</strong> {{ best_pull_overall.team.team_name }}<br>
-              <strong>Distance:</strong>
-                {{ best_pull_overall.final_distance if best_pull_overall.final_distance is not none else 'N/A' }}<br>
-              <strong>Hook:</strong>
-                {{ best_pull_overall.hook.hook_name if best_pull_overall.hook and best_pull_overall.hook.hook_name else ("Hook " ~ best_pull_overall.hook_id) }}
-            </p>
-            {% if best_pull_overall.team_id == team.team_id %}
-              <p class="hero-meta" style="color: #bbf7d0;">
-                This team holds the best pull of the event.
-              </p>
-            {% endif %}
-          {% else %}
-            <p class="empty">No pulls recorded for this event yet.</p>
-          {% endif %}
-        </div>
-      </section>
-
-      <!-- Pulls table + chart -->
-      <section style="margin-top: 1.5rem;">
-        <h2>Pulls</h2>
-
-        {% if pulls %}
-          <table>
-            <thead>
-              <tr>
-                <th>Hook</th>
-                <th>Final Distance</th>
-                <th>Detail</th>
+  <!-- Comparison vs top 3 + Best pull info -->
+  <section class="grid">
+    <!-- Left: comparison vs top 3 -->
+    <div class="card">
+      <h3>Event Standings (Top 3)</h3>
+      {% if top3 %}
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Team</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for et in top3 %}
+              <tr {% if et.team_id == team.team_id %}style="font-weight: 600;"{% endif %}>
+                <td>{{ loop.index }}</td>
+                <td>{{ et.team.team_name }}</td>
+                <td>{{ et.total_score if et.total_score is not none else 'N/A' }}</td>
               </tr>
-            </thead>
-            <tbody>
-              {% for p in pulls %}
-                <tr>
-                  <td>{{ p.hook.hook_name if p.hook and p.hook.hook_name else ("Hook " ~ p.hook_id) }}</td>
-                  <td>{{ p.final_distance or 'N/A' }}</td>
-                  <td>
-                    <a href="{{ url_for('pull_detail', pull_id=p.pull_id) }}">
-                      Charts / Data
-                    </a>
-                  </td>
-                </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="empty">No standings available.</p>
+      {% endif %}
+    </div>
 
-          <!-- Chart of this team's pulls -->
-          <div class="card">
-            <h3>Pull Distances by Hook</h3>
-            <canvas id="pullChart"></canvas>
-          </div>
-        {% else %}
-          <p class="empty">No pulls recorded for this team in this event.</p>
+    <!-- Right: best pull of event -->
+    <div class="card">
+      <h3>Best Pull of Event</h3>
+      {% if best_pull_overall %}
+        <p class="hero-meta" style="margin-bottom: 0.75rem;">
+          <strong>Team:</strong> {{ best_pull_overall.team.team_name }}<br>
+          <strong>Distance:</strong>
+          {{ best_pull_overall.final_distance if best_pull_overall.final_distance is not none else 'N/A' }}<br>
+          <strong>Hook:</strong>
+          {{ best_pull_overall.hook.hook_name if best_pull_overall.hook and best_pull_overall.hook.hook_name else ("Hook " ~ best_pull_overall.hook_id) }}
+        </p>
+        {% if best_pull_overall.team_id == team.team_id %}
+          <p class="hero-meta" style="color: #bbf7d0;">
+            This team holds the best pull of the event.
+          </p>
         {% endif %}
-      </section>
+      {% else %}
+        <p class="empty">No pulls recorded for this event yet.</p>
+      {% endif %}
+    </div>
+  </section>
 
-      {% if event_team %}
-  <section class="card" style="margin-top: 1.5rem;">
-    <h3>Event Photos</h3>
+  <!-- Pulls table + chart -->
+  <section style="margin-top: 1.5rem;">
+    <h2>Pulls</h2>
 
-    {% if event_team.photos %}
-      <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
-        {% for photo in event_team.photos %}
-          <figure style="margin: 0; max-width: 180px;">
-            <img src="{{ url_for('static', filename=photo.photo_path) }}"
-                 alt="{{ photo.caption or team.team_name }}"
-                 style="width: 100%; border-radius: 0.5rem; border: 1px solid #1f2937;">
-            {% if photo.caption %}
-              <figcaption style="font-size: 0.8rem; color: #9ca3af; margin-top: 0.25rem;">
-                {{ photo.caption }}
-              </figcaption>
-            {% endif %}
-          </figure>
-        {% endfor %}
+    {% if pulls %}
+      <table>
+        <thead>
+          <tr>
+            <th>Hook</th>
+            <th>Final Distance</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pulls %}
+            <tr>
+              <td>{{ p.hook.hook_name if p.hook and p.hook.hook_name else ("Hook " ~ p.hook_id) }}</td>
+              <td>{{ p.final_distance or 'N/A' }}</td>
+              <td>
+                <a href="{{ url_for('pull_detail', pull_id=p.pull_id) }}">
+                  Charts / Data
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Chart of this team's pulls -->
+      <div class="card">
+        <h3>Pull Distances by Hook</h3>
+        <canvas id="pullChart"></canvas>
       </div>
     {% else %}
-      <p class="empty">No photos uploaded for this team at this event yet.</p>
+      <p class="empty">No pulls recorded for this team in this event.</p>
     {% endif %}
-
-    <!-- Upload form -->
-    <form action="{{ url_for('upload_team_photo', event_id=event.event_id, team_id=team.team_id) }}"
-          method="post"
-          enctype="multipart/form-data"
-          style="margin-top: 0.5rem; font-size: 0.9rem;">
-      <label for="photo" style="display: block; margin-bottom: 0.25rem;">
-        Upload a new team photo for this event:
-      </label>
-      <input type="file" id="photo" name="photo" accept="image/*"
-             style="margin-bottom: 0.5rem;">
-      <br>
-      <button type="submit"
-              style="padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid #1f2937; background: #0f172a; color: #e5e7eb; cursor: pointer;">
-        Upload
-      </button>
-    </form>
   </section>
-{% endif %}
 
-    </div>
-    
-  </main>
+  {% if event_team %}
+    <section class="card" style="margin-top: 1.5rem;">
+      <h3>Event Photos</h3>
 
-  <footer>
-    &copy; 2026 International Quarter Scale Competition
-  </footer>
+      {% if event_team.photos %}
+        <div style="display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1rem;">
+          {% for photo in event_team.photos %}
+            <figure style="margin: 0; max-width: 180px;">
+              <img src="{{ url_for('static', filename=photo.photo_path) }}"
+                   alt="{{ photo.caption or team.team_name }}"
+                   style="width: 100%; border-radius: 0.5rem; border: 1px solid #1f2937;">
+              {% if photo.caption %}
+                <figcaption style="font-size: 0.8rem; color: #9ca3af; margin-top: 0.25rem;">
+                  {{ photo.caption }}
+                </figcaption>
+              {% endif %}
+            </figure>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty">No photos uploaded for this team at this event yet.</p>
+      {% endif %}
 
-</div>
+      <!-- Upload form -->
+      <form action="{{ url_for('upload_team_photo', event_id=event.event_id, team_id=team.team_id) }}"
+            method="post"
+            enctype="multipart/form-data"
+            style="margin-top: 0.5rem; font-size: 0.9rem;">
+        <label for="photo" style="display: block; margin-bottom: 0.25rem;">
+          Upload a new team photo for this event:
+        </label>
+        <input type="file" id="photo" name="photo" accept="image/*"
+               style="margin-bottom: 0.5rem;">
+        <br>
+        <button type="submit"
+                style="padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid #1f2937; background: #0f172a; color: #e5e7eb; cursor: pointer;">
+          Upload
+        </button>
+      </form>
+    </section>
+  {% endif %}
 
-{% if pulls %}
-<script>
-  const labels = {{ chart_labels | tojson }};
-  const distances = {{ chart_distances | tojson }};
+{% endblock %}
 
-  const ctx = document.getElementById('pullChart').getContext('2d');
-  new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: labels,
-      datasets: [{
-        label: 'Final distance',
-        data: distances
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: {
-          title: {
-            display: true,
-            text: 'Hook'
-          }
-        },
-        y: {
-          title: {
-            display: true,
-            text: 'Distance'
+{% block extra_scripts %}
+  {% if pulls %}
+  <script>
+    const labels = {{ chart_labels | tojson }};
+    const distances = {{ chart_distances | tojson }};
+
+    const ctx = document.getElementById('pullChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Final distance',
+          data: distances
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Hook'
+            }
           },
-          beginAtZero: true
+          y: {
+            title: {
+              display: true,
+              text: 'Distance'
+            },
+            beginAtZero: true
+          }
         }
       }
-    }
-  });
-</script>
-{% endif %}
-</body>
-</html>
+    });
+  </script>
+  {% endif %}
+{% endblock %}
