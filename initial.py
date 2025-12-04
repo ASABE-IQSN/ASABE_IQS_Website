@@ -9,6 +9,14 @@ import flask_monitoringdashboard as dashboard
 from collections import defaultdict
 from sqlalchemy import and_
 import os
+import json
+import redis
+
+import logging
+
+class IgnoreLiveIngestFilter(logging.Filter):
+    def filter(self, record):
+        return "/ingest/live" not in record.getMessage()
 
 app = Flask(__name__)
 
@@ -20,15 +28,25 @@ app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10 MB max, adjust as need
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 #app.config["DEBUG"]=True
-app.config["CACHE_TYPE"]="SimpleCache"
+# app.config["CACHE_TYPE"]="SimpleCache"
 app.config["CACHE_DEFAULT_TIMEOUT"]=300
 
+app.config["CACHE_TYPE"] = "RedisCache"
+app.config["CACHE_REDIS_URL"] = "redis://localhost:6379/0"
+logging.getLogger("werkzeug").addFilter(IgnoreLiveIngestFilter())
 cache=Cache(app)
 dashboard.config.init_from(file='dashboard_config.cfg')
 dashboard.bind(app)
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+live_data_cache=redis.Redis(
+    host="localhost",
+    port=6379,
+    db=1,
+    decode_responses=True
+)
 
 
 app.config["SQLALCHEMY_DATABASE_URI"] = local_secrets.DB_URI
@@ -751,3 +769,13 @@ def privacy():
         contact_email="youremail@example.com",
     )
 
+@app.route("/current_pull")
+def current_pull():
+    return render_template("current_pull.html")
+
+@app.route("/ingest/live",methods=["POST"])
+def update_live():
+    for key in request.json:
+        live_data_cache.set(key,request.json[key])
+        
+    return "Success"

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Current Pull – IQS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #020617;
+      color: #e5e7eb;
+    }
+
+    .page {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 1rem;
+      box-sizing: border-box;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 2rem;
+    }
+    h2 {
+      margin: 0.5rem 0 0;
+      font-weight: 400;
+      font-size: 1rem;
+      color: #9ca3af;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr minmax(300px, 2fr) 1fr;
+      gap: 1rem;
+      align-items: start;
+    }
+
+    .card {
+      background: #020617;
+      border-radius: 0.75rem;
+      padding: 1rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+      border: 1px solid #1f2937;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      margin-bottom: 0.75rem;
+      font-size: 1.1rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #9ca3af;
+    }
+
+    .current-main {
+      text-align: center;
+    }
+
+    .team-name {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+
+    .team-meta {
+      font-size: 0.95rem;
+      color: #9ca3af;
+      margin-bottom: 0.75rem;
+    }
+
+    .stats-row {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .stat-block {
+      min-width: 110px;
+      padding: 0.75rem;
+      border-radius: 0.75rem;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(55, 65, 81, 0.8);
+    }
+
+    .stat-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+      margin-bottom: 0.25rem;
+    }
+
+    .stat-value {
+      font-size: 1.25rem;
+      font-weight: 600;
+    }
+
+    .status-chip {
+      display: inline-block;
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-top: 0.5rem;
+      background: #065f46;
+      color: #bbf7d0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    th, td {
+      padding: 0.4rem 0.5rem;
+      border-bottom: 1px solid #1f2937;
+    }
+
+    th {
+      text-align: left;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #9ca3af;
+    }
+
+    tr:nth-child(even) td {
+      background: rgba(15, 23, 42, 0.5);
+    }
+
+    .error {
+      color: #fca5a5;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+    }
+
+    canvas {
+      width: 100%;
+      height: 240px;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+
+  <!-- Chart.js for the live graph (optional but handy) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>Current Pull</h1>
+      <h2 id="hook-title">Hook – Loading…</h2>
+    </header>
+
+    <div class="layout">
+      <!-- Left: Leaderboard -->
+      <section class="card">
+        <h3>Leaderboard – Current Hook</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Team</th>
+              <th>Dist (ft)</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-body">
+            <!-- populated by JS -->
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Center: Current Pull -->
+      <section class="card current-main">
+        <h3>Now Pulling</h3>
+        <div id="current-team" class="team-name">Waiting for data…</div>
+        <div id="current-meta" class="team-meta"></div>
+
+        <div class="stats-row">
+          <div class="stat-block">
+            <div class="stat-label">Distance</div>
+            <div id="stat-distance" class="stat-value">–</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Speed</div>
+            <div id="stat-speed" class="stat-value">–</div>
+          </div>
+          <div class="stat-block">
+            <div class="stat-label">Hook</div>
+            <div id="stat-hook" class="stat-value">–</div>
+          </div>
+        </div>
+
+        <div id="status-chip" class="status-chip" style="display:none;"></div>
+
+        <div id="error" class="error"></div>
+      </section>
+
+      <!-- Right: Live Speed Graph -->
+      <section class="card">
+        <h3>Speed Over Time</h3>
+        <canvas id="speed-chart"></canvas>
+      </section>
+    </div>
+  </div>
+
+  <!-- <script src="{{ url_for('static', filename='current_pull.js') }}"></script> -->
+</body>
+</html>
