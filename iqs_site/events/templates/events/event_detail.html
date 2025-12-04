@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ event.name }} – International Quarter Scale{% endblock %}
+
+{% block content %}
+  <header class="event-header">
+    <h2>{{ event.name }}</h2>
+    <p class="event-meta">
+      {% if event.start_date %}
+        {{ event.start_date }}{% if event.end_date %} – {{ event.end_date }}{% endif %}
+      {% endif %}
+      {% if event.location %} • {{ event.location }}{% endif %}
+    </p>
+  </header>
+
+  <section class="event-section">
+    <h3>Leaderboards</h3>
+
+    {% if leaderboard %}
+      {% for key, pulls in leaderboard.items %}
+        {% with class_name=key.0 hook_number=key.1 %}
+          <div class="leaderboard">
+            <h4>
+              {{ class_name }}
+              {% if hook_number %} – Hook {{ hook_number }}{% endif %}
+            </h4>
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Place</th>
+                  <th>Team</th>
+                  <th>School</th>
+                  <th>Distance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for pull in pulls %}
+                  <tr>
+                    <td>{{ forloop.counter }}</td>
+                    <td>{{ pull.team.name }}</td>
+                    <td>{{ pull.team.school }}</td>
+                    <td>
+                      {% if pull.final_distance %}
+                        {{ pull.final_distance|floatformat:2 }} ft
+                      {% else %}
+                        —
+                      {% endif %}
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% endwith %}
+      {% endfor %}
+    {% else %}
+      <p>No results yet for this event.</p>
+    {% endif %}
+  </section>
+
+  <section class="event-section">
+    <h3>All pulls</h3>
+    {% if pulls %}
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Team</th>
+            <th>School</th>
+            <th>Class</th>
+            <th>Hook</th>
+            <th>Distance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pull in pulls %}
+            <tr>
+              <td>{{ pull.team.name }}</td>
+              <td>{{ pull.team.school }}</td>
+              <td>{% if pull.hook %}{{ pull.hook.class_name }}{% else %}—{% endif %}</td>
+              <td>{% if pull.hook %}{{ pull.hook.number }}{% else %}—{% endif %}</td>
+              <td>
+                {% if pull.final_distance %}
+                  {{ pull.final_distance|floatformat:2 }} ft
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No pulls recorded yet.</p>
+    {% endif %}
+  </section>
+{% endblock %}

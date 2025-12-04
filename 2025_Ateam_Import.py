@@ -48,6 +48,7 @@ for file in files:
                 force=[]
                 distance=[]
                 speed=[]
+
                 # pull_df["Raw Team Name"]=team
                 # pull_df["Team ID"]=team_id
                 # pull_df["Raw Hook"]=file
@@ -60,10 +61,20 @@ for file in files:
                     print(team)
                     print(pull)
                 
-                sql="INSERT INTO pulls (event_id, team_id, hook_id) VALUES (%s,%s,%s)"
-                values=(25,team_id,hook_ids[file])
+                
                 if team_id>0:
+
+                    sql="SELECT tractor_id FROM tractors WHERE original_team_id = %s AND year = %s"
+                    values=(team_id,25)
                     cursor.execute(sql,values)
+                    x=cursor.fetchone()
+                    if x:
+                        tractor_id=x[0]
+                        sql="INSERT INTO pulls (event_id, team_id, hook_id, tractor_id) VALUES (%s,%s,%s,%s)"
+                        values=(25,team_id,hook_ids[file],tractor_id)
+                        cursor.execute(sql,values)
+                    else:
+                        print(team)
                     sql="SELECT LAST_INSERT_ID();"
                     cursor.execute(sql)
                     id=cursor.fetchone()

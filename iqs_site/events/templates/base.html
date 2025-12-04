@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% block title %}International Quarter Scale{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'events/css/main.css' %}" />
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <div class="container">
+        <h1 class="logo"><a href="{% url 'events:event_list' %}">International Quarter Scale</a></h1>
+        <nav>
+          <!-- Add nav links here -->
+        </nav>
+      </div>
+    </header>
+
+    <main class="site-main container">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <p>&copy; {% now "Y" %} IQS – Quarter Scale Tractor Pulling</p>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

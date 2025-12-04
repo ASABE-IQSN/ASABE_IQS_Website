@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Events – International Quarter Scale{% endblock %}
+
+{% block content %}
+  <h2>Events</h2>
+
+  {% if events %}
+    <ul class="card-list">
+      {% for event in events %}
+        <li class="card">
+          <h3>
+            <a href="{% url 'events:event_detail' event.pk %}">
+              {{ event.name }}
+            </a>
+          </h3>
+          <p>
+            {% if event.start_date %}
+              {{ event.start_date }}{% if event.end_date %} – {{ event.end_date }}{% endif %}
+            {% endif %}
+            {% if event.location %} • {{ event.location }}{% endif %}
+          </p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No events yet.</p>
+  {% endif %}
+{% endblock %}
