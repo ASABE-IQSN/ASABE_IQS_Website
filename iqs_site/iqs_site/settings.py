@@ -30,6 +30,8 @@ ALLOWED_HOSTS = ["internationalquarterscale.com","127.0.0.1"]
 STATICFILES_DIRS = ["/var/www/quarterscale/static"]
 # Application definition
 
+STATIC_ROOT = "/var/www/quarterscale/static/"
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
