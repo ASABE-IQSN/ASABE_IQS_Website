@@ -295,7 +295,7 @@ def upload_team_photo(request, event_id, team_id):
     with save_path.open("wb+") as dest:
         for chunk in file.chunks():
             dest.write(chunk)
-
+    print(f"Saved photo to {filename}")
     # Path relative to /static
     rel_path = f"photos/{filename}"
 
