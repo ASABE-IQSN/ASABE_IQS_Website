@@ -1,0 +1,531 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block title %}{{ team.team_name }} – Team Profile{% endblock %}
+
+{% block extra_head %}
+  <!-- Chart.js for scores plot -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block extra_styles %}
+  .photo-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+
+  .photo-grid figure {
+    margin: 0;
+    max-width: 180px;
+    cursor: pointer;
+  }
+
+  .photo-grid img {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid #1f2937;
+    display: block;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .photo-grid img:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+  }
+
+  .photo-grid figcaption {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-top: 0.25rem;
+    line-height: 1.3;
+  }
+
+  .breadcrumbs {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-bottom: 0.75rem;
+  }
+
+  .breadcrumbs a {
+    color: #9ca3af;
+  }
+
+  .breadcrumbs span {
+    margin: 0 0.25rem;
+  }
+
+  .hero {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0f172a;
+    border: 1px solid #1f2937;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .hero-image {
+    width: 96px;
+    height: 96px;
+    border-radius: 0.9rem;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #020617;
+    border: 1px solid #1f2937;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    color: #6b7280;
+  }
+
+  .hero-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .hero-main {
+    flex: 1;
+  }
+
+  .hero-main h1 {
+    margin: 0 0 0.3rem;
+    font-size: 1.6rem;
+  }
+
+  .hero-meta {
+    font-size: 0.95rem;
+    color: #9ca3af;
+    line-height: 1.5;
+  }
+
+  .hero-bio {
+    margin-top: 0.6rem;
+    font-size: 0.9rem;
+    color: #e5e7eb;
+  }
+
+  h2 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.3rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.2fr);
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+  }
+
+  .card {
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+  }
+
+  .card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+  }
+
+  ul.event-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  ul.event-list li {
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #1f2937;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: baseline;
+  }
+
+  ul.event-list li:last-child {
+    border-bottom: none;
+  }
+
+  .event-name {
+    flex: 1;
+  }
+
+  .event-score {
+    font-weight: 600;
+    color: #e5e7eb;
+  }
+
+  .event-score-label {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-right: 0.25rem;
+  }
+
+  .empty {
+    font-size: 0.9rem;
+    color: #9ca3af;
+  }
+
+  canvas {
+    width: 100%;
+    max-width: 100%;
+    height: 260px;
+  }
+
+  /* Lightbox styles */
+  .lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.95);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+  }
+
+  .lightbox-overlay.open {
+    display: flex;
+  }
+
+  .lightbox-inner {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .lightbox-image-wrapper {
+    max-width: 100%;
+    max-height: calc(90vh - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lightbox-image-wrapper img {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid #1f2937;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+  }
+
+  .lightbox-caption {
+    font-size: 0.9rem;
+    color: #e5e7eb;
+    text-align: center;
+    max-width: 70ch;
+  }
+
+  .lightbox-close {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    background: #111827;
+    border-radius: 999px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #374151;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #e5e7eb;
+  }
+
+  .lightbox-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #111827;
+    border-radius: 999px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #374151;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: #e5e7eb;
+  }
+
+  .lightbox-arrow.left {
+    left: -2.5rem;
+  }
+
+  .lightbox-arrow.right {
+    right: -2.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .lightbox-arrow.left {
+      left: 0.5rem;
+    }
+    .lightbox-arrow.right {
+      right: 0.5rem;
+    }
+  }
+{% endblock %}
+
+{% block content %}
+
+  <!-- Breadcrumbs -->
+  <div class="breadcrumbs">
+    <a href="{% url 'events:team_list' %}">Teams</a>
+    <span>›</span>
+    <span>{{ team.team_name }}</span>
+  </div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-image">
+      {% if team_photos %}
+        <img src="{% static team_photos.0.photo_path %}"
+             alt="{{ team.team_name }}">
+      {% else %}
+        No image
+      {% endif %}
+    </div>
+
+    <div class="hero-main">
+      <h1>{{ team.team_name }}</h1>
+      <div class="hero-meta">
+        <div><strong>Team #:</strong> {{ team.team_number }}</div>
+      </div>
+
+      <div class="hero-bio">
+        {% if team.bio %}
+          {{ team.bio }}
+        {% else %}
+          <span style="color:#9ca3af;">Team bio coming soon.</span>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Events + Scores layout -->
+  <section class="grid">
+    <!-- Left: event list -->
+    <div class="card">
+      <h3>Events</h3>
+      {% if event_teams %}
+        <ul class="event-list">
+          {% for et in event_teams %}
+            <li>
+              <div class="event-name">
+                <a href="{% url 'events:team_event_detail' et.event_id team.team_id %}">
+                  {{ et.event.event_name }}
+                </a>
+                {% if et.event.event_datetime %}
+                  <div style="font-size: 0.8rem; color: #9ca3af;">
+                    {{ et.event.event_datetime|date:"F Y" }}
+                  </div>
+                {% endif %}
+              </div>
+              <div class="event-score">
+                <span class="event-score-label">Score</span>
+                {{ et.total_score|default:"N/A" }}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="empty">No events recorded for this team.</p>
+      {% endif %}
+    </div>
+
+    <!-- Right: score plot -->
+    <div class="card">
+      <h3>Scores Over Events</h3>
+      {% if chart_labels and chart_scores %}
+        <canvas id="scoreChart"></canvas>
+      {% else %}
+        <p class="empty">No scores available yet to plot.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  {% if team_photos %}
+    <section class="card" style="margin-top: 1.5rem;">
+      <h3>Team Photos</h3>
+
+      <div class="photo-grid">
+        {% for photo in team_photos %}
+          <figure data-photo-index="{{ forloop.counter0 }}">
+            <img src="{% static photo.photo_path %}"
+                 alt="{{ photo.caption|default:team.team_name }}">
+
+            <figcaption>
+              {% if photo.caption %}
+                {{ photo.caption }}<br>
+              {% endif %}
+              {% if photo.event_team and photo.event_team.event %}
+                <span>
+                  {{ photo.event_team.event.event_name }}
+                  {% if photo.event_team.event.event_datetime %}
+                    – {{ photo.event_team.event.event_datetime|date:"M Y" }}
+                  {% endif %}
+                </span>
+              {% endif %}
+            </figcaption>
+          </figure>
+        {% endfor %}
+      </div>
+    </section>
+
+    <!-- Lightbox overlay -->
+    <div class="lightbox-overlay" id="photoLightbox">
+      <div class="lightbox-inner">
+        <div class="lightbox-image-wrapper">
+          <button class="lightbox-arrow left" type="button" id="lightboxPrev" aria-label="Previous photo">
+            &#10094;
+          </button>
+
+          <img id="lightboxImage" src="" alt="">
+
+          <button class="lightbox-arrow right" type="button" id="lightboxNext" aria-label="Next photo">
+            &#10095;
+          </button>
+        </div>
+
+        <div class="lightbox-caption" id="lightboxCaption"></div>
+
+        <button class="lightbox-close" type="button" id="lightboxClose" aria-label="Close">
+          &times;
+        </button>
+      </div>
+    </div>
+  {% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+  {% if chart_labels and chart_scores %}
+  <script>
+    const labels = {{ chart_labels_json|safe }};
+    const scores = {{ chart_scores_json|safe }};
+
+    const ctx = document.getElementById('scoreChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Event Score',
+          data: scores,
+          tension: 0.3,
+          pointRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Event'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Score'
+            },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  </script>
+  {% endif %}
+
+  {% if team_photos %}
+  <script>
+    (function () {
+      const overlay = document.getElementById('photoLightbox');
+      if (!overlay) return;
+
+      const imgEl = document.getElementById('lightboxImage');
+      const captionEl = document.getElementById('lightboxCaption');
+      const closeBtn = document.getElementById('lightboxClose');
+      const prevBtn = document.getElementById('lightboxPrev');
+      const nextBtn = document.getElementById('lightboxNext');
+      const figures = Array.from(document.querySelectorAll('.photo-grid figure'));
+
+      const photos = figures.map((fig) => {
+        const img = fig.querySelector('img');
+        const caption = fig.querySelector('figcaption');
+        return {
+          src: img.getAttribute('src'),
+          alt: img.getAttribute('alt') || '',
+          caption: caption ? caption.innerText.trim() : ''
+        };
+      });
+
+      let currentIndex = 0;
+
+      function openLightbox(index) {
+        if (!photos.length) return;
+        currentIndex = ((index % photos.length) + photos.length) % photos.length;
+        const photo = photos[currentIndex];
+
+        imgEl.src = photo.src;
+        imgEl.alt = photo.alt;
+        captionEl.textContent = photo.caption || photo.alt || '';
+        overlay.classList.add('open');
+      }
+
+      function closeLightbox() {
+        overlay.classList.remove('open');
+      }
+
+      function showNext(delta) {
+        if (!photos.length) return;
+        openLightbox(currentIndex + delta);
+      }
+
+      figures.forEach((fig, index) => {
+        fig.addEventListener('click', () => openLightbox(index));
+      });
+
+      closeBtn.addEventListener('click', closeLightbox);
+
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+          closeLightbox();
+        }
+      });
+
+      prevBtn.addEventListener('click', () => showNext(-1));
+      nextBtn.addEventListener('click', () => showNext(1));
+
+      document.addEventListener('keydown', (event) => {
+        if (!overlay.classList.contains('open')) return;
+
+        if (event.key === 'Escape') {
+          closeLightbox();
+        } else if (event.key === 'ArrowRight') {
+          showNext(1);
+        } else if (event.key === 'ArrowLeft') {
+          showNext(-1);
+        }
+      });
+    })();
+  </script>
+  {% endif %}
+{% endblock %}

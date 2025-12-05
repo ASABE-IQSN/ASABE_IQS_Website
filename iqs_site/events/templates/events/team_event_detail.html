@@ -1,0 +1,627 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ team.team_name }} – {{ event.event_name }}{% endblock %}
+
+{% block extra_head %}
+  <!-- Chart.js for the pull distance chart -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block extra_styles %}
+  .breadcrumbs {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-bottom: 0.75rem;
+  }
+
+  .breadcrumbs a {
+    color: #9ca3af;
+  }
+
+  .breadcrumbs span {
+    margin: 0 0.25rem;
+  }
+
+  .hero {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0f172a;
+    border: 1px solid #1f2937;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+  }
+
+  .hero-image {
+    width: 200px;
+    height: 200px;
+    border-radius: 999px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #020617;
+    border: 1px solid #1f2937;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: #6b7280;
+  }
+
+  .hero-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .hero-main {
+    flex: 1;
+  }
+
+  .hero-main h1 {
+    margin: 0 0 0.4rem;
+    font-size: 1.6rem;
+  }
+
+  .hero-meta {
+    font-size: 0.95rem;
+    color: #9ca3af;
+    line-height: 1.5;
+  }
+
+  .hero-badge {
+    margin-top: 0.6rem;
+    display: inline-block;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    border: 1px solid #1f2937;
+    color: #9ca3af;
+  }
+
+  .hero-badge.highlight {
+    border-color: #22c55e;
+    color: #bbf7d0;
+  }
+
+  h2 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.3rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #020617;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  th, td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #1f2937;
+    font-size: 0.9rem;
+    text-align: left;
+  }
+
+  th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #9ca3af;
+    background: #030712;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:nth-child(even) {
+    background: #0b1220;
+  }
+
+  .empty {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin-bottom: 1.5rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+  }
+
+  .card {
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+  }
+
+  .card h3 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+    font-size: 1.05rem;
+  }
+
+  canvas {
+    width: 100%;
+    max-width: 100%;
+    height: 280px;
+  }
+
+  /* Event photos grid */
+  .event-photo-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .event-photo-grid figure {
+    margin: 0;
+    max-width: 180px;
+    cursor: pointer;
+  }
+
+  .event-photo-grid img {
+    width: 100%;
+    border-radius: 0.5rem;
+    border: 1px solid #1f2937;
+    display: block;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .event-photo-grid img:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+  }
+
+  .event-photo-grid figcaption {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-top: 0.25rem;
+    line-height: 1.3;
+  }
+
+  /* Lightbox styles (same as team page) */
+  .lightbox-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.95);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+  }
+
+  .lightbox-overlay.open {
+    display: flex;
+  }
+
+  .lightbox-inner {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .lightbox-image-wrapper {
+    max-width: 100%;
+    max-height: calc(90vh - 80px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .lightbox-image-wrapper img {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid #1f2937;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+  }
+
+  .lightbox-caption {
+    font-size: 0.9rem;
+    color: #e5e7eb;
+    text-align: center;
+    max-width: 70ch;
+  }
+
+  .lightbox-close {
+    position: absolute;
+    top: -0.5rem;
+    right: -0.5rem;
+    background: #111827;
+    border-radius: 999px;
+    width: 32px;
+    height: 32px;
+    border: 1px solid #374151;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #e5e7eb;
+  }
+
+  .lightbox-arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #111827;
+    border-radius: 999px;
+    width: 36px;
+    height: 36px;
+    border: 1px solid #374151;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    color: #e5e7eb;
+  }
+
+  .lightbox-arrow.left {
+    left: -2.5rem;
+  }
+
+  .lightbox-arrow.right {
+    right: -2.5rem;
+  }
+
+  @media (max-width: 768px) {
+    .lightbox-arrow.left {
+      left: 0.5rem;
+    }
+    .lightbox-arrow.right {
+      right: 0.5rem;
+    }
+  }
+{% endblock %}
+
+{% block content %}
+
+  <!-- Breadcrumbs -->
+  <div class="breadcrumbs">
+    <a href="{% url 'events:event_list' %}">Events</a>
+    <span>›</span>
+    <a href="{% url 'events:event_detail' event.event_id %}">{{ event.event_name }}</a>
+    <span>›</span>
+    <span>{{ team.team_name }}</span>
+  </div>
+
+  <!-- Hero area -->
+  <section class="hero">
+    <div class="hero-image">
+      {% if event_photos %}
+        <img src="{% static event_photos.0.photo_path %}"
+             alt="{{ team.team_name }}">
+      {% else %}
+        No image
+      {% endif %}
+    </div>
+
+    <div class="hero-main">
+      <style>
+        h1 + h2 {
+          margin-top: -0.25rem;
+        }
+      </style>
+      <h1>{{ team.team_name }}</h1>
+      <h2>{{ event.event_name }}</h2>
+      <div class="hero-meta">
+        <div><strong>Team #:</strong> {{ team.team_number }}</div>
+        <div>
+          <strong>Overall Event Score:</strong>
+          {{ event_team.total_score|default:"N/A" }}
+        </div>
+        {% if event.event_datetime %}
+          <div>
+            <strong>Date:</strong> {{ event.event_datetime|date:"F Y" }}
+          </div>
+        {% endif %}
+      </div>
+
+      {% if team_in_top3 %}
+        <div class="hero-badge highlight">
+          Top 3 in Event
+        </div>
+      {% else %}
+        <div class="hero-badge">
+          Event Standings
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Comparison vs top 3 + Best pull info -->
+  <section class="grid">
+    <!-- Left: comparison vs top 3 -->
+    <div class="card">
+      <h3>Event Standings (Top 3)</h3>
+      {% if top3 %}
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Team</th>
+              <th>Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for et in top3 %}
+              <tr {% if et.team_id == team.team_id %}style="font-weight: 600;"{% endif %}>
+                <td>{{ forloop.counter }}</td>
+                <td>{{ et.team.team_name }}</td>
+                <td>{{ et.total_score|default:"N/A" }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="empty">No standings available.</p>
+      {% endif %}
+    </div>
+
+    <!-- Right: best pull of event -->
+    <div class="card">
+      <h3>Best Pull of Event</h3>
+      {% if best_pull_overall %}
+        <p class="hero-meta" style="margin-bottom: 0.75rem;">
+          <strong>Team:</strong> {{ best_pull_overall.team.team_name }}<br>
+          <strong>Distance:</strong>
+          {{ best_pull_overall.final_distance|default:"N/A" }}<br>
+          <strong>Hook:</strong>
+          {% if best_pull_overall.hook and best_pull_overall.hook.hook_name %}
+            {{ best_pull_overall.hook.hook_name }}
+          {% else %}
+            Hook {{ best_pull_overall.hook_id }}
+          {% endif %}
+        </p>
+        {% if best_pull_overall.team_id == team.team_id %}
+          <p class="hero-meta" style="color: #bbf7d0;">
+            This team holds the best pull of the event.
+          </p>
+        {% endif %}
+      {% else %}
+        <p class="empty">No pulls recorded for this event yet.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Pulls table + chart -->
+  <section style="margin-top: 1.5rem;">
+    <h2>Pulls</h2>
+
+    {% if pulls %}
+      <table>
+        <thead>
+          <tr>
+            <th>Hook</th>
+            <th>Final Distance</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pulls %}
+            <tr>
+              <td>
+                {% if p.hook and p.hook.hook_name %}
+                  {{ p.hook.hook_name }}
+                {% else %}
+                  Hook {{ p.hook_id }}
+                {% endif %}
+              </td>
+              <td>{{ p.final_distance|default:"N/A" }}</td>
+              <td>
+                <a href="{% url 'events:pull_detail' p.pull_id %}">
+                  Charts / Data
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <!-- Chart of this team's pulls -->
+      <div class="card">
+        <h3>Pull Distances by Hook</h3>
+        <canvas id="pullChart"></canvas>
+      </div>
+    {% else %}
+      <p class="empty">No pulls recorded for this team in this event.</p>
+    {% endif %}
+  </section>
+
+  {% if event_team %}
+    <section class="card" style="margin-top: 1.5rem;">
+      <h3>Event Photos</h3>
+
+      {% if event_photos %}
+        <div class="event-photo-grid">
+          {% for photo in event_photos %}
+            <figure data-photo-index="{{ forloop.counter0 }}">
+              <img src="{% static photo.photo_path %}"
+                   alt="{{ photo.caption|default:team.team_name }}">
+              {% if photo.caption %}
+                <figcaption>
+                  {{ photo.caption }}
+                </figcaption>
+              {% endif %}
+            </figure>
+          {% endfor %}
+        </div>
+
+        <!-- Lightbox overlay -->
+        <div class="lightbox-overlay" id="photoLightbox">
+          <div class="lightbox-inner">
+            <div class="lightbox-image-wrapper">
+              <button class="lightbox-arrow left" type="button" id="lightboxPrev" aria-label="Previous photo">
+                &#10094;
+              </button>
+
+              <img id="lightboxImage" src="" alt="">
+
+              <button class="lightbox-arrow right" type="button" id="lightboxNext" aria-label="Next photo">
+                &#10095;
+              </button>
+            </div>
+
+            <div class="lightbox-caption" id="lightboxCaption"></div>
+
+            <button class="lightbox-close" type="button" id="lightboxClose" aria-label="Close">
+              &times;
+            </button>
+          </div>
+        </div>
+      {% else %}
+        <p class="empty">No photos uploaded for this team at this event yet.</p>
+      {% endif %}
+
+      <!-- Upload form (stubbed; you'll back this with a Django view) -->
+      <form action="{% url 'events:upload_team_photo' event.event_id team.team_id %}"
+            method="post"
+            enctype="multipart/form-data"
+            style="margin-top: 0.5rem; font-size: 0.9rem;">
+        {% csrf_token %}
+        <label for="photo" style="display: block; margin-bottom: 0.25rem;">
+          Upload a new team photo for this event:
+        </label>
+        <input type="file" id="photo" name="photo" accept="image/*"
+               style="margin-bottom: 0.5rem;">
+        <br>
+        <button type="submit"
+                style="padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid #1f2937; background: #0f172a; color: #e5e7eb; cursor: pointer;">
+          Upload
+        </button>
+      </form>
+    </section>
+  {% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+  {% if pulls %}
+  <script>
+    const labels = {{ chart_labels_json|safe }};
+    const distances = {{ chart_distances_json|safe }};
+
+    const ctx = document.getElementById('pullChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Final distance',
+          data: distances
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Hook'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Distance'
+            },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+  </script>
+  {% endif %}
+
+  {% if event_photos %}
+  <script>
+    (function () {
+      const overlay = document.getElementById('photoLightbox');
+      if (!overlay) return;
+
+      const imgEl = document.getElementById('lightboxImage');
+      const captionEl = document.getElementById('lightboxCaption');
+      const closeBtn = document.getElementById('lightboxClose');
+      const prevBtn = document.getElementById('lightboxPrev');
+      const nextBtn = document.getElementById('lightboxNext');
+      const figures = Array.from(document.querySelectorAll('.event-photo-grid figure'));
+
+      const photos = figures.map(fig => {
+        const img = fig.querySelector('img');
+        const caption = fig.querySelector('figcaption');
+        return {
+          src: img.getAttribute('src'),
+          alt: img.getAttribute('alt') || '',
+          caption: caption ? caption.innerText.trim() : ''
+        };
+      });
+
+      let currentIndex = 0;
+
+      function openLightbox(index) {
+        if (!photos.length) return;
+        currentIndex = ((index % photos.length) + photos.length) % photos.length;
+        const photo = photos[currentIndex];
+
+        imgEl.src = photo.src;
+        imgEl.alt = photo.alt;
+        captionEl.textContent = photo.caption || photo.alt || '';
+        overlay.classList.add('open');
+      }
+
+      function closeLightbox() {
+        overlay.classList.remove('open');
+      }
+
+      function showNext(delta) {
+        if (!photos.length) return;
+        openLightbox(currentIndex + delta);
+      }
+
+      figures.forEach((fig, index) => {
+        fig.addEventListener('click', () => openLightbox(index));
+      });
+
+      closeBtn.addEventListener('click', closeLightbox);
+
+      overlay.addEventListener('click', (event) => {
+        if (event.target === overlay) {
+          closeLightbox();
+        }
+      });
+
+      prevBtn.addEventListener('click', () => showNext(-1));
+      nextBtn.addEventListener('click', () => showNext(1));
+
+      document.addEventListener('keydown', (event) => {
+        if (!overlay.classList.contains('open')) return;
+
+        if (event.key === 'Escape') {
+          closeLightbox();
+        } else if (event.key === 'ArrowRight') {
+          showNext(1);
+        } else if (event.key === 'ArrowLeft') {
+          showNext(-1);
+        }
+      });
+    })();
+  </script>
+  {% endif %}
+{% endblock %}

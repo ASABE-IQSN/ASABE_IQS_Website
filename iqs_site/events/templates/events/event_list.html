@@ -1,28 +1,139 @@
 {% extends "base.html" %}
+
 {% block title %}Events – International Quarter Scale{% endblock %}
 
-{% block content %}
-  <h2>Events</h2>
+{% block extra_styles %}
+  .event-card {
+    background: #0f172a;
+    border-radius: 0.9rem;
+    border: 1px solid #1f2937;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.5rem;
+  }
 
-  {% if events %}
-    <ul class="card-list">
-      {% for event in events %}
-        <li class="card">
-          <h3>
-            <a href="{% url 'events:event_detail' event.pk %}">
-              {{ event.name }}
-            </a>
-          </h3>
-          <p>
-            {% if event.start_date %}
-              {{ event.start_date }}{% if event.end_date %} – {{ event.end_date }}{% endif %}
-            {% endif %}
-            {% if event.location %} • {{ event.location }}{% endif %}
-          </p>
-        </li>
-      {% endfor %}
-    </ul>
-  {% else %}
-    <p>No events yet.</p>
-  {% endif %}
+  .event-card h2 {
+    margin: 0 0 0.25rem;
+    font-size: 1.35rem;
+  }
+
+  .event-meta {
+    color: #9ca3af;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+  }
+
+  h1 {
+    margin-bottom: 1.5rem;
+    font-size: 1.8rem;
+  }
+
+  h3 {
+    margin-top: 0.8rem;
+    margin-bottom: 0.4rem;
+    font-size: 1.0rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #020617;
+    border-radius: 0.75rem;
+    overflow: hidden;
+  }
+
+  th, td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #1f2937;
+    font-size: 0.9rem;
+    text-align: left;
+  }
+
+  th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #9ca3af;
+    background: #030712;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:nth-child(even) {
+    background: #020617;
+  }
+
+  .class-tables {
+    display: flex;
+    gap: 1rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .class-table {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+{% endblock %}
+
+{% block content %}
+  <h1>Events</h1>
+
+  {% for event in events %}
+    <section class="event-card">
+      <h2>
+        <a href="{% url 'events:event_detail' event_id=event.event_id %}">
+          {{ event.event_name }}
+        </a>
+      </h2>
+
+      {% if event.event_datetime %}
+        <div class="event-meta">
+          {{ event.event_datetime|date:"F Y" }}
+        </div>
+      {% endif %}
+
+      {# We assume the view attaches a `class_leaderboards` list to each event #}
+      {% if event.class_leaderboards %}
+        <div class="class-tables">
+          {% for leaderboard in event.class_leaderboards %}
+            <div class="class-table">
+              <h3>{{ leaderboard.team_class.name }} – Top 3</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Team</th>
+                    <th>Team #</th>
+                    <th>Total Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for et in leaderboard.entries %}
+                    <tr>
+                      <td>
+                        <a href="{% url 'events:team_event_detail' event_id=event.event_id team_id=et.team_id %}">
+                          {{ et.team.team_name }}
+                        </a>
+                      </td>
+                      <td>{{ et.team.team_number }}</td>
+                      <td>{{ et.total_score|default:"N/A" }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="empty">
+          {% if top_classes %}
+            No teams for this event yet.
+          {% else %}
+            No team classes defined yet.
+          {% endif %}
+        </p>
+      {% endif %}
+    </section>
+  {% endfor %}
 {% endblock %}

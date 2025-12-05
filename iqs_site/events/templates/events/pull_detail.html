@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Pull {{ pull.pull_id }} – {{ pull.team.team_name }}{% endblock %}
+
+{% block extra_head %}
+  <!-- Chart.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block extra_styles %}
+  .pull-page-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .pull-page-header h1 {
+    margin: 0 0 0.25rem;
+  }
+
+  .pull-meta {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+
+  .chart-card {
+    background: #0f172a;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 10px 30px rgba(15,23,42,0.8);
+    margin-bottom: 1.25rem;
+  }
+
+  .chart-card h2 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+  }
+
+  .chart-card canvas {
+    max-width: 100%;
+    height: 400px;
+  }
+{% endblock %}
+
+{% block content %}
+  <header class="pull-page-header">
+    <h1>Pull {{ pull.pull_id }}</h1>
+    <div class="pull-meta">
+      Team: <strong>{{ pull.team.team_name }}</strong> ({{ pull.team.team_number }})<br>
+      Final distance: {{ pull.final_distance|default:"N/A" }} ft<br>
+      Hook ID: {{ pull.hook_id|default:"N/A" }}
+    </div>
+  </header>
+
+  <!-- 1) Speed vs Distance -->
+  <section class="chart-card">
+    <h2>Speed vs Distance (mph vs ft)</h2>
+    {% if has_data %}
+      <canvas id="speedDistanceChart"></canvas>
+    {% else %}
+      <p>No pull data available for this pull.</p>
+    {% endif %}
+  </section>
+
+  <!-- 2) Chain Force vs Distance -->
+  <section class="chart-card">
+    <h2>Chain Force vs Distance (lbf vs ft)</h2>
+    {% if has_data %}
+      <canvas id="cfDistanceChart"></canvas>
+    {% else %}
+      <p>No pull data available for this pull.</p>
+    {% endif %}
+  </section>
+
+  <!-- 3) Chain Force vs Speed -->
+  <section class="chart-card">
+    <h2>Chain Force vs Speed (lbf vs mph)</h2>
+    {% if has_data %}
+      <canvas id="cfSpeedChart"></canvas>
+    {% else %}
+      <p>No pull data available for this pull.</p>
+    {% endif %}
+  </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {% if has_data %}
+  <script>
+    const speeds = {{ speeds_json|safe }};      // mph
+    const forces = {{ forces_json|safe }};      // lbf
+    const distances = {{ distances_json|safe }}; // ft
+
+    // -------- 1) Speed vs Distance (mph vs ft) --------
+    const speedDistancePoints = distances.map((d, i) => ({
+      x: d,
+      y: speeds[i]
+    }));
+
+    new Chart(document.getElementById('speedDistanceChart'), {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Speed (mph) vs Distance (ft)',
+          data: speedDistancePoints,
+          pointRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { type: 'linear', title: { display: true, text: 'Distance (ft)' } },
+          y: { title: { display: true, text: 'Speed (mph)' } }
+        }
+      }
+    });
+
+    // -------- 2) Chain Force vs Distance (lbf vs ft) --------
+    const cfDistancePoints = distances.map((d, i) => ({
+      x: d,
+      y: forces[i]
+    }));
+
+    new Chart(document.getElementById('cfDistanceChart'), {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Chain Force (lbf) vs Distance (ft)',
+          data: cfDistancePoints,
+          pointRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { type: 'linear', title: { display: true, text: 'Distance (ft)' } },
+          y: { title: { display: true, text: 'Chain Force (lbf)' } }
+        }
+      }
+    });
+
+    // -------- 3) Chain Force vs Speed (lbf vs mph) --------
+    const cfSpeedPoints = speeds.map((s, i) => ({
+      x: s,
+      y: forces[i]
+    }));
+
+    new Chart(document.getElementById('cfSpeedChart'), {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Chain Force (lbf) vs Speed (mph)',
+          data: cfSpeedPoints,
+          pointRadius: 3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { type: 'linear', title: { display: true, text: 'Speed (mph)' } },
+          y: { title: { display: true, text: 'Chain Force (lbf)' } }
+        }
+      }
+    });
+
+  </script>
+  {% endif %}
+{% endblock %}

@@ -1,0 +1,328 @@
+{% extends "base.html" %}
+
+{% block title %}Teams – International Quarter Scale{% endblock %}
+
+{% block extra_styles %}
+  h1 {
+    margin-bottom: 0.75rem;
+    font-size: 1.8rem;
+  }
+
+  /* Search bar */
+  .team-search-wrapper {
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .team-search-input {
+    flex: 1;
+    min-width: 220px;
+    padding: 0.45rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid #1f2937;
+    background: #020617;
+    color: #e5e7eb;
+    font-size: 0.9rem;
+  }
+
+  .team-search-input::placeholder {
+    color: #6b7280;
+  }
+
+  .team-search-hint {
+    font-size: 0.8rem;
+    color: #9ca3af;
+  }
+
+  /* Top anchor nav */
+  .class-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+  }
+  .class-nav a {
+    font-size: 0.85rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid #1f2937;
+    background: #020617;
+    color: #e5e7eb;
+    text-decoration: none;
+  }
+  .class-nav a:hover {
+    background: #0f172a;
+  }
+
+  .class-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 900px) {
+    .class-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+
+  .class-card {
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+  }
+
+  .class-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .class-card h2 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  .class-badge {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid #1f2937;
+    background: #020617;
+    color: #9ca3af;
+    white-space: nowrap;
+  }
+
+  /* You can tweak these color hints per class later if you want */
+  .class-badge.primary {
+    border-color: #38bdf8;
+    color: #bae6fd;
+  }
+  .class-badge.secondary {
+    border-color: #a855f7;
+    color: #e9d5ff;
+  }
+
+  .class-meta {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    margin-bottom: 0.6rem;
+  }
+
+  ul.team-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  ul.team-list li {
+    padding: 0.4rem 0;
+    border-bottom: 1px solid #1f2937;
+    font-size: 0.9rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    align-items: baseline;
+  }
+
+  ul.team-list li:last-child {
+    border-bottom: none;
+  }
+
+  .team-name {
+    flex: 1;
+  }
+
+  .team-number {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    white-space: nowrap;
+  }
+
+  .empty {
+    font-size: 0.9rem;
+    color: #9ca3af;
+  }
+
+  .no-search-results {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin-top: 0.75rem;
+  }
+{% endblock %}
+
+{% block content %}
+  <h1>Teams</h1>
+
+  <div class="team-search-wrapper">
+    <input
+      id="teamSearchInput"
+      class="team-search-input"
+      type="text"
+      placeholder="Search teams by name or number..."
+      autocomplete="off"
+    >
+    <div class="team-search-hint">
+      <!--Type to filter teams across all classes.-->
+    </div>
+  </div>
+
+  <!-- Anchor nav -->
+  <div class="class-nav">
+    {% for tc in team_classes %}
+      <a href="#class-{{ tc.team_class_id }}">
+        {{ tc.name }}
+      </a>
+    {% endfor %}
+    {% if unclassified_teams %}
+      <a href="#class-unclassified">Unclassified</a>
+    {% endif %}
+  </div>
+
+  <div class="class-grid" id="classGrid">
+    {% for tc in team_classes %}
+      <section class="class-card" id="class-{{ tc.team_class_id }}">
+        <div class="class-header">
+          <h2>{{ tc.name }}</h2>
+          {# Simple heuristic to vary badge style by position #}
+          {% if forloop.first %}
+            {% with badge_class="primary" %}
+              <span class="class-badge {{ badge_class }}">
+                {{ tc.name }}
+              </span>
+            {% endwith %}
+          {% else %}
+            {% with badge_class="secondary" %}
+              <span class="class-badge {{ badge_class }}">
+                {{ tc.name }}
+              </span>
+            {% endwith %}
+          {% endif %}
+        </div>
+
+        <div class="class-meta">
+          {% with num_teams=tc.teams.count %}
+            {{ num_teams }} team{{ num_teams|pluralize }}
+            <!-- you can add more stats later if you want -->
+          {% endwith %}
+        </div>
+
+        {% if tc.teams.all %}
+          <ul class="team-list">
+            {% for team in tc.teams.all %}
+              <li
+                class="team-row"
+                data-team-name="{{ team.team_name|lower }}"
+                data-team-number="{{ team.team_number }}"
+              >
+                <div class="team-name">
+                  <a href="{% url 'events:team_detail' team.team_id %}">
+                    {{ team.team_name }}
+                  </a>
+                </div>
+                <div class="team-number">
+                  #{{ team.team_number }}
+                </div>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="empty">No teams in this class yet.</p>
+        {% endif %}
+      </section>
+    {% endfor %}
+
+    {% if unclassified_teams %}
+      <section class="class-card" id="class-unclassified">
+        <div class="class-header">
+          <h2>Unclassified Teams</h2>
+          <span class="class-badge">
+            Unclassified
+          </span>
+        </div>
+
+        <ul class="team-list">
+          {% for team in unclassified_teams %}
+            <li
+              class="team-row"
+              data-team-name="{{ team.team_name|lower }}"
+              data-team-number="{{ team.team_number }}"
+            >
+              <div class="team-name">
+                <a href="{% url 'events:team_detail' team.team_id %}">
+                  {{ team.team_name }}
+                </a>
+              </div>
+              <div class="team-number">
+                #{{ team.team_number }}
+              </div>
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+  </div>
+
+  <p id="noSearchResults" class="no-search-results" style="display:none;">
+    No teams match your search.
+  </p>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script>
+    (function () {
+      const input = document.getElementById('teamSearchInput');
+      const classCards = Array.from(document.querySelectorAll('.class-card'));
+      const noResultsEl = document.getElementById('noSearchResults');
+
+      if (!input || !classCards.length) return;
+
+      function applyFilter() {
+        const query = input.value.trim().toLowerCase();
+        let anyVisibleTeam = false;
+
+        classCards.forEach(card => {
+          const rows = Array.from(card.querySelectorAll('.team-row'));
+          if (!rows.length) {
+            // If class has no teams at all, leave it as-is
+            return;
+          }
+
+          let cardHasVisible = false;
+          rows.forEach(row => {
+            const name = row.getAttribute('data-team-name') || '';
+            const number = (row.getAttribute('data-team-number') || '').toString().toLowerCase();
+
+            const match =
+              !query ||
+              name.includes(query) ||
+              number.includes(query);
+
+            row.style.display = match ? '' : 'none';
+            if (match) {
+              cardHasVisible = true;
+              anyVisibleTeam = true;
+            }
+          });
+
+          card.style.display = cardHasVisible || !query ? '' : 'none';
+        });
+
+        if (noResultsEl) {
+          noResultsEl.style.display = query && !anyVisibleTeam ? '' : 'none';
+        }
+      }
+
+      input.addEventListener('input', applyFilter);
+    })();
+  </script>
+{% endblock %}

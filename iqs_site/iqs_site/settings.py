@@ -74,9 +74,17 @@ WSGI_APPLICATION = 'iqs_site.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    "default": {
+        "ENGINE": "django.db.backends.mysql",
+        "NAME": "IQS_Test_Environment",
+        "USER": "website",
+        "PASSWORD": "darkcyde15",
+        "HOST": "38.22.155.20",    # or the IP/host where MySQL lives
+        "PORT": "3306",         # or your custom port
+        "OPTIONS": {
+            "charset": "utf8mb4",
+            "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+        },
     }
 }
 

@@ -1,0 +1,101 @@
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #020617;
+  color: #e5e7eb;
+}
+
+a {
+  color: #38bdf8;
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.site-header {
+  border-bottom: 1px solid #1f2937;
+  background: #020617;
+}
+.logo a {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.site-main {
+  flex: 1;
+}
+
+.site-footer {
+  border-top: 1px solid #1f2937;
+  padding: 1rem 0;
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+h1, h2, h3, h4 {
+  margin-top: 0;
+}
+
+.card-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.card {
+  padding: 1rem 1.25rem;
+  border-radius: 0.5rem;
+  background: #020617;
+  border: 1px solid #1f2937;
+}
+
+.event-header {
+  margin-bottom: 1.5rem;
+}
+.event-meta {
+  color: #9ca3af;
+}
+
+.event-section {
+  margin-top: 2rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.table thead {
+  background: #020617;
+}
+.table th,
+.table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #1f2937;
+}
+.table th {
+  text-align: left;
+  font-weight: 500;
+  color: #cbd5f5;
+}
+
+.leaderboard {
+  margin-bottom: 1.5rem;
+}

@@ -1,95 +1,306 @@
 {% extends "base.html" %}
-{% block title %}{{ event.name }} – International Quarter Scale{% endblock %}
+
+{% block title %}{{ event.event_name }} – Event Overview{% endblock %}
+
+{% block extra_styles %}
+  .hero {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0f172a;
+    border: 1px solid #1f2937;
+  }
+
+  .hero h1 {
+    margin: 0 0 0.4rem;
+    font-size: 1.6rem;
+  }
+
+  .hero-meta {
+    font-size: 0.9rem;
+    color: #9ca3af;
+  }
+
+  h2 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #020617;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  th, td {
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid #1f2937;
+    font-size: 0.9rem;
+    text-align: left;
+  }
+
+  th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #9ca3af;
+    background: #030712;
+  }
+
+  tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:nth-child(even) {
+    background: #020617;
+  }
+
+  .empty {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+
+  .hook-section {
+    margin-bottom: 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+  }
+
+  .hook-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .hook-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .hook-winner {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    text-align: right;
+  }
+
+  .hook-winner span {
+    font-weight: 600;
+    color: #e5e7eb;
+  }
+
+  /* Rankings grid for per-class leaderboards */
+  .rankings-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (min-width: 900px) {
+    .rankings-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+
+  .rankings-card {
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+  }
+
+  .rankings-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .rankings-card-header h3 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .class-badge {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    border: 1px solid #1f2937;
+    background: #020617;
+    color: #9ca3af;
+    white-space: nowrap;
+  }
+{% endblock %}
 
 {% block content %}
-  <header class="event-header">
-    <h2>{{ event.name }}</h2>
-    <p class="event-meta">
-      {% if event.start_date %}
-        {{ event.start_date }}{% if event.end_date %} – {{ event.end_date }}{% endif %}
+  <!-- Event hero -->
+  <section class="hero">
+    <h1>{{ event.event_name }}</h1>
+    <div class="hero-meta">
+      {% if event.event_datetime %}
+        <div>
+          Date &amp; time:
+          {{ event.event_datetime|date:"F d, Y h:i A" }}
+        </div>
       {% endif %}
-      {% if event.location %} • {{ event.location }}{% endif %}
-    </p>
-  </header>
-
-  <section class="event-section">
-    <h3>Leaderboards</h3>
-
-    {% if leaderboard %}
-      {% for key, pulls in leaderboard.items %}
-        {% with class_name=key.0 hook_number=key.1 %}
-          <div class="leaderboard">
-            <h4>
-              {{ class_name }}
-              {% if hook_number %} – Hook {{ hook_number }}{% endif %}
-            </h4>
-            <table class="table">
-              <thead>
-                <tr>
-                  <th>Place</th>
-                  <th>Team</th>
-                  <th>School</th>
-                  <th>Distance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for pull in pulls %}
-                  <tr>
-                    <td>{{ forloop.counter }}</td>
-                    <td>{{ pull.team.name }}</td>
-                    <td>{{ pull.team.school }}</td>
-                    <td>
-                      {% if pull.final_distance %}
-                        {{ pull.final_distance|floatformat:2 }} ft
-                      {% else %}
-                        —
-                      {% endif %}
-                    </td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-        {% endwith %}
-      {% endfor %}
-    {% else %}
-      <p>No results yet for this event.</p>
-    {% endif %}
+      <div>
+        Total teams in this event:
+        <strong>{{ event_teams|length }}</strong>
+      </div>
+      <div>
+        Total hooks:
+        <strong>{{ event_hooks|length }}</strong>
+      </div>
+    </div>
   </section>
 
-  <section class="event-section">
-    <h3>All pulls</h3>
-    {% if pulls %}
-      <table class="table">
+  <!-- Rankings by class -->
+  <section>
+    <h2>Rankings by class</h2>
+
+    {% if rankings_by_class %}
+      <div class="rankings-grid">
+        {# rankings_by_class is a dict: {class_name: [EventTeam, ...]} #}
+        {% for class_name, entries in rankings_by_class.items %}
+          <div class="rankings-card">
+            <div class="rankings-card-header">
+              <h3>{{ class_name }}</h3>
+              <span class="class-badge">{{ class_name }}</span>
+            </div>
+
+            {% if entries %}
+              <table>
+                <thead>
+                  <tr>
+                    <th>Rank</th>
+                    <th>Team</th>
+                    <th>Team #</th>
+                    <th>Total Score</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for et in entries %}
+                    <tr>
+                      <td>{{ forloop.counter }}</td>
+                      <td>
+                        <a href="{% url 'events:team_event_detail' event_id=event.event_id team_id=et.team_id %}">
+                          {{ et.team.team_name }}
+                        </a>
+                      </td>
+                      <td>{{ et.team.team_number }}</td>
+                      <td>{{ et.total_score|default_if_none:"N/A" }}</td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            {% else %}
+              <p class="empty">No teams in this class for this event.</p>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% elif event_teams %}
+      {# Fallback: single leaderboard if you don't pass rankings_by_class #}
+      <table>
         <thead>
           <tr>
+            <th>Rank</th>
             <th>Team</th>
-            <th>School</th>
-            <th>Class</th>
-            <th>Hook</th>
-            <th>Distance</th>
+            <th>Team #</th>
+            <th>Total Score</th>
           </tr>
         </thead>
         <tbody>
-          {% for pull in pulls %}
+          {% for et in event_teams %}
             <tr>
-              <td>{{ pull.team.name }}</td>
-              <td>{{ pull.team.school }}</td>
-              <td>{% if pull.hook %}{{ pull.hook.class_name }}{% else %}—{% endif %}</td>
-              <td>{% if pull.hook %}{{ pull.hook.number }}{% else %}—{% endif %}</td>
+              <td>{{ forloop.counter }}</td>
               <td>
-                {% if pull.final_distance %}
-                  {{ pull.final_distance|floatformat:2 }} ft
-                {% else %}
-                  —
-                {% endif %}
+                <a href="{% url 'events:team_event_detail' event_id=event.event_id team_id=et.team_id %}">
+                  {{ et.team.team_name }}
+                </a>
               </td>
+              <td>{{ et.team.team_number }}</td>
+              <td>{{ et.total_score|default_if_none:"N/A" }}</td>
             </tr>
           {% endfor %}
         </tbody>
       </table>
     {% else %}
-      <p>No pulls recorded yet.</p>
+      <p class="empty">No rankings available for this event yet.</p>
+    {% endif %}
+  </section>
+
+  <!-- Hook results -->
+  <section>
+    <h2>Hook results</h2>
+
+    {% if event_hooks %}
+      {% for hook in event_hooks %}
+        <div class="hook-section">
+          <div class="hook-header">
+            <h3>
+              {% if hook.hook_name %}
+                {{ hook.hook_name }}
+              {% else %}
+                Hook {{ hook.hook_id }}
+              {% endif %}
+            </h3>
+
+            <div class="hook-winner">
+              {% if hook.best_pull %}
+                Best pull:
+                <span>{{ hook.best_pull.team.team_name }}</span>
+                – {{ hook.best_pull.final_distance|default_if_none:"N/A" }}
+              {% else %}
+                No pulls yet.
+              {% endif %}
+            </div>
+          </div>
+
+          {% if hook.pull_entries %}
+            <table>
+              <thead>
+                <tr>
+                  <th>Team</th>
+                  <th>Team #</th>
+                  <th>Final Distance</th>
+                  <th>Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for pull in hook.pull_entries %}
+                  <tr>
+                    <td>{{ pull.team.team_name }}</td>
+                    <td>{{ pull.team.team_number }}</td>
+                    <td>{{ pull.final_distance|default_if_none:"N/A" }}</td>
+                    <td>
+                      <a href="{% url 'events:pull_detail' pull_id=pull.pull_id %}">
+                        View pull
+                      </a>
+                    </td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p class="empty">No pulls for this hook yet.</p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    {% else %}
+      <p class="empty">No hooks defined for this event.</p>
     {% endif %}
   </section>
 {% endblock %}
