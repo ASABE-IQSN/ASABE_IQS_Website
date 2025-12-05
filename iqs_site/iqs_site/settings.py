@@ -27,7 +27,7 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["internationalquarterscale.com","127.0.0.1"]
 
-STATICFILES_DIRS = ["/var/www/quarterscale/static"]
+STATICFILES_DIRS = []
 # Application definition
 
 STATIC_ROOT = "/var/www/quarterscale/static/"
