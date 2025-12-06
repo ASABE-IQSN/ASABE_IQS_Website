@@ -7,8 +7,8 @@ app_name = "tech_in"
 urlpatterns = [
     path("tech-in/", views.tech_in_overview, name="overview"),
     path(
-        "tech-in/et/<int:event_tractor_id>/subcat/<int:subcategory_id>/",
-        views.tech_in_detail,
-        name="detail",
+        "tech-in/team/<int:tractor_event_id>/",
+        views.tech_in_team_detail,
+        name="team_detail",
     ),
 ]

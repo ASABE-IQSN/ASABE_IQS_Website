@@ -1,3 +1,4 @@
+{# templates/tech_in/overview.html #}
 {% extends "base.html" %}
 
 {% block title %}Tech Inspection – Overview{% endblock %}
@@ -8,34 +9,30 @@
 <table>
   <thead>
     <tr>
+      <th>Event</th>
       <th>Team</th>
-      <th>Subcategory</th>
-      <th>Category</th>
-      <th>Status</th>
+      {% for cat in categories %}
+        <th>{{ cat.rule_category_name }}</th>
+      {% endfor %}
     </tr>
   </thead>
   <tbody>
-    {% for tractor in tractors %}
-      {% for sub in tractor.subcategories %}
-        <tr>
-          <td>{{ tractor.team_name }}</td>
+    {% for row in rows %}
+      <tr>
+        <td>{{ row.event_name }}</td>
+        <a href="{% url 'tech_in:team_detail' tractor_event_id=row.tractor_event.tractor_event_id %}">
+            {{ row.team_name }}
+        </a>
+        {% for cell in row.category_values %}
           <td>
-            <a href="{% url 'tech_in:detail' tractor.event_tractor_id sub.id %}">
-              {{ sub.rule_subcatagory_name }}
-            </a>
+            {{ cell.percent_complete }}%
           </td>
-          <td>{{ sub.category_name }}</td>
-          <td>
-            {% if sub.status == "PASS" %}
-              ✅ Pass
-            {% elif sub.status == "FAIL" %}
-              ❌ Fail
-            {% else %}
-              ⏳ In Progress
-            {% endif %}
-          </td>
-        </tr>
-      {% endfor %}
+        {% endfor %}
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="{{ 2|add:categories|length }}">No teams found.</td>
+      </tr>
     {% endfor %}
   </tbody>
 </table>

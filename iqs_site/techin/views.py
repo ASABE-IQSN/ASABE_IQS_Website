@@ -1,106 +1,130 @@
 # tech_in/views.py
 from django.db.models import Count, Q
 from django.shortcuts import render, get_object_or_404
-
+from .models import RuleCategory
 from .models import EventTractorRuleStatus, RuleSubCategory
 from events.models import TractorEvent  # adjust app name if needed
-
+from collections import OrderedDict
 
 def tech_in_overview(request):
-    """
-    Show, for each EventTractor, the status of each rule subcategory.
-    """
-    # Aggregate per (event_tractor, subcategory)
-    agg = (
-        EventTractorRuleStatus.objects
-        .select_related(
-            "event_tractor__team",
-            "event_tractor__event",
-            "rule__sub_category",
-            "rule__sub_category__category",
-        )
-        .values(
-            "event_tractor_id",
-            "event_tractor__team__team_name",
-            "event_tractor__team_id",
-            "event_tractor__event_id",
-            "rule__sub_category_id",
-            "rule__sub_category__rule_subcatagory_name",
-            "rule__sub_category__category__rule_catagory_name",
-        )
-        .annotate(
-            total_rules=Count("event_tractor_rule_status_id"),
-            passed_rules=Count("event_tractor_rule_status_id", filter=Q(status=3)),
-            failed_rules=Count("event_tractor_rule_status_id", filter=Q(status=1)),
-        )
+    # All rule categories become columns
+    categories = list(
+        RuleCategory.objects.all().order_by("rule_category_name")
     )
 
-    # Build a structured object:
-    # tractors[event_tractor_id] = {
-    #   "team_name": ...,
-    #   "event_id": ...,
-    #   "subcategories": [
-    #       { "id": ..., "name": ..., "category_name": ..., "status": ... }
-    #   ]
-    # }
-    tractors = {}
-    for row in agg:
-        et_id = row["event_tractor_id"]
-        if et_id not in tractors:
-            tractors[et_id] = {
-                "event_tractor_id": et_id,
-                "team_name": row["event_tractor__team__team_name"],
-                "event_id": row["event_tractor__event_id"],
-                "subcategories": [],
-            }
+    # All tractors at events – one row per tractor/team
+    tractor_events = (
+        TractorEvent.objects
+        .filter(event_id=25,team__team_class=1)
+        .select_related("team", "event")
+        .order_by("event__event_name", "team__team_name")
+    )
 
-        if row["failed_rules"] > 0:
-            status = "FAIL"
-        elif row["passed_rules"] == row["total_rules"]:
-            status = "PASS"
-        else:
-            status = "IN PROGRESS"
+    rows = []
+    for te in tractor_events:
+        row = {
+            "tractor_event": te,
+            "team_name": te.team.team_name,
+            "event_name": te.event.event_name,
+            "category_values": [],
+        }
 
-        tractors[et_id]["subcategories"].append({
-            "id": row["rule__sub_category_id"],
-            "name": row["rule__sub_category__rule_subcatagory_name"],
-            "category_name": row["rule__sub_category__category__rule_catagory_name"],
-            "status": status,
-        })
+        # For now, completion is hard-coded to 0%
+        for cat in categories:
+            row["category_values"].append({
+                "category": cat,
+                "percent_complete": 0,
+            })
+
+        rows.append(row)
 
     context = {
-        "tractors": tractors.values(),
+        "categories": categories,
+        "rows": rows,
     }
     return render(request, "tech_in/overview.html", context)
 
 
-def tech_in_detail(request, event_tractor_id, subcategory_id):
+def tech_in_team_detail(request, tractor_event_id):
     """
-    Detail view for one EventTractor + one RuleSubCategory.
-    Shows each individual rule and status.
+    Detail view for a single TractorEvent (team at an event).
+
+    Now groups rule statuses as:
+        Category → Subcategory → [rules]
+    so the template can render one big block per category.
     """
-    event_tractor = get_object_or_404(
+    tractor_event = get_object_or_404(
         TractorEvent.objects.select_related("team", "event"),
-        pk=event_tractor_id,
-    )
-    subcategory = get_object_or_404(
-        RuleSubCategory.objects.select_related("category"),
-        pk=subcategory_id,
+        pk=tractor_event_id,
     )
 
+    # Load all rule statuses for this tractor
     rule_statuses = (
         EventTractorRuleStatus.objects
-        .select_related("rule")
-        .filter(
-            event_tractor_id=event_tractor_id,
-            rule__sub_category_id=subcategory_id,
+        .select_related(
+            "rule",
+            "rule__sub_category",
+            "rule__sub_category__category",
         )
-        .order_by("rule__code")
+        .filter(event_tractor=tractor_event)
+        .order_by(
+            "rule__sub_category__category__rule_category_name",
+            "rule__sub_category__rule_subcategory_name",
+            "rule__rule_id",
+        )
     )
 
-    context = {
-        "event_tractor": event_tractor,
-        "subcategory": subcategory,
-        "rule_statuses": rule_statuses,
+    STATUS_MAP = {
+        0: ("Not Started", "status-not-started"),
+        1: ("Failed", "status-failed"),
+        2: ("Corrected", "status-corrected"),
+        3: ("Pass", "status-pass"),
     }
-    return render(request, "tech_in/detail.html", context)
+
+    # Build:
+    # categories[cat_id] = {
+    #   "category": <RuleCategory>,
+    #   "subcategories": OrderedDict({
+    #       subcat_id: {
+    #           "subcategory": <RuleSubCategory>,
+    #           "rules": [ { rule, status_label, status_class } ... ]
+    #       }
+    #   })
+    # }
+    categories = OrderedDict()
+
+    for rs in rule_statuses:
+        subcat = rs.rule.sub_category
+        cat = subcat.category
+
+        cat_id = cat.rule_category_id
+        subcat_id = subcat.rule_subcategory_id
+
+        if cat_id not in categories:
+            categories[cat_id] = {
+                "category": cat,
+                "subcategories": OrderedDict(),
+            }
+
+        if subcat_id not in categories[cat_id]["subcategories"]:
+            categories[cat_id]["subcategories"][subcat_id] = {
+                "subcategory": subcat,
+                "rules": [],
+            }
+
+        label, css_class = STATUS_MAP.get(rs.status, ("Unknown", "status-unknown"))
+
+        categories[cat_id]["subcategories"][subcat_id]["rules"].append({
+            "rule": rs.rule,
+            "status": rs.status,
+            "status_label": label,
+            "status_class": css_class,
+        })
+
+    context = {
+        "tractor_event": tractor_event,
+        "team": tractor_event.team,
+        "event": tractor_event.event,
+        "categories": categories.values(),  # list of {category, subcategories}
+    }
+    return render(request, "tech_in/team_detail.html", context)

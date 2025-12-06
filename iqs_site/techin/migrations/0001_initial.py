@@ -36,22 +36,22 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RuleCategory',
             fields=[
-                ('rule_catagory_id', models.AutoField(db_column='id', primary_key=True, serialize=False)),
-                ('rule_catagory_name', models.CharField(max_length=255)),
+                ('rule_category_id', models.AutoField(db_column='id', primary_key=True, serialize=False)),
+                ('rule_category_name', models.CharField(max_length=255)),
             ],
             options={
-                'db_table': 'rule_catagories',
+                'db_table': 'rule_categories',
                 'managed': False,
             },
         ),
         migrations.CreateModel(
             name='RuleSubCategory',
             fields=[
-                ('rule_subcatagory_id', models.AutoField(db_column='id', primary_key=True, serialize=False)),
-                ('rule_subcatagory_name', models.CharField(max_length=255)),
+                ('rule_subcategory_id', models.AutoField(db_column='id', primary_key=True, serialize=False)),
+                ('rule_subcategory_name', models.CharField(max_length=255)),
             ],
             options={
-                'db_table': 'rule_sub_catagories',
+                'db_table': 'rule_sub_categories',
                 'managed': False,
             },
         ),

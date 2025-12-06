@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}
+Tech Inspection – {{ team.team_name }} – {{ event.event_name }}
+{% endblock %}
+
+{% block content %}
+<h1>Tech Inspection Detail</h1>
+
+<p>
+  <strong>Team:</strong> {{ team.team_name }}<br>
+  <strong>Event:</strong> {{ event.event_name }}<br>
+</p>
+
+<div class="category-list">
+  {% for cat in categories %}
+    <div class="category-card">
+      <h2>{{ cat.category.rule_category_name }}</h2>
+
+      {% for sc in cat.subcategories.values %}
+        <div class="subcategory-block">
+          <h3>{{ sc.subcategory.rule_subcategory_name }}</h3>
+
+          {% if sc.rules %}
+            <table class="rules-table">
+              <thead>
+                <tr>
+                  <th>Description</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for r in sc.rules %}
+                  <tr class="{{ r.status_class }}">
+                    <td>{{ r.rule.rule_content }}</td>
+                    <td>{{ r.status_label }}</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          {% else %}
+            <p><em>No rules in this subcategory yet.</em></p>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  {% empty %}
+    <p>No rule statuses found for this team.</p>
+  {% endfor %}
+</div>
+
+<p>
+  <a href="{% url 'tech_in:overview' %}">← Back to overview</a>
+</p>
+
+<style>
+  .category-list {
+    max-width: 2000px;
+    margin: 0 auto;
+  }
+
+  .category-card {
+    border: 1px solid #4b5563;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+    background: #020617;
+  }
+
+  .category-card h2 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    font-size: 1.25rem;
+  }
+
+  .subcategory-block {
+    margin-bottom: 1rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background: #030712;
+  }
+
+  .subcategory-block h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.05rem;
+  }
+
+  .rules-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  .rules-table th,
+  .rules-table td {
+    border-bottom: 1px solid #374151;
+    padding: 0.3rem 0.4rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  /* Simple status coloring */
+  .status-not-started td { opacity: 0.7; }
+  .status-failed td { color: #f87171; }
+  .status-corrected td { color: #eab308; }
+  .status-pass td { color: #4ade80; }
+</style>
+{% endblock %}
