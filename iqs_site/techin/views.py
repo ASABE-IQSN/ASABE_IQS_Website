@@ -5,6 +5,8 @@ from .models import RuleCategory
 from .models import EventTractorRuleStatus, RuleSubCategory
 from events.models import TractorEvent  # adjust app name if needed
 from collections import OrderedDict
+from .permissions import user_can_access_team
+from django.shortcuts import redirect
 
 def tech_in_overview(request):
     # All rule categories become columns
@@ -127,4 +129,7 @@ def tech_in_team_detail(request, tractor_event_id):
         "event": tractor_event.event,
         "categories": categories.values(),  # list of {category, subcategories}
     }
-    return render(request, "tech_in/team_detail.html", context)
+    if user_can_access_team(request.user,tractor_event):
+        return render(request, "tech_in/team_detail.html", context)
+    else:
+        return render(request, "tech_in/permission_denied.html", status=403)
