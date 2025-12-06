@@ -1,0 +1,30 @@
+name: Update dev working copy on self-hosted runner
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy-dev:
+    runs-on: [self-hosted]
+
+    steps:
+      - name: Show runner info
+        run: |
+          echo "Running on $(hostname)"
+          pwd
+
+      - name: Update repo in target directory
+        run: |
+          TARGET_DIR="/home/david/IQS-Dev"
+
+          cd "$TARGET_DIR"
+
+          git checkout dev
+
+          # Update from origin
+          git fetch origin dev
+          git reset --hard origin/dev
+
+
