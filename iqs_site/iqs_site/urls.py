@@ -16,8 +16,14 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.conf import settings
+
+if getattr(settings, "SITE_VARIANT", "normal") == "testing":
+    root_prefix = "testing/"   
+else:
+    root_prefix = ""           
 
 urlpatterns = [
-    path('testing/admin/', admin.site.urls),
-    path("testing/", include("events.urls", namespace="events")),
+    path(root_prefix+'admin/', admin.site.urls),
+    path(root_prefix, include("events.urls", namespace="events")),
 ]
