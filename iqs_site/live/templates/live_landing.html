@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Live Results – {{ event.event_name|default:"IQS Live" }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .live-page {
+    min-height: 100vh;
+    padding: 1.5rem 1rem 3rem;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .live-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .live-header h1 {
+    margin: 0;
+    font-size: 1.75rem;
+  }
+
+  .live-header p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #9ca3af;
+  }
+
+  .pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  .pill {
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: #020617;
+    border: 1px solid #1f2937;
+    color: #e5e7eb;
+  }
+
+  .live-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  @media (min-width: 900px) {
+    .live-grid {
+      grid-template-columns: 2fr 1.5fr;
+      align-items: flex-start;
+    }
+  }
+
+  .live-card {
+    background: #020617;
+    border-radius: 0.75rem;
+    border: 1px solid #1f2937;
+    padding: 1rem 1.1rem;
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.6);
+  }
+
+  .live-card + .live-card {
+    margin-top: 0.75rem;
+  }
+
+  .live-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.5rem;
+  }
+
+  .live-card-title {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .live-card-subtitle {
+    font-size: 0.8rem;
+    color: #9ca3af;
+  }
+
+  .live-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+
+  .live-table th,
+  .live-table td {
+    padding: 0.35rem 0.25rem;
+    text-align: left;
+  }
+
+  .live-table th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #9ca3af;
+    border-bottom: 1px solid #111827;
+  }
+
+  .live-table tbody tr:nth-child(even) {
+    background: rgba(15, 23, 42, 0.6);
+  }
+
+  .live-table tbody tr.highlight {
+    background: rgba(22, 163, 74, 0.2);
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+  }
+
+  .badge-green {
+    background: rgba(22, 163, 74, 0.15);
+    color: #bbf7d0;
+  }
+
+  .badge-yellow {
+    background: rgba(234, 179, 8, 0.15);
+    color: #facc15;
+  }
+
+  .badge-red {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fecaca;
+  }
+
+  .schedule-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .schedule-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid #020617;
+  }
+
+  .schedule-time {
+    width: 5.5rem;
+    flex-shrink: 0;
+    color: #9ca3af;
+  }
+
+  .schedule-main {
+    flex: 1;
+  }
+
+  .schedule-location {
+    font-size: 0.8rem;
+    color: #9ca3af;
+  }
+
+  .section-group-title {
+    margin: 1rem 0 0.5rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+  }
+
+  .subgrid {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  @media (min-width: 900px) {
+    .subgrid-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .last-updated {
+    font-size: 0.75rem;
+    color: #6b7280;
+  }
+
+  .live-status-dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 999px;
+    background: #22c55e;
+    display: inline-block;
+    margin-right: 0.3rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="live-page">
+  <header class="live-header">
+    <h1>Live Results – {{ event.event_name|default:"IQS Competition" }}</h1>
+    <p>
+      <span class="live-status-dot"></span>
+      Live scoring and schedules for on-site teams.
+    </p>
+    <div class="pill-row">
+      <span class="pill">Pulls</span>
+      <span class="pill">Maneuverability</span>
+      <span class="pill">Durability</span>
+      <span class="pill">Tech Inspection</span>
+      <span class="pill">Awards</span>
+      <span class="pill">Defense of Design</span>
+      <span class="pill">Presentations</span>
+      <span class="pill">Event Schedule</span>
+    </div>
+    <p class="last-updated">
+      Last update: <span id="last-updated-text">{{ last_updated|default:"Waiting for first update…" }}</span>
+    </p>
+  </header>
+
+  <div class="live-grid">
+    <!-- LEFT COLUMN: Dynamic results -->
+    <div>
+      <!-- Pulls -->
+      <section id="pulls-card" class="live-card">
+        <div class="live-card-header">
+          <div>
+            <div class="live-card-title">Pulls – Live Leaderboard</div>
+            <div class="live-card-subtitle">Current hook & overall standings</div>
+          </div>
+          <div class="badge badge-green">Live</div>
+        </div>
+        <table class="live-table" id="pulls-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Team</th>
+              <th>Hook</th>
+              <th>Distance (ft)</th>
+              <th>Class</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- to be filled by JS / template loop -->
+            <tr>
+              <td>1</td>
+              <td>Example Team</td>
+              <td>Hook 3</td>
+              <td>295.4</td>
+              <td>Production</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Maneuverability & Durability -->
+      <h2 class="section-group-title">Dynamic Events</h2>
+      <div class="subgrid subgrid-2">
+        <!-- Maneuverability -->
+        <section id="maneuver-card" class="live-card">
+          <div class="live-card-header">
+            <div>
+              <div class="live-card-title">Maneuverability</div>
+              <div class="live-card-subtitle">Live scoring</div>
+            </div>
+          </div>
+          <table class="live-table" id="maneuver-table">
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th>Score</th>
+                <th>Penalties</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Example Team</td>
+                <td>85.0</td>
+                <td>+5 sec</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Durability -->
+        <section id="durability-card" class="live-card">
+          <div class="live-card-header">
+            <div>
+              <div class="live-card-title">Durability</div>
+              <div class="live-card-subtitle">Progress & completion</div>
+            </div>
+          </div>
+          <table class="live-table" id="durability-table">
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th>Laps</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Example Team</td>
+                <td>12 / 15</td>
+                <td><span class="badge badge-yellow">On course</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <!-- Tech-in Status & Awards -->
+      <h2 class="section-group-title">Tech & Awards</h2>
+      <div class="subgrid subgrid-2">
+        <!-- Tech In -->
+        <section id="tech-card" class="live-card">
+          <div class="live-card-header">
+            <div>
+              <div class="live-card-title">Tech Inspection Status</div>
+              <div class="live-card-subtitle">By team</div>
+            </div>
+          </div>
+          <table class="live-table" id="tech-table">
+            <thead>
+              <tr>
+                <th>Team</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Example Team</td>
+                <td><span class="badge badge-green">Passed</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+
+        <!-- Awards -->
+        <section id="awards-card" class="live-card">
+          <div class="live-card-header">
+            <div>
+              <div class="live-card-title">Awards (Live / Final)</div>
+              <div class="live-card-subtitle">Populated as events conclude</div>
+            </div>
+          </div>
+          <table class="live-table" id="awards-table">
+            <thead>
+              <tr>
+                <th>Award</th>
+                <th>Team</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Example Award</td>
+                <td>Example Team</td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN: Schedules -->
+    <aside>
+      <!-- General Event Schedule -->
+      <section id="event-schedule-card" class="live-card">
+        <div class="live-card-header">
+          <div>
+            <div class="live-card-title">General Event Schedule</div>
+            <div class="live-card-subtitle">Today’s timeline</div>
+          </div>
+        </div>
+        <ul class="schedule-list" id="event-schedule-list">
+          <li class="schedule-item">
+            <div class="schedule-time">08:00</div>
+            <div class="schedule-main">
+              Registration & Tech Open
+              <div class="schedule-location">Tech Barn</div>
+            </div>
+          </li>
+          <li class="schedule-item">
+            <div class="schedule-time">10:00</div>
+            <div class="schedule-main">
+              Pulls Begin
+              <div class="schedule-location">Main Track</div>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Defense of Design Schedule -->
+      <section id="dod-schedule-card" class="live-card">
+        <div class="live-card-header">
+          <div>
+            <div class="live-card-title">Defense of Design</div>
+            <div class="live-card-subtitle">Team presentation slots</div>
+          </div>
+        </div>
+        <ul class="schedule-list" id="dod-schedule-list">
+          <li class="schedule-item">
+            <div class="schedule-time">09:00</div>
+            <div class="schedule-main">
+              Example Team
+              <div class="schedule-location">Room A</div>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <!-- Presentation Schedule -->
+      <section id="presentation-schedule-card" class="live-card">
+        <div class="live-card-header">
+          <div>
+            <div class="live-card-title">Presentation Schedule</div>
+            <div class="live-card-subtitle">Business / other presentations</div>
+          </div>
+        </div>
+        <ul class="schedule-list" id="presentation-schedule-list">
+          <li class="schedule-item">
+            <div class="schedule-time">13:30</div>
+            <div class="schedule-main">
+              Example Team
+              <div class="schedule-location">Room B</div>
+            </div>
+          </li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</div>
+{% endblock %}

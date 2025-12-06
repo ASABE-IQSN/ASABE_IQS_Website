@@ -18,7 +18,7 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 @cache_page(300)  # 300 seconds = 5 minutes
 def landing(request):
     now = timezone.now()  # timezone-aware; Django prefers this
-    print("Main Page")    # you can replace with logging later
+    
 
     next_event = (
         Event.objects

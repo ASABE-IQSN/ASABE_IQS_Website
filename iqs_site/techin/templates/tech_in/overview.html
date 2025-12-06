@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Tech Inspection – Overview{% endblock %}
+
+{% block content %}
+<h1>Tech Inspection – Overview</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Team</th>
+      <th>Subcategory</th>
+      <th>Category</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for tractor in tractors %}
+      {% for sub in tractor.subcategories %}
+        <tr>
+          <td>{{ tractor.team_name }}</td>
+          <td>
+            <a href="{% url 'tech_in:detail' tractor.event_tractor_id sub.id %}">
+              {{ sub.rule_subcatagory_name }}
+            </a>
+          </td>
+          <td>{{ sub.category_name }}</td>
+          <td>
+            {% if sub.status == "PASS" %}
+              ✅ Pass
+            {% elif sub.status == "FAIL" %}
+              ❌ Fail
+            {% else %}
+              ⏳ In Progress
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

@@ -46,7 +46,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'events'
+    'django.contrib.sites',
+    'django.contrib.sitemaps',
+    'events',
+    'live',
+    "techin"
 ]
 
 MIDDLEWARE = [
@@ -78,7 +82,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'iqs_site.wsgi.application'
 
-
+SITE_ID = 1
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 

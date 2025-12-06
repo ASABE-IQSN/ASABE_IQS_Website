@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Tech Inspection – {{ event_tractor.team.team_name }} / {{ subcategory.name }}{% endblock %}
+
+{% block content %}
+<h1>Tech Inspection Detail</h1>
+
+<p>
+  <strong>Team:</strong> {{ event_tractor.team.team_name }}<br>
+  <strong>Event:</strong> {{ event_tractor.event.event_name }}<br>
+  <strong>Category:</strong> {{ subcategory.category.name }}<br>
+  <strong>Subcategory:</strong> {{ subcategory.name }}
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Rule</th>
+      <th>Description</th>
+      <th>Status</th>
+      <th>Last Updated</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for rs in rule_statuses %}
+      <tr>
+        <td>{{ rs.rule.code }}</td>
+        <td>{{ rs.rule.description }}</td>
+        <td>
+          {% if rs.status == "PASS" %}
+            ✅ Pass
+          {% elif rs.status == "FAIL" %}
+            ❌ Fail
+          {% else %}
+            ⏳ Pending
+          {% endif %}
+        </td>
+        <td>{{ rs.last_updated }}</td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="4">No rules found for this subcategory.</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p>
+  <a href="{% url 'tech_in:overview' %}">← Back to overview</a>
+</p>
+{% endblock %}
