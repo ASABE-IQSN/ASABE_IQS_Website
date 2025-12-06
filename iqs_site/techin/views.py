@@ -137,18 +137,38 @@ def tech_in_team_detail(request, tractor_event_id):
 def tech_in_overview(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
 
+    # All categories with their subcategories & rules
     categories = list(
-        RuleCategory.objects.all().order_by("rule_category_name")
+        RuleCategory.objects
+        .prefetch_related("subcategories__rules")
+        .order_by("rule_category_name")
     )
 
-    tractor_events = (
+    # All tractor-events (teams) for this event
+    tractor_events = list(
         TractorEvent.objects
-        .filter(event=event)     # <--- keep the event filter
+        .filter(event=event)
         .select_related("team", "event")
         .order_by("team__team_name")
     )
 
+    # All statuses for these tractor-events, indexed by (tractor_event_id, rule_id)
+    statuses_qs = (
+        EventTractorRuleStatus.objects
+        .filter(event_tractor__in=tractor_events)
+        .select_related("rule")
+    )
+    status_by_te_rule = {
+        (rs.event_tractor_id, rs.rule.rule_id): rs.status
+        for rs in statuses_qs
+    }
+
+    def is_complete(status_value: int | None) -> bool:
+        # Pass (3) or Corrected (2) count as "complete"
+        return status_value in (2, 3)
+
     rows = []
+
     for te in tractor_events:
         row = {
             "tractor_event": te,
@@ -158,9 +178,25 @@ def tech_in_overview(request, event_id):
         }
 
         for cat in categories:
+            total_rules = 0
+            completed_rules = 0
+
+            # all rules in this category (via subcategories)
+            for subcat in cat.subcategories.all():
+                for rule in subcat.rules.all():
+                    total_rules += 1
+                    status_value = status_by_te_rule.get((te.pk, rule.rule_id))
+                    if is_complete(status_value):
+                        completed_rules += 1
+
+            if total_rules > 0:
+                percent = round((completed_rules / total_rules) * 100)
+            else:
+                percent = 0
+
             row["category_values"].append({
                 "category": cat,
-                "percent_complete": 0,  # placeholder for now
+                "percent_complete": percent,
             })
 
         rows.append(row)
@@ -256,26 +292,64 @@ def team_tech_overview(request, event_id, tractor_event_id):
         event=event,
     )
 
-    # All categories + their subcategories
+    # Pull all categories, and for each category prefetch its subcategories and rules
     categories = (
         RuleCategory.objects
-        .prefetch_related("subcategories")
+        .prefetch_related("subcategories__rules")
         .order_by("rule_category_name")
     )
 
-    # For now, all percentages are 0
+    # All statuses for this tractor/event, indexed by rule_id for quick lookup
+    statuses_qs = (
+        EventTractorRuleStatus.objects
+        .filter(event_tractor=te)
+        .select_related("rule")
+    )
+    status_by_rule_id = {rs.rule.rule_id: rs.status for rs in statuses_qs}
+
+    def is_complete(status_value: int | None) -> bool:
+        # Pass (3) or Corrected (2) count as "complete"
+        return status_value in (2, 3)
+
     category_rows = []
+
     for cat in categories:
+        cat_total_rules = 0
+        cat_completed_rules = 0
         sub_rows = []
+
         for subcat in cat.subcategories.all():
+            rules = list(subcat.rules.all())
+            total_rules = len(rules)
+            completed_rules = 0
+
+            for rule in rules:
+                status_value = status_by_rule_id.get(rule.rule_id)
+                if is_complete(status_value):
+                    completed_rules += 1
+
+            # Update category-level counts
+            cat_total_rules += total_rules
+            cat_completed_rules += completed_rules
+
+            if total_rules > 0:
+                sub_percent = round((completed_rules / total_rules) * 100)
+            else:
+                sub_percent = 0
+
             sub_rows.append({
                 "subcategory": subcat,
-                "percent_complete": 0,   # placeholder
+                "percent_complete": sub_percent,
             })
+
+        if cat_total_rules > 0:
+            cat_percent = round((cat_completed_rules / cat_total_rules) * 100)
+        else:
+            cat_percent = 0
 
         category_rows.append({
             "category": cat,
-            "percent_complete": 0,      # placeholder
+            "percent_complete": cat_percent,
             "subcategories": sub_rows,
         })
 

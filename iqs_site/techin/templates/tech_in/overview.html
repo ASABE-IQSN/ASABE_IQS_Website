@@ -1,4 +1,3 @@
-{# templates/tech_in/overview.html #}
 {% extends "base.html" %}
 
 {% block title %}{{ event.event_name }} – Tech Overview{% endblock %}
@@ -24,7 +23,17 @@
           </a>
         </td>
         {% for cell in row.category_values %}
-          <td>{{ cell.percent_complete }}%</td>
+        {% widthratio cell.percent_complete 100 120 as hue %}
+<td style="
+    background-color: hsl({{ hue }}, 80%, 45%);
+    color: white;
+    text-align: center;
+    font-weight: 600;
+    border-radius: 4px;
+">
+    {{ cell.percent_complete }}%
+</td>
+
         {% endfor %}
       </tr>
     {% endfor %}
