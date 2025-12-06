@@ -1,0 +1,18 @@
+normal:
+  DEBUG: false
+  DB_NAME: "IQS_Production_Environment"
+  DB_USER: "website"
+  DB_PASSWORD: "darkcyde15"
+  DB_HOST: "38.22.155.20"
+  DB_PORT: 3306
+  SHOW_TEST_BANNER: false
+
+testing:
+  DEBUG: true
+  DB_NAME: "IQS_Production_Environment"
+  DB_USER: "website"
+  DB_PASSWORD: "darkcyde15"
+  DB_HOST: "38.22.155.20"
+  DB_PORT: 3306
+  SHOW_TEST_BANNER: true
+

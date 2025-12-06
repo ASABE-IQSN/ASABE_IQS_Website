@@ -9,21 +9,28 @@ https://docs.djangoproject.com/en/6.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
-
+import os
 from pathlib import Path
+import yaml
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
+SITE_VARIANT = os.environ.get("SITE_VARIANT","normal")
+print(f"Starting server with site variant: {SITE_VARIANT}")
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+
+with open(BASE_DIR / "site_config.yaml") as f:
+    ALL_CONFIG=yaml.safe_load(f)
+
+SITE_CONFIG=ALL_CONFIG[SITE_VARIANT]
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-ne&$^!n&q^@6eq7sm_+c@j!n34nbnbzcf58i-_&i@h1#4hozml'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = SITE_CONFIG["DEBUG"]
 
 ALLOWED_HOSTS = ["internationalquarterscale.com","127.0.0.1"]
 
@@ -78,11 +85,11 @@ WSGI_APPLICATION = 'iqs_site.wsgi.application'
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": "IQS_Test_Environment",
-        "USER": "website",
-        "PASSWORD": "darkcyde15",
-        "HOST": "38.22.155.20",    # or the IP/host where MySQL lives
-        "PORT": "3306",         # or your custom port
+        "NAME": SITE_CONFIG["DB_NAME"],
+        "USER": SITE_CONFIG["DB_USER"],
+        "PASSWORD": SITE_CONFIG["DB_PASSWORD"],
+        "HOST": SITE_CONFIG["DB_HOST"],    
+        "PORT": SITE_CONFIG["DB_PORT"],         
         "OPTIONS": {
             "charset": "utf8mb4",
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
