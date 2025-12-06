@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ team.team_name }} – {{ subcategory.rule_subcategory_name }} – Tech
+{% endblock %}
+
+{% block content %}
+<h1>{{ team.team_name }} – {{ subcategory.rule_subcategory_name }}</h1>
+
+<p>
+  <strong>Event:</strong> {{ event.event_name }}<br>
+  <strong>Category:</strong> {{ category.rule_category_name }}<br>
+  <strong>Subcategory:</strong> {{ subcategory.rule_subcategory_name }}
+</p>
+
+<p>
+  This table shows this tractor’s tech status for each rule in this subcategory.
+  Click a rule number to see the rule-specific detail page.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Rule #</th>
+      <th>Description</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rule_rows %}
+      <tr class="{{ row.status_class }}">
+        <td>
+          <a href="{% url 'tech_in:team_rule_detail' event.event_id tractor_event.pk row.rule.rule_id %}">
+            {{ row.rule.rule_id }}
+          </a>
+        </td>
+        <td>{{ row.rule.rule_content }}</td>
+        <td>{{ row.status_label }}</td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="3">
+          <em>No rules found for this subcategory.</em>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p style="margin-top: 1rem;">
+  <a href="{% url 'tech_in:team_tech_overview' event.event_id tractor_event.pk %}">
+    ← Back to team tech overview
+  </a>
+</p>
+
+<style>
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    max-width: 900px;
+  }
+  th, td {
+    border-bottom: 1px solid #374151;
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+  }
+
+  .status-not-started td { opacity: 0.7; }
+  .status-failed td { color: #f87171; }
+  .status-corrected td { color: #eab308; }
+  .status-pass td { color: #4ade80; }
+</style>
+{% endblock %}

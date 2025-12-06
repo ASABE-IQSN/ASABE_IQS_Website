@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ team.team_name }} – Rule {{ rule.rule_id }} – Tech
+{% endblock %}
+
+{% block content %}
+<h1>{{ team.team_name }} – Rule {{ rule.rule_id }}</h1>
+
+<p>
+  <strong>Event:</strong> {{ event.event_name }}<br>
+  <strong>Category:</strong> {{ category.rule_category_name }}<br>
+  <strong>Subcategory:</strong> {{ subcategory.rule_subcategory_name }}
+</p>
+
+<h2>Rule Text</h2>
+<p>{{ rule.rule_content }}</p>
+
+<h2>Status</h2>
+<p class="{{ status_class }}">{{ status_label }}</p>
+
+<h2>Images</h2>
+<p><em>Coming soon – inspection photos for this rule & tractor.</em></p>
+
+<h2>Comments</h2>
+<p><em>Coming soon – inspector notes for this rule & tractor.</em></p>
+
+<p style="margin-top: 1rem;">
+  <a href="{% url 'tech_in:team_subcategory_detail' event.event_id tractor_event.pk subcategory.rule_subcategory_id %}">
+    ← Back to subcategory
+  </a>
+</p>
+
+<style>
+  .status-not-started { opacity: 0.7; }
+  .status-failed { color: #f87171; }
+  .status-corrected { color: #eab308; }
+  .status-pass { color: #4ade80; }
+</style>
+{% endblock %}

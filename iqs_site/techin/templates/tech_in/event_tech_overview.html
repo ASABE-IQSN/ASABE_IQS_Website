@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event.event_name }} – Tech Overview{% endblock %}
+
+{% block content %}
+<h1>{{ event.event_name }} – Tech Inspection</h1>
+
+<p>
+  This page shows the rule categories and their subcategories.
+  Click a subcategory to see its rules.
+</p>
+
+<div class="category-list">
+  {% for cat in categories %}
+    <div class="category-card">
+      <h2>{{ cat.rule_category_name }}</h2>
+      <ul>
+        {% for subcat in cat.subcategories.all %}
+          <li>
+            <a href="{% url 'tech_in:subcategory_detail' event.event_id subcat.rule_subcategory_id %}">
+              {{ subcat.rule_subcategory_name }}
+            </a>
+          </li>
+        {% empty %}
+          <li><em>No subcategories defined.</em></li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% empty %}
+    <p>No rule categories defined.</p>
+  {% endfor %}
+</div>
+
+<style>
+  .category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .category-card {
+    border: 1px solid #4b5563;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    background: #020617;
+  }
+  .category-card h2 {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+  }
+</style>
+{% endblock %}
