@@ -26,5 +26,6 @@ jobs:
           # Update from origin
           git fetch origin dev
           git reset --hard origin/dev
+          sudo systemctl restart gunicorn-iqs-development.service
 
 

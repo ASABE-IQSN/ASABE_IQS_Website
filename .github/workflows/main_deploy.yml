@@ -1,0 +1,39 @@
+name: Update main working copy on merge to main
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+jobs:
+  deploy-main:
+    # Run only if the PR was actually merged into main
+    if: >
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == 'main'
+
+    runs-on: [self-hosted]  # add other labels if needed, e.g. [self-hosted, linux]
+
+    steps:
+      - name: Show runner info
+        run: |
+          echo "Running on $(hostname)"
+          pwd
+          echo "PR merged into: ${{ github.event.pull_request.base.ref }}"
+          echo "Head branch was: ${{ github.event.pull_request.head.ref }}"
+
+      - name: Update repo in target directory (main)
+        run: |
+          
+          TARGET_DIR="/home/david/IQS-Prod"
+
+          cd "$TARGET_DIR"
+
+          git checkout main
+
+          git fetch origin main
+          git reset --hard origin/main
+          sudo systemctl restart gunicorn-iqs-production.service
+
