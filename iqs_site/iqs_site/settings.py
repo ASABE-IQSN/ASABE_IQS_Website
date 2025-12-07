@@ -148,6 +148,6 @@ else:
 
 LOGIN_REDIRECT_URL = "users:account"
 LOGOUT_REDIRECT_URL = "events:landing"
-LOGIN_URL = "login/"
+LOGIN_URL = "login"
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
