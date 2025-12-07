@@ -230,6 +230,7 @@ def allowed_file(filename: str) -> bool:
 
 @require_POST
 def upload_team_photo(request, event_id, team_id):
+    print("Uploaded Photo")
     # Look up event & team so we can 404 nicely if bad IDs
     event = get_object_or_404(Event, pk=event_id)
     team = get_object_or_404(Team, pk=team_id)
