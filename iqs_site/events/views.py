@@ -286,7 +286,7 @@ def upload_team_photo(request, event_id, team_id):
     else:
         # Fallback to BASE_DIR / "static"
         static_root = Path(settings.BASE_DIR) / "static"
-
+    static_root="/var/www/quarterscale/static"
     upload_dir = static_root / "photos"
     upload_dir.mkdir(parents=True, exist_ok=True)
 
