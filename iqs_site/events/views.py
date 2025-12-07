@@ -290,7 +290,7 @@ def upload_team_photo(request, event_id, team_id):
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     save_path = upload_dir / filename
-
+    print(f"uploading to {save_path}")
     # Save the file to disk
     with save_path.open("wb+") as dest:
         for chunk in file.chunks():
