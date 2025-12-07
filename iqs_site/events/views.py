@@ -286,11 +286,12 @@ def upload_team_photo(request, event_id, team_id):
     else:
         # Fallback to BASE_DIR / "static"
         static_root = Path(settings.BASE_DIR) / "static"
-    static_root="/var/www/quarterscale/static"
-    upload_dir = static_root +"/"+ "photos"
+    #static_root="/var/www/quarterscale/static"
+    upload_dir = static_root / "photos"
     upload_dir.mkdir(parents=True, exist_ok=True)
 
-    save_path = upload_dir +"/"+ filename
+    save_path = upload_dir / filename
+    save_path=f"/var/www/quarterscale/static/photos/{filename}"
     print(f"uploading to {save_path}")
     # Save the file to disk
     with save_path.open("wb+") as dest:
