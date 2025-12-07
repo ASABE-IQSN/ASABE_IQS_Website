@@ -24,14 +24,19 @@
         </td>
         {% for cell in row.category_values %}
         {% widthratio cell.percent_complete 100 120 as hue %}
-<td style="
-    background-color: hsl({{ hue }}, 80%, 45%);
-    color: white;
-    text-align: center;
-    font-weight: 600;
-    border-radius: 4px;
-">
+<td style="text-align:center;">
+  <a href="{% url 'tech_in:team_tech_overview' event.event_id row.tractor_event.pk %}#cat-{{ cell.category.rule_category_id }}"
+     style="
+       display:inline-block;
+       background-color:hsl({{ hue }},80%,45%);
+       padding:4px 10px;
+       border-radius:6px;
+       color:white;
+       font-weight:600;
+       text-decoration:none;
+     ">
     {{ cell.percent_complete }}%
+  </a>
 </td>
 
         {% endfor %}

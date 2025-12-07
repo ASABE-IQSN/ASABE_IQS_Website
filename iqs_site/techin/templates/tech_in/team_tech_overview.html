@@ -15,7 +15,7 @@
 
 <div class="category-list">
   {% for row in category_rows %}
-    <div class="category-card">
+    <div class="category-card" id="cat-{{ row.category.rule_category_id }}">>
       <div class="category-header">
         <div>
           <h2>{{ row.category.rule_category_name }}</h2>
