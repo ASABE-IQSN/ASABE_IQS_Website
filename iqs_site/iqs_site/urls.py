@@ -28,5 +28,6 @@ urlpatterns = [
     path(root_prefix, include("events.urls", namespace="events")),
     path(root_prefix+"live/",include("live.urls",namespace="live")),
     path(root_prefix+"techin/",include("techin.urls",namespace="techin")),
-    path("accounts/", include("django.contrib.auth.urls")),
+    path(root_prefix+"accounts/", include("django.contrib.auth.urls")),
+    path(root_prefix+"user/", include("users.urls",namespace="user")),
 ]

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Manage Members – {{ team.team_name }} ({{ team.team_number }})</h1>
+
+  <h2>Current Members</h2>
+  {% if members %}
+    <ul>
+      {% for member in members %}
+        <li>
+          {{ member.username }} ({{ member.email|default:"no email" }})
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="remove">
+            <input type="hidden" name="user_id" value="{{ member.id }}">
+            <button type="submit">Remove</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No members yet.</p>
+  {% endif %}
+
+  <h2>Add Member by Username</h2>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="action" value="add">
+    <label>
+      Username:
+      <input type="text" name="username" required>
+    </label>
+    <button type="submit">Add</button>
+  </form>
+{% endblock %}

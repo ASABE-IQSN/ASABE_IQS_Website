@@ -50,7 +50,8 @@ INSTALLED_APPS = [
     'django.contrib.sitemaps',
     'events',
     'live',
-    "techin"
+    "techin",
+    "users"
 ]
 
 MIDDLEWARE = [
@@ -145,6 +146,8 @@ if getattr(settings, "SITE_VARIANT", "normal") == "testing":
 else:
     root_prefix = ""  
 
-#LOGIN_REDIRECT_URL = "/"
-#LOGOUT_REDIRECT_URL = "/"
-#LOGIN_URL = root_prefix+"/accounts/login/"
+LOGIN_REDIRECT_URL = "users:account"
+LOGOUT_REDIRECT_URL = "events:landing"
+LOGIN_URL = "login/"
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

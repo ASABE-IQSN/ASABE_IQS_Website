@@ -1,0 +1,7 @@
+Hello {{ user.username }},
+
+Please confirm your email for your IQS account by clicking the link below:
+
+{{ verify_url }}
+
+If you did not create this account, you can ignore this message.
