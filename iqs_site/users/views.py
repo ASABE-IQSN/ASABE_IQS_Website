@@ -15,6 +15,7 @@ from django.utils.encoding import force_bytes
 from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponse
+from django.contrib.sites.models import Site
 
 @login_required
 def account(request):
@@ -99,15 +100,19 @@ def signup(request):
     return render(request, "registration/signup.html", {"form": form})
 
 def send_verification_email(request, user):
+    
     current_site = get_current_site(request)
     #current_site="127.0.0.1:8000"
     
+    print(request.get_host())
+    print(request.build_absolute_uri())
+    print(request.session)
     subject = "Confirm your email address"
     
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
 
-    verify_url = f"http://{current_site.domain}/user/verify-email/{uid}/{token}/"
+    verify_url = f"https://{current_site.domain}/user/verify-email/{uid}/{token}/"
 
     message = render_to_string("registration/verify_email_message.txt", {
         "user": user,
