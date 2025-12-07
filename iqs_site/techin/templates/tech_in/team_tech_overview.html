@@ -54,6 +54,11 @@
     </div>
   {% endfor %}
 </div>
+<p style="margin-top: 0.5rem;">
+  <a href="{% url 'tech_in:overview' event.event_id %}">
+    ← Back to event overview
+  </a>
+</p>
 
 <style>
   .category-list {

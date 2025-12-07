@@ -147,7 +147,7 @@ def tech_in_overview(request, event_id):
     # All tractor-events (teams) for this event
     tractor_events = list(
         TractorEvent.objects
-        .filter(event=event)
+        .filter(event=event,team__team_class=1)
         .select_related("team", "event")
         .order_by("team__team_name")
     )
