@@ -7,29 +7,29 @@ app_name = "tech_in"
 urlpatterns = [
     path("tech-in/", views.tech_in_overview, name="overview"),
     path(
-        "tech-in/team/<int:tractor_event_id>/",
+        "team/<int:tractor_event_id>/",
         views.tech_in_team_detail,
         name="team_detail",
     ),
    path(
-        "tech-in/event/<int:event_id>/",
+        "event/<int:event_id>/",
         views.tech_in_overview,
         name="overview",
     ),
 
     # Team-level drilldown for that event
     path(
-        "tech-in/event/<int:event_id>/team/<int:tractor_event_id>/",
+        "event/<int:event_id>/team/<int:tractor_event_id>/",
         views.team_tech_overview,
         name="team_tech_overview",
     ),
     path(
-        "tech-in/event/<int:event_id>/team/<int:tractor_event_id>/subcategory/<int:subcategory_id>/",
+        "event/<int:event_id>/team/<int:tractor_event_id>/subcategory/<int:subcategory_id>/",
         views.team_subcategory_detail,
         name="team_subcategory_detail",
     ),
     path(
-        "tech-in/event/<int:event_id>/team/<int:tractor_event_id>/rule/<int:rule_id>/",
+        "event/<int:event_id>/team/<int:tractor_event_id>/rule/<int:rule_id>/",
         views.team_rule_detail,
         name="team_rule_detail",
     ),
