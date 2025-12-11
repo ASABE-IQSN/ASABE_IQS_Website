@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event.event_name }} – Tech Overview{% endblock %}
+
+{% block content %}
+<h1>{{ event.event_name }} – Tech Inspection Overview</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Team</th>
+      {% for cat in categories %}
+        <th>{{ cat.rule_category_name }}</th>
+      {% endfor %}
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in rows %}
+      <tr>
+        <td>
+          <a href="{% url 'tech_in:team_tech_overview' event.event_id row.tractor_event.pk %}">
+            {{ row.team_name }}
+          </a>
+        </td>
+        {% for cell in row.category_values %}
+        {% widthratio cell.percent_complete 100 120 as hue %}
+<td style="text-align:center;">
+  <a href="{% url 'tech_in:team_tech_overview' event.event_id row.tractor_event.pk %}#cat-{{ cell.category.rule_category_id }}"
+     style="
+       display:inline-block;
+       background-color:hsl({{ hue }},80%,45%);
+       padding:4px 10px;
+       border-radius:6px;
+       color:white;
+       font-weight:600;
+       text-decoration:none;
+     ">
+    {{ cell.percent_complete }}%
+  </a>
+</td>
+
+        {% endfor %}
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

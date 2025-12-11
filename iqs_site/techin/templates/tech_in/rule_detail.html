@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+
+{% block title %}
+{{ event.event_name }} – Rule {{ rule.rule_id }}
+{% endblock %}
+
+{% block content %}
+<h1>Rule {{ rule.rule_id }}</h1>
+
+<p>
+  <strong>Event:</strong> {{ event.event_name }}<br>
+  <strong>Category:</strong> {{ category.rule_category_name }}<br>
+  <strong>Subcategory:</strong> {{ subcategory.rule_subcategory_name }}
+</p>
+
+<h2>Rule Text</h2>
+<p>{{ rule.rule_content }}</p>
+
+<h2>Team Status</h2>
+<table>
+  <thead>
+    <tr>
+      <th>Team</th>
+      <th>Status</th>
+      <th>Images</th>
+      <th>Comments</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for row in status_rows %}
+      <tr class="{{ row.status_class }}">
+        <td>{{ row.team_name }}</td>
+        <td>{{ row.status_label }}</td>
+        <td>
+          <!-- Future: thumbnail images tied to this rule + tractor record -->
+          <em>No images yet</em>
+        </td>
+        <td>
+          <!-- Future: comments per rule/tractor -->
+          <em>No comments yet</em>
+        </td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="4">
+          <em>No tech records found for this rule at this event.</em>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p style="margin-top: 1rem;">
+  <a href="{% url 'tech_in:subcategory_detail' event.event_id subcategory.rule_subcategory_id %}">
+    ← Back to subcategory
+  </a>
+</p>
+
+<style>
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    max-width: 900px;
+  }
+  th, td {
+    border-bottom: 1px solid #374151;
+    padding: 0.4rem 0.6rem;
+    text-align: left;
+  }
+
+  .status-not-started td { opacity: 0.7; }
+  .status-failed td { color: #f87171; }
+  .status-corrected td { color: #eab308; }
+  .status-pass td { color: #4ade80; }
+</style>
+{% endblock %}

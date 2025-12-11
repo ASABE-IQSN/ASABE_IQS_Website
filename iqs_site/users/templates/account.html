@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>My Account</h1>
+
+  <h2>Teams I’m a Member Of</h2>
+  {% if teams_member %}
+    <ul>
+      {% for team in teams_member %}
+        <li>
+          {{ team.team_name }} ({{ team.team_number }})
+          {# optional link to team page #}
+          <a href="{% url 'events:team_detail' team.team_id %}">View</a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>You are not a member of any teams yet.</p>
+  {% endif %}
+
+  <h2>Teams I Admin</h2>
+  {% if teams_admin %}
+    <ul>
+      {% for team in teams_admin %}
+        <li>
+          {{ team.team_name }} ({{ team.team_number }})
+          <a href="{% url 'users:manage_team_members' team.team_id %}">
+            Manage members
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>You are not an admin of any teams.</p>
+  {% endif %}
+{% endblock %}

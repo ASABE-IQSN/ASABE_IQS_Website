@@ -100,3 +100,21 @@ class EventTeamPhotoAdmin(admin.ModelAdmin):
         )
 
     photo_preview.short_description = "Preview"
+
+class TractorEventInline(admin.TabularInline):
+    model = TractorEvent
+    extra = 0
+    raw_id_fields = ("tractor", "team", "event")
+
+
+# ----- TractorEvent admin -----
+
+@admin.register(TractorEvent)
+class TractorEventAdmin(admin.ModelAdmin):
+    list_display = ("tractor_event_id", "tractor", "team", "event")
+    list_filter = ("event", "team", "tractor")
+    search_fields = (
+        "tractor__tractor_name",
+        "team__team_name",
+        "event__event_name",
+    )

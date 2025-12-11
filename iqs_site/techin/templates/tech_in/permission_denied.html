@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Access Restricted{% endblock %}
+
+{% block content %}
+<div style="
+    max-width: 700px;
+    margin: 3rem auto;
+    padding: 2rem;
+    background: #0f172a;
+    border-radius: 0.5rem;
+    border: 1px solid #334155;
+    color: #e2e8f0;
+">
+
+    <h1 style="margin-top: 0; font-size: 1.8rem; color: #f87171;">
+        Access Restricted
+    </h1>
+
+    <p style="font-size: 1.1rem; line-height: 1.6;">
+        You must be <strong>logged in</strong> to view team tech inspection details.
+    </p>
+
+    <p style="font-size: 1.1rem; line-height: 1.6;">
+       You must be logged and be a member of the team you are trying to view. The Email that is registered for your team will be able to add members to your team
+    </p>
+
+    <p style="margin-top: 2rem;">
+        <a href="{% url 'login' %}" 
+           style="color: #38bdf8; text-decoration: none; font-weight: 500;">
+            Log In
+        </a>
+    </p>
+
+</div>
+{% endblock %}

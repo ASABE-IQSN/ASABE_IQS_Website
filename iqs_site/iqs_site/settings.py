@@ -46,7 +46,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'events'
+    'django.contrib.sites',
+    'django.contrib.sitemaps',
+    'events',
+    'live',
+    "techin",
+    "users"
 ]
 
 MIDDLEWARE = [
@@ -64,7 +69,7 @@ ROOT_URLCONF = 'iqs_site.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / "templates"],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -78,7 +83,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'iqs_site.wsgi.application'
 
-
+SITE_ID = 1
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
@@ -133,3 +138,16 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+
+from django.conf import settings
+
+if getattr(settings, "SITE_VARIANT", "normal") == "testing":
+    root_prefix = "testing"   
+else:
+    root_prefix = ""  
+
+LOGIN_REDIRECT_URL = "users:account"
+LOGOUT_REDIRECT_URL = "events:landing"
+LOGIN_URL = "login"
+
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"

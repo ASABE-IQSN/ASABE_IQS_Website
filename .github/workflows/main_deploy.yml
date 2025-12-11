@@ -36,8 +36,8 @@ jobs:
           git fetch origin main
           git reset --hard origin/main
 
-          . /home/david/IQS-Dev/.venv/bin/activate
-          /home/david/IQS-Dev/.venv/bin/pip install -r requirements.txt
+          . /home/david/IQS-Prod/.venv/bin/activate
+          /home/david/IQS-Prod/.venv/bin/pip install -r requirements.txt
 
           sudo systemctl restart gunicorn-iqs-production.service
 

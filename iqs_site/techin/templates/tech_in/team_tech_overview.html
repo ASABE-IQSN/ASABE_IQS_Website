@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ event.event_name }} – {{ team.team_name }} – Tech Overview
+{% endblock %}
+
+{% block content %}
+<h1>{{ team.team_name }} – Tech Overview</h1>
+<p>Event: <strong>{{ event.event_name }}</strong></p>
+
+<p>
+  Each card shows a rule category and its subcategories, with completion percentages
+  for this team’s tractor at this event. (Percentages are placeholders for now.)
+</p>
+
+<div class="category-list">
+  {% for row in category_rows %}
+    <div class="category-card" id="cat-{{ row.category.rule_category_id }}">>
+      <div class="category-header">
+        <div>
+          <h2>{{ row.category.rule_category_name }}</h2>
+        </div>
+        <div class="category-percent">
+          {{ row.percent_complete }}%
+        </div>
+      </div>
+
+      {% if row.subcategories %}
+        <table class="subcategory-table">
+          <thead>
+            <tr>
+              <th>Subcategory</th>
+              <th class="right">Complete</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sub in row.subcategories %}
+              <tr>
+                <td>
+                  <a href="{% url 'tech_in:team_subcategory_detail' event.event_id tractor_event.pk sub.subcategory.rule_subcategory_id %}">
+                    {{ sub.subcategory.rule_subcategory_name }}
+                  </a>
+                </td>
+                <td class="right">
+                  {{ sub.percent_complete }}%
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p><em>No subcategories defined for this category.</em></p>
+      {% endif %}
+    </div>
+  {% endfor %}
+</div>
+<p style="margin-top: 0.5rem;">
+  <a href="{% url 'tech_in:overview' event.event_id %}">
+    ← Back to event overview
+  </a>
+</p>
+
+<style>
+  .category-list {
+    max-width: 900px;
+    margin: 1.5rem auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .category-card {
+    border: 1px solid #4b5563;
+    border-radius: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: #020617;
+  }
+
+  .category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+  }
+
+  .category-header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+  }
+
+  .category-percent {
+    font-size: 1.2rem;
+    font-weight: 600;
+  }
+
+  .subcategory-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+
+  .subcategory-table th,
+  .subcategory-table td {
+    border-bottom: 1px solid #374151;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .subcategory-table th.right,
+  .subcategory-table td.right {
+    text-align: right;
+  }
+</style>
+{% endblock %}

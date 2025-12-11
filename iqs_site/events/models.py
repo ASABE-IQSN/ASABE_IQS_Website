@@ -25,7 +25,7 @@ class Event(models.Model):
     event_id = models.AutoField(primary_key=True)
     event_name = models.CharField(max_length=255, blank=True, null=True)
     event_datetime = models.DateTimeField(blank=True, null=True)
-
+    event_active = models.BooleanField(blank=False,null=False)
     # Convenience many-to-many – all tractors in this event
     tractors = models.ManyToManyField(
         "Tractor",
@@ -42,7 +42,7 @@ class Event(models.Model):
 
 
 class Team(models.Model):
-    team_id = models.AutoField(primary_key=True)
+    team_id = models.AutoField(primary_key=True,db_column="team_id")
     team_name = models.CharField(max_length=255)
     team_number = models.CharField(max_length=255)
 

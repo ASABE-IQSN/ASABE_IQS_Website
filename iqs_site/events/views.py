@@ -18,7 +18,7 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 @cache_page(300)  # 300 seconds = 5 minutes
 def landing(request):
     now = timezone.now()  # timezone-aware; Django prefers this
-    print("Main Page")    # you can replace with logging later
+    
 
     next_event = (
         Event.objects
@@ -45,7 +45,7 @@ def event_list(request):
     for event in events:
         # assuming `event_teams` is the related_name on EventTeam
         event_teams = list(event.event_teams.all())
-
+        
         class_leaderboards = []
         for tc in top_classes:
             # filter all teams for this event in this class
@@ -230,6 +230,7 @@ def allowed_file(filename: str) -> bool:
 
 @require_POST
 def upload_team_photo(request, event_id, team_id):
+    print("Uploaded Photo")
     # Look up event & team so we can 404 nicely if bad IDs
     event = get_object_or_404(Event, pk=event_id)
     team = get_object_or_404(Team, pk=team_id)
@@ -285,12 +286,13 @@ def upload_team_photo(request, event_id, team_id):
     else:
         # Fallback to BASE_DIR / "static"
         static_root = Path(settings.BASE_DIR) / "static"
-
+    #static_root="/var/www/quarterscale/static"
     upload_dir = static_root / "photos"
     upload_dir.mkdir(parents=True, exist_ok=True)
 
     save_path = upload_dir / filename
-
+    save_path=Path(f"/var/www/quarterscale/static/photos/{filename}")
+    print(f"uploading to {save_path}")
     # Save the file to disk
     with save_path.open("wb+") as dest:
         for chunk in file.chunks():

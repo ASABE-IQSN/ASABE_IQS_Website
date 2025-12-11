@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ event.event_name }} – {{ category.rule_category_name }} – {{ subcategory.rule_subcategory_name }}
+{% endblock %}
+
+{% block content %}
+<h1>{{ category.rule_category_name }} – {{ subcategory.rule_subcategory_name }}</h1>
+
+<p>
+  Event: <strong>{{ event.event_name }}</strong>
+</p>
+
+<p>
+  Below are the rules in this subcategory. Click a rule to see rule-specific tech
+  status per team.
+</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Rule #</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for rule in rules %}
+      <tr>
+        <td>
+          <a href="{% url 'tech_in:rule_detail' event.event_id rule.rule_id %}">
+            {{ rule.rule_id }}
+          </a>
+        </td>
+        <td>{{ rule.rule_content }}</td>
+      </tr>
+    {% empty %}
+      <tr>
+        <td colspan="2"><em>No rules defined for this subcategory.</em></td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p style="margin-top: 1rem;">
+  <a href="{% url 'tech_in:event_tech_overview' event.event_id %}">← Back to categories</a>
+</p>
+{% endblock %}
