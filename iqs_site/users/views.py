@@ -102,8 +102,9 @@ def signup(request):
 def send_verification_email(request, user):
     
     current_site = get_current_site(request)
+    current_site=Site(domain="127.0.0.1:8000/testing")
     #current_site="127.0.0.1:8000"
-    
+    print(current_site)
     print(request.get_host())
     print(request.build_absolute_uri())
     print(request.session)
@@ -111,6 +112,7 @@ def send_verification_email(request, user):
     
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
+    print(token)
 
     verify_url = f"https://{current_site.domain}/user/verify-email/{uid}/{token}/"
 
@@ -134,11 +136,13 @@ def verify_email(request, uidb64, token):
         user = User.objects.get(pk=uid)
     except (User.DoesNotExist, ValueError, OverflowError):
         user = None
-
+    print(token)
+    print(user)
+    print(default_token_generator.check_token(user, token))
     if user and default_token_generator.check_token(user, token):
         user.is_active = True
         user.save()
         login(request, user)
-        return redirect("account")
+        return redirect("users:account")
     else:
         return HttpResponse("Invalid or expired verification link.")

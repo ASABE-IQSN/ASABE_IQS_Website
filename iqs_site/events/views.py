@@ -45,7 +45,7 @@ def event_list(request):
     for event in events:
         # assuming `event_teams` is the related_name on EventTeam
         event_teams = list(event.event_teams.all())
-
+        
         class_leaderboards = []
         for tc in top_classes:
             # filter all teams for this event in this class
