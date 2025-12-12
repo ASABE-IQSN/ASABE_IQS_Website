@@ -151,3 +151,37 @@ LOGOUT_REDIRECT_URL = "events:landing"
 LOGIN_URL = "login"
 
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+
+    # ---- Where logs go ----
+    "handlers": {
+        "file_500": {
+            "level": "ERROR",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(BASE_DIR, "logs/django_500.log"),
+        },
+        "console": {
+            "class": "logging.StreamHandler",
+        },
+    },
+
+    # ---- What logging events should use those handlers ----
+    "loggers": {
+        # Django internal errors (including 500s)
+        "django.request": {
+            "handlers": ["file_500", "console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+
+        # Optional: log template errors, email errors, etc.
+        "django.server": {
+            "handlers": ["file_500", "console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+    },
+}
