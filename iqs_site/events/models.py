@@ -45,7 +45,7 @@ class Team(models.Model):
     team_id = models.AutoField(primary_key=True,db_column="team_id")
     team_name = models.CharField(max_length=255)
     team_number = models.CharField(max_length=255)
-
+    team_abbreviation=models.CharField(max_length=255)
     team_class = models.ForeignKey(
         TeamClass,
         models.DO_NOTHING,
@@ -189,6 +189,29 @@ class Pull(models.Model):
 
     def __str__(self):
         return f"Pull {self.pull_id} – {self.team} ({self.final_distance or 0:.2f} ft)"
+    
+class PullMedia(models.Model):
+    pull_media_id=models.AutoField(primary_key=True)
+    pull=models.ForeignKey(
+        Pull,
+        models.DO_NOTHING,
+        db_column="pull_id",
+        related_name="pull_media",
+        blank=True,
+        null=True
+    )
+    class types(models.IntegerChoices):
+        YOUTUBE_VIDEO=1
+        IMAGE=2
+
+    class Meta:
+        managed = False
+        db_table = "pull_media"
+
+    pull_media_type=models.IntegerField(choices=types)
+    link=models.CharField(max_length=255)
+
+
 
 
 class PullData(models.Model):

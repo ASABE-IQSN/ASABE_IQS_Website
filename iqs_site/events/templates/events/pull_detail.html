@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Pull {{ pull.pull_id }} – {{ pull.team.team_name }}{% endblock %}
+{% block title %}Pull {{ pull_name }} – {{ pull.team.team_name }}{% endblock %}
 
 {% block extra_head %}
   <!-- Chart.js from CDN -->
@@ -44,14 +44,16 @@
 
 {% block content %}
   <header class="pull-page-header">
-    <h1>Pull {{ pull.pull_id }}</h1>
+    <h1>{{ pull_name }}</h1>
     <div class="pull-meta">
       Team: <strong>{{ pull.team.team_name }}</strong> ({{ pull.team.team_number }})<br>
       Final distance: {{ pull.final_distance|default:"N/A" }} ft<br>
-      Hook ID: {{ pull.hook_id|default:"N/A" }}
+      Hook : {{ pull.hook.hook_name|default:"N/A" }}
     </div>
   </header>
-
+{%for vid in yt_embed%}
+  <iframe width="1000" height="500" src="https://www.youtube.com/embed/{{vid.link}}" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+{%endfor%}
   <!-- 1) Speed vs Distance -->
   <section class="chart-card">
     <h2>Speed vs Distance (mph vs ft)</h2>
@@ -163,5 +165,6 @@
     });
 
   </script>
+  
   {% endif %}
 {% endblock %}

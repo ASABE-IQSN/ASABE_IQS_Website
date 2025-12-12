@@ -33,4 +33,9 @@ urlpatterns = [
         views.team_rule_detail,
         name="team_rule_detail",
     ),
+    path(
+        "event/<int:event_id>/category/<int:category_id>",
+        views.category_view,
+        name="rule_category_detail",
+    ),
 ]

@@ -359,7 +359,10 @@ def team_tech_overview(request, event_id, tractor_event_id):
         "team": te.team,
         "category_rows": category_rows,
     }
-    return render(request, "tech_in/team_tech_overview.html", context)
+    if user_can_access_team(request.user,te.team):
+        return render(request, "tech_in/team_tech_overview.html", context)
+    else:
+        return render(request,"tech_in/permission_denied.html",context)
 
 def team_subcategory_detail(request, event_id, tractor_event_id, subcategory_id):
     event = get_object_or_404(Event, pk=event_id)
@@ -456,3 +459,11 @@ def team_rule_detail(request, event_id, tractor_event_id, rule_id):
         "status_class": status_class,
     }
     return render(request, "tech_in/team_rule_detail.html", context)
+
+def category_view(request,event_id,category_id):
+    category=get_object_or_404(RuleCategory,pk=category_id)
+    event=get_object_or_404(Event,pk=event_id)
+    rts=EventTractorRuleStatus.objects.filter(event_tractor__event=event,rule__sub_category__category=category).all()
+    print(rts)
+    context={}
+    return render(request,"tech_in/permission_denied.html",context)

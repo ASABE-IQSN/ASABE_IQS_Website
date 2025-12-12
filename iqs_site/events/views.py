@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from .models import Event
 from django.conf import settings
-from .models import TeamClass, Team, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent
+from .models import TeamClass, Team,PullMedia, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 
@@ -382,7 +382,13 @@ def pull_detail(request, pull_id):
 
     has_data = bool(distances) and bool(speeds) and bool(forces)
 
+    pull_name=pull.team.team_abbreviation+" " + pull.hook.hook_name
+    #media=PullMedia.objects.filter(pull_media_type=PullMedia.types.YOUTUBE_VIDEO)
+    #print(media)
+    yt_vids=pull.pull_media.all().filter(pull_media_type=PullMedia.types.YOUTUBE_VIDEO)
     context = {
+        "yt_embed":yt_vids,
+        "pull_name":pull_name,
         "pull": pull,
         "has_data": has_data,
         "distances_json": json.dumps(distances),
