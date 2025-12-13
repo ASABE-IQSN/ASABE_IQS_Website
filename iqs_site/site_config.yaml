@@ -16,3 +16,11 @@ testing:
   DB_PORT: 3306
   SHOW_TEST_BANNER: true
 
+local:
+  DEBUG: true
+  DB_NAME: "IQS_Test_Environment"
+  DB_USER: "website"
+  DB_PASSWORD: "darkcyde15"
+  DB_HOST: "localhost"
+  DB_PORT: 3306
+  SHOW_TEST_BANNER: true

@@ -14,7 +14,7 @@ from pathlib import Path
 import yaml
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = "/var/www/quarterscale/"#Path(__file__).resolve().parent.parent
 
 SITE_VARIANT = os.environ.get("SITE_VARIANT","normal")
 print(f"Starting server with site variant: {SITE_VARIANT}")
