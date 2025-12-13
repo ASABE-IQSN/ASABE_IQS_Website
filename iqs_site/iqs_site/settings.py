@@ -158,11 +158,11 @@ LOGGING = {
 
     # ---- Where logs go ----
     "handlers": {
-        "file_500": {
-            "level": "ERROR",
-            "class": "logging.FileHandler",
-            "filename": os.path.join(LOGGING_DIR, "logs",SITE_VARIANT,"django_500.log"),
-        },
+        # "file_500": {
+        #     "level": "ERROR",
+        #     "class": "logging.FileHandler",
+        #     "filename": os.path.join(LOGGING_DIR, "logs",SITE_VARIANT,"django_500.log"),
+        # },
         "console": {
             "class": "logging.StreamHandler",
         },
@@ -172,14 +172,14 @@ LOGGING = {
     "loggers": {
         # Django internal errors (including 500s)
         "django.request": {
-            "handlers": ["file_500", "console"],
+            "handlers": [ "console"],
             "level": "ERROR",
             "propagate": False,
         },
 
         # Optional: log template errors, email errors, etc.
         "django.server": {
-            "handlers": ["file_500", "console"],
+            "handlers": [ "console"],
             "level": "ERROR",
             "propagate": False,
         },

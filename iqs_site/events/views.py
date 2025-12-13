@@ -12,9 +12,13 @@ from django.conf import settings
 from .models import TeamClass, Team,PullMedia, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent
 from django.views.decorators.http import require_POST
 from django.contrib import messages
+from functools import wraps
+from django.http import HttpRequest, HttpResponse
+from iqs_site.utilities import log_view
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
+@log_view
 @cache_page(300)  # 300 seconds = 5 minutes
 def landing(request):
     now = timezone.now()  # timezone-aware; Django prefers this
@@ -31,6 +35,7 @@ def landing(request):
 
     return render(request, "landing.html", {"next_event": next_event})
 
+@log_view
 def event_list(request):
     events = (
         Event.objects
@@ -69,7 +74,7 @@ def event_list(request):
     }
     return render(request, "events/event_list.html", context)
 
-
+@log_view
 def team_list(request):
     # Prefetch teams per class, sorted by name
     team_qs = Team.objects.order_by("team_name")
@@ -96,7 +101,7 @@ def team_list(request):
     return render(request, "events/teams.html", context)
 
 
-
+@log_view
 def tractor_list(request):
     tractors = Tractor.objects.select_related("original_team").order_by("tractor_name")
 
@@ -106,12 +111,13 @@ def tractor_list(request):
     }
     return render(request, "events/tractor_list.html", context)
 
-
+@log_view
 def privacy(request):
     return render(request, "events/privacy.html", {
         "active_page": None,  # or "privacy" if you want a nav link for it
     })
 
+@log_view
 def team_detail(request, team_id):
     team = get_object_or_404(Team, pk=team_id)
 
@@ -152,6 +158,7 @@ def team_detail(request, team_id):
     }
     return render(request, "events/team_detail.html", context)
 
+@log_view
 def team_event_detail(request, event_id, team_id):
     team = get_object_or_404(Team, pk=team_id)
     event = get_object_or_404(Event, pk=event_id)
@@ -225,8 +232,10 @@ def team_event_detail(request, event_id, team_id):
     }
     return render(request, "events/team_event_detail.html", context)
 
+
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
 
 @require_POST
 def upload_team_photo(request, event_id, team_id):
@@ -311,6 +320,7 @@ def upload_team_photo(request, event_id, team_id):
 
     return redirect("events:team_event_detail", event_id=event_id, team_id=team_id)
 
+@log_view
 def event_detail(request, event_id):
     event = get_object_or_404(
         Event.objects.select_related(),  # tweak as needed
@@ -399,6 +409,7 @@ def pull_detail(request, pull_id):
 
     return render(request, "events/pull_detail.html", context)
 
+@log_view
 def tractor_detail(request, tractor_id):
     # Grab the tractor, along with its original_team and all TractorEvent rows
     tractor = get_object_or_404(

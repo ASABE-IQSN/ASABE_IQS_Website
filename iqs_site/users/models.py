@@ -1,7 +1,8 @@
 from django.conf import settings
-from django.contrib.auth.models import Group
+from django.contrib.auth.models import Group, User
 from django.db import models
 from events.models import Team
+from datetime import datetime
 
 class GroupProfile(models.Model):
     group = models.OneToOneField(
@@ -28,3 +29,18 @@ class GroupProfile(models.Model):
 
     def __str__(self):
         return f"Profile for group {self.group.name}"
+    
+class View(models.Model):
+    view_id=models.AutoField(primary_key=True)
+    user=models.ForeignKey(User,
+                            models.DO_NOTHING,
+                            db_column="user_id",
+                            blank=True,
+                            null=True)
+    url=models.CharField(max_length=255)
+    time=models.DateTimeField(default=datetime.utcnow)
+    ip=models.CharField(max_length=45)
+    response_time_s=models.FloatField()
+    class Meta:
+        managed = False
+        db_table = "views"
