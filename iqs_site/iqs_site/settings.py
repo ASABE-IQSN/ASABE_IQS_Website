@@ -14,8 +14,8 @@ from pathlib import Path
 import yaml
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path("/var/www/quarterscale/")#Path(__file__).resolve().parent.parent
-
+BASE_DIR = Path(__file__).resolve().parent.parent
+LOGGING_DIR =Path("/var/www/quarterscale/")
 SITE_VARIANT = os.environ.get("SITE_VARIANT","normal")
 print(f"Starting server with site variant: {SITE_VARIANT}")
 # Quick-start development settings - unsuitable for production
@@ -161,7 +161,7 @@ LOGGING = {
         "file_500": {
             "level": "ERROR",
             "class": "logging.FileHandler",
-            "filename": os.path.join(BASE_DIR, "logs/django_500.log"),
+            "filename": os.path.join(LOGGING_DIR, "logs/django_500.log"),
         },
         "console": {
             "class": "logging.StreamHandler",
