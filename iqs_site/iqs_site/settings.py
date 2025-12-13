@@ -161,7 +161,7 @@ LOGGING = {
         "file_500": {
             "level": "ERROR",
             "class": "logging.FileHandler",
-            "filename": os.path.join(LOGGING_DIR, SITE_VARIANT,"logs/django_500.log"),
+            "filename": os.path.join(LOGGING_DIR, "logs",SITE_VARIANT,"django_500.log"),
         },
         "console": {
             "class": "logging.StreamHandler",
