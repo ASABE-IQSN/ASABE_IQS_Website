@@ -5,15 +5,15 @@ from . import views
 app_name = "tech_in"
 
 urlpatterns = [
-    path("tech-in/", views.tech_in_overview, name="overview"),
-    path(
-        "team/<int:tractor_event_id>/",
-        views.tech_in_team_detail,
-        name="team_detail",
-    ),
+    #path("tech-in/", views.tech_in_overview, name="overview"),
+    # path(
+    #     "team/<int:tractor_event_id>/",
+    #     views.tech_in_team_detail,
+    #     name="team_detail",
+    # ),
    path(
         "event/<int:event_id>/",
-        views.tech_in_overview,
+        views.event_tech_in_overview,
         name="overview",
     ),
 
