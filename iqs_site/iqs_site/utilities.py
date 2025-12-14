@@ -1,8 +1,11 @@
 from functools import wraps
 from django.http import HttpRequest, HttpResponse, Http404
 from users.models import View
-
+import threading
 import time
+import queue
+
+view_queue=queue.Queue(1000)
 
 def log_view(func):
     @wraps(func)
@@ -22,6 +25,20 @@ def log_view(func):
         ret:HttpResponse
         code=ret.status_code
         response_time=time.time()-start_time
+        view=[request.user,request.get_full_path(),ip,response_time,code]
         #View.objects.create(user_id=request.user.id,url=request.get_full_path(),ip=ip,response_time_s=response_time,response_code=code)
         return ret
     return wrapped
+
+def view_thread_func():
+    while True:
+        view=view_queue.get(timeout=100)
+        if view:
+            user,url,ip,response_time,code=view
+            View.objects.create(user_id=user,url=url,ip=ip,response_time_s=response_time,response_code=code)
+        else:
+            pass
+
+
+view_thread=threading.Thread(target=view_thread_func)
+view_thread.start()
