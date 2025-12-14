@@ -13,7 +13,7 @@ def _csv_ints(env_name: str, default: str) -> list[int]:
 def pick(lst):
     return random.choice(lst)
 
-BASE_PATH = os.getenv("LOCUST_BASE_PATH", "").rstrip("/")  # "", "/testing"
+BASE_PATH = "/testing"  # "", "/testing"
 LOGIN_PATH = os.getenv("LOCUST_LOGIN_PATH", f"{BASE_PATH}/accounts/login/")
 
 # Root-level IDs

@@ -22,6 +22,6 @@ def log_view(func):
         ret:HttpResponse
         code=ret.status_code
         response_time=time.time()-start_time
-        View.objects.create(user_id=request.user.id,url=request.get_full_path(),ip=ip,response_time_s=response_time,response_code=code)
+        #View.objects.create(user_id=request.user.id,url=request.get_full_path(),ip=ip,response_time_s=response_time,response_code=code)
         return ret
     return wrapped
