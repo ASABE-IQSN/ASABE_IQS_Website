@@ -34,11 +34,11 @@ def log_view(func):
 
 def view_thread_func():
     while True:
-        view=view_queue.get(timeout=100)
-        if view:
+        try:
+            view=view_queue.get(timeout=100)
             user,url,ip,response_time,code=view
             View.objects.create(user_id=user,url=url,ip=ip,response_time_s=response_time,response_code=code)
-        else:
+        except Exception:
             pass
 
 
