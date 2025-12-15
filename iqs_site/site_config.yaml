@@ -18,7 +18,7 @@ testing:
 
 local:
   DEBUG: true
-  DB_NAME: "IQS_Test_Environment"
+  DB_NAME: "IQS_Local_Environment"
   DB_USER: "website"
   DB_PASSWORD: "darkcyde15"
   DB_HOST: "localhost"

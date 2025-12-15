@@ -38,7 +38,7 @@ class View(models.Model):
                             blank=True,
                             null=True)
     url=models.CharField(max_length=255)
-    time=models.DateTimeField(default=timezone.now())
+    time=models.DateTimeField(default=timezone.now)
     ip=models.CharField(max_length=45)
     response_time_s=models.FloatField()
     response_code=models.IntegerField()

@@ -407,6 +407,7 @@ def pull_detail(request, pull_id):
     #media=PullMedia.objects.filter(pull_media_type=PullMedia.types.YOUTUBE_VIDEO)
     #print(media)
     yt_vids=pull.pull_media.all().filter(pull_media_type=PullMedia.types.YOUTUBE_VIDEO)
+    #print(yt_vids)
     context = {
         "yt_embed":yt_vids,
         "pull_name":pull_name,

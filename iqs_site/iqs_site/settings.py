@@ -51,7 +51,8 @@ INSTALLED_APPS = [
     'events',
     'live',
     "techin",
-    "users"
+    "users",
+    "stats"
 ]
 
 MIDDLEWARE = [

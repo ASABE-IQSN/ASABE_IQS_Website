@@ -2,8 +2,8 @@
 from django.db.models import Count, Q
 from django.shortcuts import render, get_object_or_404
 from .models import RuleCategory
-from .models import EventTractorRuleStatus, RuleSubCategory, Rule
-from events.models import TractorEvent, Event 
+from .models import EventTractorRuleStatus, RuleSubCategory, Rule, RuleTractorMedia
+from events.models import TractorEvent, Event, Team
 from collections import OrderedDict
 from .permissions import user_can_access_team
 from django.shortcuts import redirect
@@ -297,8 +297,12 @@ def rule_detail(request, event_id, rule_id):
     return render(request, "tech_in/rule_detail.html", context)
 
 @log_view
-def team_tech_overview(request, event_id, tractor_event_id):
+def team_tech_overview(request, event_id, team_id):
     
+    team = get_object_or_404(Team, pk=team_id)
+
+    if user_can_access_team(request.user,team):
+        return render(request,"tech_in/permission_denied.html")
 
     key=request.get_full_path()
     ren=cache.get(key)
@@ -306,9 +310,10 @@ def team_tech_overview(request, event_id, tractor_event_id):
 
         
         event = get_object_or_404(Event, pk=event_id)
+        
         te = get_object_or_404(
             TractorEvent.objects.select_related("team", "event"),
-            pk=tractor_event_id,
+            team=team,
             event=event,
         )
 
@@ -381,73 +386,84 @@ def team_tech_overview(request, event_id, tractor_event_id):
         }
         ren=render(request, "tech_in/team_tech_overview.html", context)
         cache.add(key,ren)
-    if user_can_access_team(request.user,1):
-        return ren
+    
+    return ren
          #return render(request, "tech_in/team_tech_overview.html", context)
-    else:
-        return render(request,"tech_in/permission_denied.html",context)
 
 @log_view
-def team_subcategory_detail(request, event_id, tractor_event_id, subcategory_id):
-    event = get_object_or_404(Event, pk=event_id)
-    te = get_object_or_404(
-        TractorEvent.objects.select_related("team", "event"),
-        pk=tractor_event_id,
-        event=event,
-    )
-    subcategory = get_object_or_404(
-        RuleSubCategory.objects.select_related("category"),
-        pk=subcategory_id,
-    )
+def team_subcategory_detail(request, event_id, team_id, subcategory_id):
+    team = get_object_or_404(Team,pk=team_id)
 
-    rules = Rule.objects.filter(sub_category=subcategory).order_by("rule_id")
+    if user_can_access_team(request.user,team):
+        return render(request,"tech_in/permission_denied.html")
 
-    statuses_qs = (
-        EventTractorRuleStatus.objects
-        .filter(event_tractor=te, rule__in=rules)
-        .select_related("rule")
-    )
-    status_by_rule_id = {rs.rule.rule_id: rs for rs in statuses_qs}
+    key=request.get_full_path()
+    ren=cache.get(key)
 
-    STATUS_MAP = {
-        0: ("Not Started", "status-not-started"),
-        1: ("Failed", "status-failed"),
-        2: ("Corrected", "status-corrected"),
-        3: ("Pass", "status-pass"),
-    }
+    if not ren:
+        event = get_object_or_404(Event, pk=event_id)
+        
+        te = get_object_or_404(
+            TractorEvent.objects.select_related("team", "event"),
+            team=team,
+            event=event,
+        )
+        subcategory = get_object_or_404(
+            RuleSubCategory.objects.select_related("category"),
+            pk=subcategory_id,
+        )
 
-    rule_rows = []
-    for rule in rules:
-        rs = status_by_rule_id.get(rule.rule_id)
-        if rs:
-            label, css_class = STATUS_MAP.get(rs.status, ("Unknown", "status-unknown"))
-        else:
-            label, css_class = ("Not Started", "status-not-started")
-            rs = None
+        rules = Rule.objects.filter(sub_category=subcategory).order_by("rule_id")
 
-        rule_rows.append({
-            "rule": rule,
-            "status_label": label,
-            "status_class": css_class,
-            "status_obj": rs,
-        })
+        statuses_qs = (
+            EventTractorRuleStatus.objects
+            .filter(event_tractor=te, rule__in=rules)
+            .select_related("rule")
+        )
+        status_by_rule_id = {rs.rule.rule_id: rs for rs in statuses_qs}
 
-    context = {
-        "event": event,
-        "tractor_event": te,
-        "team": te.team,
-        "subcategory": subcategory,
-        "category": subcategory.category,
-        "rule_rows": rule_rows,
-    }
-    return render(request, "tech_in/team_subcategory_detail.html", context)
+        STATUS_MAP = {
+            0: ("Not Started", "status-not-started"),
+            1: ("Failed", "status-failed"),
+            2: ("Corrected", "status-corrected"),
+            3: ("Pass", "status-pass"),
+        }
+
+        rule_rows = []
+        for rule in rules:
+            rs = status_by_rule_id.get(rule.rule_id)
+            if rs:
+                label, css_class = STATUS_MAP.get(rs.status, ("Unknown", "status-unknown"))
+            else:
+                label, css_class = ("Not Started", "status-not-started")
+                rs = None
+
+            rule_rows.append({
+                "rule": rule,
+                "status_label": label,
+                "status_class": css_class,
+                "status_obj": rs,
+            })
+
+        context = {
+            "event": event,
+            "tractor_event": te,
+            "team": te.team,
+            "subcategory": subcategory,
+            "category": subcategory.category,
+            "rule_rows": rule_rows,
+        }
+        ren=render(request, "tech_in/team_subcategory_detail.html", context)
+        cache.add(key,ren)
+    return ren
 
 @log_view
-def team_rule_detail(request, event_id, tractor_event_id, rule_id):
+def team_rule_detail(request, event_id, team_id, rule_id):
     event = get_object_or_404(Event, pk=event_id)
+    team = get_object_or_404(Team,pk=team_id)
     te = get_object_or_404(
         TractorEvent.objects.select_related("team", "event"),
-        pk=tractor_event_id,
+        team=team,
         event=event,
     )
     rule = get_object_or_404(
@@ -459,20 +475,26 @@ def team_rule_detail(request, event_id, tractor_event_id, rule_id):
         event_tractor=te,
         rule=rule,
     ).first()
-
+    #print(rs.event_tractor_rule_status_id)
     STATUS_MAP = {
         0: ("Not Started", "status-not-started"),
         1: ("Failed", "status-failed"),
         2: ("Corrected", "status-corrected"),
         3: ("Pass", "status-pass"),
     }
-
+    if rs:
+        comments=rs.media.filter(media_type=RuleTractorMedia.types.COMMENT).all()
+        images=rs.media.filter(media_type=RuleTractorMedia.types.IMAGE).all()
+    else:
+        comments=[]
+        images=[]
     if rs:
         status_label, status_class = STATUS_MAP.get(rs.status, ("Unknown", "status-unknown"))
     else:
         status_label, status_class = ("Not Started", "status-not-started")
-
     context = {
+        "comments":comments,
+        "images":images,
         "event": event,
         "tractor_event": te,
         "team": te.team,

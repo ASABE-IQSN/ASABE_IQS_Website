@@ -1,0 +1,158 @@
+{# templates/app/metric_graph.html #}
+{% extends "base.html" %}
+
+{% block title %}Metric Graphing{% endblock %}
+
+{% block extra_head %}
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto py-8">
+  <h1 class="text-2xl font-semibold mb-4">Metric Graphing</h1>
+
+  <div class="mb-4 flex flex-wrap gap-4 items-end">
+    <!-- Metric selector -->
+    <div>
+      <label for="metric-select" class="block text-sm font-medium mb-1">
+        Metric(s)
+      </label>
+      <select id="metric-select" multiple size="5"
+              class="border rounded px-2 py-1 min-w-[200px]">
+        {% for name in metric_names %}
+          <option value="{{ name }}">{{ name }}</option>
+        {% endfor %}
+      </select>
+      <p class="text-xs text-gray-400 mt-1">
+        Hold Ctrl (Cmd on Mac) to select multiple.
+      </p>
+    </div>
+
+    <!-- Optional start/end datetime -->
+    <div>
+      <label for="start-input" class="block text-sm font-medium mb-1">
+        Start (optional)
+      </label>
+      <input id="start-input" type="datetime-local"
+             class="border rounded px-2 py-1">
+    </div>
+
+    <div>
+      <label for="end-input" class="block text-sm font-medium mb-1">
+        End (optional)
+      </label>
+      <input id="end-input" type="datetime-local"
+             class="border rounded px-2 py-1">
+    </div>
+
+    <button id="update-btn"
+            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+      Update graph
+    </button>
+  </div>
+
+  <!-- Info / error -->
+  <div id="status" class="text-sm text-gray-400 mb-2"></div>
+
+  <!-- Graph container -->
+  <div id="metric-plot" style="width: 100%; height: 500px;"></div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  const metricSelect = document.getElementById("metric-select");
+  const startInput   = document.getElementById("start-input");
+  const endInput     = document.getElementById("end-input");
+  const updateBtn    = document.getElementById("update-btn");
+  const statusEl     = document.getElementById("status");
+  const plotEl       = document.getElementById("metric-plot");
+
+  // Initial empty plot
+  Plotly.newPlot(plotEl, [], {
+    title: "Select metric(s) and click Update",
+    xaxis: { title: "Time" },
+    yaxis: { title: "Value" },
+  });
+
+  updateBtn.addEventListener("click", function () {
+    const selectedMetrics = Array.from(metricSelect.selectedOptions).map(
+      opt => opt.value
+    );
+
+    if (selectedMetrics.length === 0) {
+      statusEl.textContent = "Select at least one metric.";
+      return;
+    }
+
+    statusEl.textContent = "Loading…";
+
+    const params = new URLSearchParams();
+    selectedMetrics.forEach(m => params.append("metrics", m));
+
+    const startVal = startInput.value;
+    const endVal   = endInput.value;
+
+    // Convert datetime-local to ISO with "Z" for simplicity (UTC assumption)
+    if (startVal) {
+      params.set("start", new Date(startVal).toISOString());
+    }
+    if (endVal) {
+      params.set("end", new Date(endVal).toISOString());
+    }
+
+    fetch("{% url 'app:metric_data_api' %}?" + params.toString())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("Server returned " + response.status);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.error) {
+          statusEl.textContent = "Error: " + data.error;
+          return;
+        }
+
+        const series = data.series || {};
+        const traces = [];
+
+        Object.keys(series).forEach(metricName => {
+          const s = series[metricName];
+          traces.push({
+            x: s.timestamps,
+            y: s.values,
+            mode: "lines",
+            name: metricName,
+          });
+        });
+
+        if (traces.length === 0) {
+          statusEl.textContent = "No data for selected filters.";
+          Plotly.react(plotEl, [], {
+            title: "No data",
+            xaxis: { title: "Time" },
+            yaxis: { title: "Value" },
+          });
+          return;
+        }
+
+        Plotly.react(plotEl, traces, {
+          title: selectedMetrics.join(", "),
+          xaxis: {
+            title: "Time",
+            type: "date",
+            rangeslider: { visible: true },  // scrollable range slider
+          },
+          yaxis: { title: "Value" },
+        });
+
+        statusEl.textContent = "Loaded " + traces.length + " series.";
+      })
+      .catch(err => {
+        console.error(err);
+        statusEl.textContent = "Error loading data.";
+      });
+  });
+});
+</script>
+{% endblock %}

@@ -16,7 +16,7 @@ def user_can_access_team(user, team):
     #     return True
     # if not user.is_authenticated:
     #     return False
-    return True
+
     
     # Tech inspectors / administrators always have access
     if user.groups.filter(name="Tech_Admin").exists():
@@ -24,7 +24,7 @@ def user_can_access_team(user, team):
 
     
     expected_group = f"Team_{team.team_name.replace(' ', '')}"
-    if getattr(settings, "SITE_VARIANT", "normal") == "testing":
-        return True
+    # if getattr(settings, "SITE_VARIANT", "normal") == "testing":
+    #     return True
 
     return user.groups.filter(name=expected_group).exists()

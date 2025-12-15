@@ -37,7 +37,7 @@
             {% for sub in row.subcategories %}
               <tr>
                 <td>
-                  <a href="{% url 'tech_in:team_subcategory_detail' event.event_id tractor_event.pk sub.subcategory.rule_subcategory_id %}">
+                  <a href="{% url 'tech_in:team_subcategory_detail' event.event_id tractor_event.team.pk sub.subcategory.rule_subcategory_id %}">
                     {{ sub.subcategory.rule_subcategory_name }}
                   </a>
                 </td>

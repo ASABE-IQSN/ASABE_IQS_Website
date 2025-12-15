@@ -42,5 +42,5 @@ def view_thread_func():
             pass
 
 
-view_thread=threading.Thread(target=view_thread_func)
+view_thread=threading.Thread(target=view_thread_func,daemon=True)
 view_thread.start()
