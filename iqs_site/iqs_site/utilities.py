@@ -38,6 +38,7 @@ def view_thread_func():
             view=view_queue.get(timeout=100)
             user,url,ip,response_time,code=view
             View.objects.create(user_id=user,url=url,ip=ip,response_time_s=response_time,response_code=code)
+            #print("Put object into sql")
         except Exception:
             pass
 

@@ -505,6 +505,7 @@ def team_rule_detail(request, event_id, team_id, rule_id):
         "status_label": status_label,
         "status_class": status_class,
     }
+    print(rs.event_tractor_rule_status_id)
     return render(request, "tech_in/team_rule_detail.html", context)
 
 @log_view
