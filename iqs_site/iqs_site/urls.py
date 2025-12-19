@@ -19,7 +19,7 @@ from django.urls import path, include
 from django.conf import settings
 
 if getattr(settings, "SITE_VARIANT", "normal") == "testing":
-    root_prefix = "testing/"   
+    root_prefix = ""   
 else:
     root_prefix = ""           
 
