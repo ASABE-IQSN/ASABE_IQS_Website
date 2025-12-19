@@ -41,7 +41,7 @@ class Rule(models.Model):
         db_column="rule_subcategory_id",
     )
     rule_content = models.CharField(max_length=512)
-
+    rule_number = models.CharField(max_length=45)
     class Meta:
         db_table = "rules"
         managed = False
@@ -76,3 +76,25 @@ class EventTractorRuleStatus(models.Model):
 
     def __str__(self):
         return f"{self.event_tractor} – {self.rule.rule_content} – {self.status}"
+
+class RuleTractorMedia(models.Model):
+    id=models.AutoField(db_column="rule_tractor_media_id",primary_key=True)
+    
+
+    class types(models.IntegerChoices):
+        YOUTUBE_VIDEO=1
+        IMAGE=2
+        COMMENT=3
+    
+    media_type=models.IntegerField(choices=types)
+    event_tractor_rule_status=models.ForeignKey(
+        EventTractorRuleStatus,
+        on_delete=models.DO_NOTHING,
+        related_name="media",
+        db_column="event_tractor_rule_status_id"
+    )
+    class Meta:
+        managed = False
+        db_table="rule_tractor_media"
+
+    media=models.CharField(max_length=512)

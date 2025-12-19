@@ -1,0 +1,262 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Stats Plot{% endblock %}
+
+{% block extra_head %}
+  <!-- Offline Plotly -->
+  <script src="{% static 'stats/plotly/plotly.min.js' %}"></script>
+
+  <style>
+    .wrap { max-width: 1100px; margin: 0 auto; padding: 1.5rem; }
+    .title { margin: 0 0 0.25rem 0; font-size: 1.6rem; font-weight: 650; }
+    .subtitle { margin: 0 0 1rem 0; color: #94a3b8; }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: end;
+      padding: 1rem;
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      margin-bottom: 0.75rem;
+    }
+
+    .control { display:flex; flex-direction:column; gap:0.35rem; min-width: 220px; }
+    .control label { font-size: 0.85rem; color: #cbd5e1; }
+    .control small { font-size: 0.75rem; color: #94a3b8; }
+
+    select, input {
+      border-radius: 10px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(2, 6, 23, 0.65);
+      color: #e2e8f0;
+      padding: 0.55rem 0.65rem;
+      outline: none;
+    }
+    select:focus, input:focus { border-color: rgba(56, 189, 248, 0.6); }
+
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 0.6rem 1rem;
+      cursor: pointer;
+      font-weight: 600;
+      background: #2563eb;
+      color: white;
+      transition: transform 0.03s ease, opacity 0.15s ease;
+      height: 40px;
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn.secondary {
+      background: rgba(148, 163, 184, 0.15);
+      color: #e2e8f0;
+      border: 1px solid rgba(148,163,184,0.25);
+    }
+
+    .row { display:flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+    .status { font-size: 0.9rem; color: #94a3b8; margin: 0.25rem 0 0.75rem 0.25rem; min-height: 1.2rem; }
+
+    .plot-card {
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      padding: 0.75rem;
+    }
+
+    #plot { width: 100%; height: 620px; }
+    #metric-select { min-width: 280px; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <h1 class="title">Stats Plot</h1>
+  <p class="subtitle">Select metric(s) and plot the last 5 minutes (1 Hz test data). Zoom/pan enabled.</p>
+
+  <div class="controls">
+    <div class="control">
+      <label for="metric-select">Metric(s)</label>
+      <select id="metric-select" multiple size="6">
+        {% for key, label in available_metrics %}
+          <option value="{{ key }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+      <small>Hold Ctrl (Cmd on Mac) for multi-select.</small>
+    </div>
+
+    <div class="control" style="min-width: 240px;">
+      <label for="refresh-ms">Auto-refresh (optional)</label>
+      <div class="row">
+        <input id="refresh-ms" type="number" min="0" step="250" value="0" style="width: 120px;">
+        <small>ms</small>
+      </div>
+      <small>0 = off. Example: 1000 = update every second.</small>
+    </div>
+
+    <div class="row" style="gap:0.5rem;">
+      <button id="update-btn" class="btn" type="button">Update graph</button>
+      <button id="reset-btn" class="btn secondary" type="button">Reset view</button>
+    </div>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <div class="plot-card">
+    <div id="plot"></div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const metricSelect = document.getElementById("metric-select");
+  const refreshMsInp = document.getElementById("refresh-ms");
+  const updateBtn    = document.getElementById("update-btn");
+  const resetBtn     = document.getElementById("reset-btn");
+  const statusEl     = document.getElementById("status");
+  const plotEl       = document.getElementById("plot");
+
+  let refreshTimer = null;
+
+  function setStatus(msg) {
+    statusEl.textContent = msg || "";
+  }
+
+  function getSelectedMetrics() {
+    return Array.from(metricSelect.selectedOptions).map(o => o.value);
+  }
+
+  function emptyPlot(message) {
+    Plotly.react(plotEl, [], {
+      title: message || "Select metric(s) then Update",
+      xaxis: { title: "Time" },
+      yaxis: { title: "Value" },
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)",
+      font: { color: "#e2e8f0" }
+    }, {
+      responsive: true,
+      displaylogo: false,
+    });
+  }
+
+  function layoutFor(metricsLabels) {
+    return {
+      title: metricsLabels || "Metrics",
+      xaxis: {
+        title: "Time",
+        type: "date",
+        rangeslider: { visible: true },
+      },
+      yaxis: { title: "Value" },
+      legend: { orientation: "h" },
+      margin: { t: 55, l: 60, r: 30, b: 55 },
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: "rgba(0,0,0,0)",
+      font: { color: "#e2e8f0" }
+    };
+  }
+
+  async function fetchAndPlot() {
+    const metrics = getSelectedMetrics();
+    if (metrics.length === 0) {
+      setStatus("Select at least one metric.");
+      emptyPlot("Select metric(s) then Update");
+      return;
+    }
+
+    setStatus("Loading…");
+
+    const params = new URLSearchParams();
+    metrics.forEach(m => params.append("metrics", m));
+
+    const url = "{% url 'stats:test_series_api' %}?" + params.toString();
+
+    try {
+      const resp = await fetch(url, { headers: { "Accept": "application/json" }});
+      if (!resp.ok) throw new Error("Server returned " + resp.status);
+
+      const payload = await resp.json();
+      const series = payload.series || {};
+
+      const traces = [];
+      const metricTitles = [];
+
+      for (const key of metrics) {
+        const s = series[key];
+        if (!s) continue;
+
+        const x = s.timestamps || [];
+        const y = s.values || [];
+        const label = s.label || key;
+
+        metricTitles.push(label);
+
+        if (!x.length || !y.length) continue;
+
+        traces.push({
+          x, y,
+          mode: "lines",
+          name: label,
+          hovertemplate: "%{x}<br>%{y}<extra>" + label + "</extra>"
+        });
+      }
+
+      if (traces.length === 0) {
+        setStatus("No data returned for selected metrics.");
+        emptyPlot("No data returned");
+        return;
+      }
+
+      Plotly.react(plotEl, traces, layoutFor(metricTitles.join(", ")), {
+        responsive: true,
+        displaylogo: false,
+        scrollZoom: true,     // wheel zoom
+        doubleClick: "reset", // double click reset
+      });
+
+      setStatus(`Loaded ${traces.length} series (300 points each).`);
+    } catch (err) {
+      console.error(err);
+      setStatus("Error loading data (check server logs / endpoint).");
+      emptyPlot("Load failed");
+    }
+  }
+
+  function resetView() {
+    Plotly.relayout(plotEl, {
+      "xaxis.autorange": true,
+      "yaxis.autorange": true
+    });
+  }
+
+  function setAutoRefresh(ms) {
+    if (refreshTimer) {
+      clearInterval(refreshTimer);
+      refreshTimer = null;
+    }
+    if (!ms || ms <= 0) return;
+    refreshTimer = setInterval(fetchAndPlot, ms);
+  }
+
+  updateBtn.addEventListener("click", fetchAndPlot);
+  resetBtn.addEventListener("click", resetView);
+
+  refreshMsInp.addEventListener("change", () => {
+    const ms = parseInt(refreshMsInp.value || "0", 10);
+    setAutoRefresh(ms);
+    setStatus(ms > 0 ? `Auto-refresh every ${ms} ms is on.` : "Auto-refresh off.");
+  });
+
+  // Quality-of-life: default select "speed" so the page works immediately
+  for (const opt of metricSelect.options) {
+    if (opt.value === "speed") opt.selected = true;
+  }
+
+  // Initial render
+  emptyPlot("Click Update graph to load test data");
+})();
+</script>
+{% endblock %}

@@ -30,8 +30,8 @@
     {% for row in rule_rows %}
       <tr class="{{ row.status_class }}">
         <td>
-          <a href="{% url 'tech_in:team_rule_detail' event.event_id tractor_event.pk row.rule.rule_id %}">
-            {{ row.rule.rule_id }}
+          <a href="{% url 'tech_in:team_rule_detail' event.event_id tractor_event.team.pk row.rule.rule_id %}">
+            {{ row.rule.rule_number }}
           </a>
         </td>
         <td>{{ row.rule.rule_content }}</td>
@@ -48,7 +48,7 @@
 </table>
 
 <p style="margin-top: 1rem;">
-  <a href="{% url 'tech_in:team_tech_overview' event.event_id tractor_event.pk %}">
+  <a href="{% url 'tech_in:team_tech_overview' event.event_id tractor_event.team.pk %}">
     ← Back to team tech overview
   </a>
 </p>

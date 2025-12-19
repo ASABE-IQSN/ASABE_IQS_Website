@@ -1,11 +1,13 @@
 {% extends "base.html" %}
 
+{% load static %}
+
 {% block title %}
-{{ team.team_name }} – Rule {{ rule.rule_id }} – Tech
+{{ team.team_name }} – Rule {{ rule.rule_number }} – Tech
 {% endblock %}
 
 {% block content %}
-<h1>{{ team.team_name }} – Rule {{ rule.rule_id }}</h1>
+<h1>{{ team.team_name }} – Rule {{ rule.rule_number }}</h1>
 
 <p>
   <strong>Event:</strong> {{ event.event_name }}<br>
@@ -20,13 +22,26 @@
 <p class="{{ status_class }}">{{ status_label }}</p>
 
 <h2>Images</h2>
-<p><em>Coming soon – inspection photos for this rule & tractor.</em></p>
 
+
+        {% for photo in images %}
+            <img src="{% static photo.media %}"alt="{{ photo.caption|default:team.team_name }}">
+        {% endfor %}
+
+  {% if not images %}
+  <p> No images yet</p>
+  {% endif %}
 <h2>Comments</h2>
-<p><em>Coming soon – inspector notes for this rule & tractor.</em></p>
+{% for comment in comments %}
 
+<p>{{comment.media}}</p>
+
+{% endfor %}
+{% if not comments %}
+<p> No comments yet</p>
+{% endif %}
 <p style="margin-top: 1rem;">
-  <a href="{% url 'tech_in:team_subcategory_detail' event.event_id tractor_event.pk subcategory.rule_subcategory_id %}">
+  <a href="{% url 'tech_in:team_subcategory_detail' event.event_id tractor_event.team.pk subcategory.rule_subcategory_id %}">
     ← Back to subcategory
   </a>
 </p>

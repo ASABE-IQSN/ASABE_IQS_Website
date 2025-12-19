@@ -15,7 +15,7 @@ import yaml
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
+LOGGING_DIR =Path("/var/www/quarterscale/")
 SITE_VARIANT = os.environ.get("SITE_VARIANT","normal")
 print(f"Starting server with site variant: {SITE_VARIANT}")
 # Quick-start development settings - unsuitable for production
@@ -32,7 +32,13 @@ SECRET_KEY = 'django-insecure-ne&$^!n&q^@6eq7sm_+c@j!n34nbnbzcf58i-_&i@h1#4hozml
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = SITE_CONFIG["DEBUG"]
 
-ALLOWED_HOSTS = ["internationalquarterscale.com","127.0.0.1"]
+ALLOWED_HOSTS = [
+    "38.22.155.20",
+    "internationalquarterscale.com",
+    "www.internationalquarterscale.com",
+    "localhost",
+    "127.0.0.1",
+]
 
 STATICFILES_DIRS = []
 # Application definition
@@ -51,7 +57,8 @@ INSTALLED_APPS = [
     'events',
     'live',
     "techin",
-    "users"
+    "users",
+    "stats"
 ]
 
 MIDDLEWARE = [
@@ -158,11 +165,11 @@ LOGGING = {
 
     # ---- Where logs go ----
     "handlers": {
-        "file_500": {
-            "level": "ERROR",
-            "class": "logging.FileHandler",
-            "filename": os.path.join(BASE_DIR, "logs/django_500.log"),
-        },
+        # "file_500": {
+        #     "level": "ERROR",
+        #     "class": "logging.FileHandler",
+        #     "filename": os.path.join(LOGGING_DIR, "logs",SITE_VARIANT,"django_500.log"),
+        # },
         "console": {
             "class": "logging.StreamHandler",
         },
@@ -172,16 +179,28 @@ LOGGING = {
     "loggers": {
         # Django internal errors (including 500s)
         "django.request": {
-            "handlers": ["file_500", "console"],
+            "handlers": [ "console"],
             "level": "ERROR",
             "propagate": False,
         },
 
         # Optional: log template errors, email errors, etc.
         "django.server": {
-            "handlers": ["file_500", "console"],
+            "handlers": [ "console"],
             "level": "ERROR",
             "propagate": False,
         },
     },
+}
+
+CACHES = {
+    "default": {
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://127.0.0.1:6379/1",  # use db 1 (0 is fine too)
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
+        "KEY_PREFIX": "iqs",  # important if you have testing/prod on same redis
+        "TIMEOUT": 60,        # default TTL seconds (override per-call as needed)
+    }
 }

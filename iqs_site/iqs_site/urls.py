@@ -30,4 +30,5 @@ urlpatterns = [
     path(root_prefix+"techin/",include("techin.urls",namespace="techin")),
     path(root_prefix+"accounts/", include("django.contrib.auth.urls")),
     path(root_prefix+"user/", include("users.urls",namespace="user")),
+    path("stats/", include("stats.urls", namespace="stats")),
 ]
