@@ -75,7 +75,7 @@ let pull_active = false;
 
 // --- SSE hookup ---
 function startSSE() {
-  const es = new EventSource("http://127.0.0.1:9000/api/stream");
+  const es = new EventSource("https://api.internationalquarterscale.com/api/stream");
 
   es.addEventListener("status", (e) => {
     const s = JSON.parse(e.data);
