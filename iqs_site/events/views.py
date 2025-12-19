@@ -21,7 +21,7 @@ from django.views.decorators.cache import cache_page
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 @log_view
-@cache_page(300)  # 300 seconds = 5 minutes
+#@cache_page(300)  # 300 seconds = 5 minutes
 def landing(request):
     now = timezone.now()  # timezone-aware; Django prefers this
     
@@ -35,7 +35,13 @@ def landing(request):
         .first()
     )
 
-    return render(request, "landing.html", {"next_event": next_event})
+    active_event=(
+        Event.objects
+        .filter(event_active=True)
+        .first()
+    )
+
+    return render(request, "landing.html", {"next_event": next_event,"active_event":active_event})
 
 
 @log_view
