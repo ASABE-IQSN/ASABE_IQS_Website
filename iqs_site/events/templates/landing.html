@@ -137,6 +137,9 @@
       <a class="btn btn-primary" href="{% url 'events:event_list' %}">View Events</a>
       <a class="btn" href="{% url 'events:team_list' %}">View Teams</a>
       <a class="btn" href="{% url 'events:tractor_list' %}">View Tractors</a>
+      {% if active_event %}
+      <a class="btn" href="{% url 'live:landing' %}">View Live Event</a>
+      {% endif %}
     </div>
   </section>
 {% endblock %}

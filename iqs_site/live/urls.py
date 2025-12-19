@@ -4,5 +4,6 @@ from . import views
 app_name = "live"
 
 urlpatterns = [
-    path('', views.live_landing, name='live_landing'),
+    path('', views.live_landing, name='landing'),
+    path('pull', views.live_pull, name='pull'),
 ]

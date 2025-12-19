@@ -36,6 +36,7 @@ ALLOWED_HOSTS = [
     "38.22.155.20",
     "internationalquarterscale.com",
     "www.internationalquarterscale.com",
+    "testing.internationalquarterscale.com",
     "localhost",
     "127.0.0.1",
 ]
@@ -54,6 +55,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
     'django.contrib.sitemaps',
+    "corsheaders",
     'events',
     'live',
     "techin",
@@ -62,6 +64,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -69,7 +72,17 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    
+    
 ]
+
+CORS_ALLOWED_ORIGINS = [
+    "https://www.internationalquarterscale.com",
+    "https://testing.internationalquarterscale.com",
+    "http://127.0.0.1:9000",
+    "https://api.internationalquarterscale.com"
+]
+
 
 ROOT_URLCONF = 'iqs_site.urls'
 
