@@ -36,7 +36,7 @@ ALLOWED_HOSTS = [
     "38.22.155.20",
     "internationalquarterscale.com",
     "www.internationalquarterscale.com",
-    "testing.internationalquarterscale.com"
+    "testing.internationalquarterscale.com",
     "localhost",
     "127.0.0.1",
 ]
