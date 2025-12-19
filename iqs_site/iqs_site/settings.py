@@ -79,7 +79,8 @@ MIDDLEWARE = [
 CORS_ALLOWED_ORIGINS = [
     "https://www.internationalquarterscale.com",
     "https://testing.internationalquarterscale.com",
-    "http://127.0.0.1:9000"
+    "http://127.0.0.1:9000",
+    "https://api.internationalquarterscale.com"
 ]
 
 
