@@ -22,6 +22,7 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 @log_view
 #@cache_page(300)  # 300 seconds = 5 minutes
+@cache_page(300)  # 300 seconds = 5 minutes
 def landing(request):
     now = timezone.now()  # timezone-aware; Django prefers this
     
