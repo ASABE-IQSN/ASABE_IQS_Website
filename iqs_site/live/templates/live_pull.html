@@ -2,6 +2,10 @@
 {% load static %}
 {% block title %}Live Results – {{ event.event_name|default:"IQS Live" }}{% endblock %}
 
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'live/css/live_pull.css' %}">
+{% endblock %}
+
 {% block content %}
 <script defer src="{% static 'live/js/live_pull.js' %}"></script>
 
@@ -19,16 +23,52 @@
 
   </header>
 
-  <div>current-pull
-    <header>
-      hook
-    </header>
+  <div class="panel panel-current">
+  <div class="panel-head">
+    <h2 class="panel-title">Current Pull</h2>
+    <div class="chip chip-live" id="sseStatus">LIVE</div>
   </div>
+  <div class="current-meta">
+    <div><span class="k">Team</span> <strong><span data-field="team_name">TEAM</span></strong> <span class="muted">#<span data-field="team_number">NUMBER</span></span></div>
+    <div><span class="k">Hook</span> <strong><span data-field="hook_name">HOOK</span></strong></div>
+    <div><span class="k">Distance</span> <strong><span data-field="distance">0</span></strong> <span class="muted">ft</span></div>
+  </div>
+</div>
 
-  <canvas id="liveChart" height="90"></canvas>
+  <div class="grid">
+  <section class="panel panel-chart">
+    <canvas id="liveChart" height="300"></canvas>
+  </section>
+
+  <aside class="panel panel-board">
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Hook Leaderboard</h2>
+        <div class="panel-subtitle">
+          Live standings for this hook
+        </div>
+      </div>
+      <div class="chip" id="boardCount">0</div>
+    </div>
+
+    <div id="leaderboard" class="leaderboard">
+      <div class="empty" id="boardEmpty">No standings yet.</div>
+    </div>
+  </aside>
+</div>
+
 
 <!-- Chart.js (CDN for now) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+<div class="card">
+  <h1>
+    Live Data
+  </h1>
+  <p>
+    <span data-field="distance">0</span> ft
+  </p>
+  <p><span data-field="speed">0</span> mph</p>
+  <p><span data-field="force">0</span> lbf</p>
+</div>
 </div>
 {% endblock %}

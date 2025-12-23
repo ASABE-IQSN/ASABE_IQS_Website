@@ -1,0 +1,227 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>IQS Live Overlay</title>
+
+  <!-- Optional: your site font if you have one; otherwise system UI -->
+  <style>
+    :root{
+      --bg: rgba(10, 15, 26, 0.55);
+      --panel: rgba(15, 23, 42, 1);
+      --panel2: rgba(2, 6, 23, 1);
+      --text: rgba(226, 232, 240, 0.95);
+      --muted: rgba(148, 163, 184, 0.9);
+      --line: rgba(148, 163, 184, 0.20);
+      --shadow: 0 10px 30px rgba(0,0,0,0.35);
+      --radius: 16px;
+    }
+
+    /* OBS-friendly: transparent page */
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: transparent;
+      overflow: hidden;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      color: var(--text);
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none; /* don’t steal mouse in OBS */
+    }
+
+    /* Top-left “info bar” */
+    .hud {
+      position: absolute;
+      left: 24px;
+      top: 24px;
+      width: min(720px, calc(100% - 48px));
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      padding: 16px 18px;
+    }
+
+    .hud-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .title {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(2, 6, 23, 0.6);
+      border: 1px solid var(--line);
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(148, 163, 184, 0.9);
+      box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.15);
+    }
+    .status-live .dot {
+      background: rgba(34, 197, 94, 0.95);
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+    }
+    .status-stale .dot {
+      background: rgba(245, 158, 11, 0.95);
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+    }
+
+    .meta {
+      margin-top: 10px;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr 1fr;
+      gap: 10px 14px;
+      font-size: 14px;
+    }
+
+    .kv {
+      background: var(--panel2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      min-width: 0;
+    }
+
+    .k {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .v {
+      font-size: 16px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Bottom “chart card” */
+    .chart-card {
+      position: absolute;
+      left: 24px;
+      bottom: 24px;
+      width: min(920px, calc(100% - 48px));
+      height: 260px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      padding: 12px 14px 10px;
+    }
+
+    .chart-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .chart-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(226, 232, 240, 0.92);
+    }
+
+    .small {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    #liveChart {
+      width: 100%;
+      height: calc(100% - 28px);
+    }
+
+    /* Hide overlay entirely if you ever want to toggle with a class */
+    .hidden { display: none; }
+  </style>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script defer src="{% static 'live/js/live_overlay.js' %}"></script>
+</head>
+
+<body>
+  <div class="overlay">
+    <div class="hud">
+      <div class="hud-row">
+        <div class="title">Live Pull</div>
+        <div class="status-pill" id="statusPill">
+          <span class="dot"></span>
+          <span id="statusText">Connecting…</span>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div class="kv">
+          <div class="k">Team</div>
+          <div class="v"><span data-field="team_name">TEAM</span> <span data-field="team_number">#</span></div>
+        </div>
+
+        <div class="kv">
+          <div class="k">Distance</div>
+          <div class="v"><span data-field="distance">0.0</span> ft</div>
+        </div>
+
+        <div class="kv">
+          <div class="k">Hook</div>
+          <div class="v"><span data-field="hook_name">HOOK</span></div>
+        </div>
+
+        <div class="kv">
+          <div class="k">Speed</div>
+          <div class="v"><span data-field="speed">0.0</span> ft/s</div>
+        </div>
+
+        <div class="kv">
+          <div class="k">Force</div>
+          <div class="v"><span data-field="force">0</span> lbf</div>
+        </div>
+
+        <div class="kv">
+          <div class="k">Pull</div>
+          <div class="v"><span data-field="pull_id">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Speed & Force vs Distance</div>
+        <div class="small">Auto-updating</div>
+      </div>
+      <canvas id="liveChart"></canvas>
+    </div>
+  </div>
+</body>
+</html>

@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from .models import Event
 from django.conf import settings
-from .models import TeamClass, Team,PullMedia, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent
+from .models import TeamClass, Team,PullMedia, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from functools import wraps
@@ -210,6 +210,12 @@ def team_event_detail(request, event_id, team_id):
         .filter(event=event, team=team)
         .order_by("hook__hook_name", "pull_id")
     )
+    
+    schedule_items=(
+        ScheduleItem.objects
+        .select_related("type")
+        .filter(event=event,team=team)
+        .order_by("datetime"))
 
     # Chart data: labels = hook name / id, distances = final_distance (0 if None)
     chart_labels = []
@@ -244,6 +250,7 @@ def team_event_detail(request, event_id, team_id):
         "chart_distances_json": json.dumps(chart_distances),
         "event_photos": event_photos,
         "active_page": "events",
+        "schedule_items":schedule_items
     }
     return render(request, "events/team_event_detail.html", context)
 
@@ -336,7 +343,7 @@ def upload_team_photo(request, event_id, team_id):
     return redirect("events:team_event_detail", event_id=event_id, team_id=team_id)
 
 @log_view
-@cache_page(300)
+#@cache_page(300)
 def event_detail(request, event_id):
     event = get_object_or_404(
         Event.objects.select_related(),  # tweak as needed
@@ -363,6 +370,12 @@ def event_detail(request, event_id):
         .all()
     )
 
+    schedule_items=(ScheduleItem.objects
+                    .filter(event=event)
+                    .order_by("datetime")
+                    .filter(type=5)
+    )
+
     event_hooks = []
     for hook in hooks_qs:
         pulls = list(hook.pulls.all())
@@ -377,6 +390,7 @@ def event_detail(request, event_id):
         "rankings_by_class": rankings_by_class,
         "event_hooks": event_hooks,
         "active_page": "events",
+        "schedule_items":schedule_items,
     }
     return render(request, "events/event_detail.html", context)
 
