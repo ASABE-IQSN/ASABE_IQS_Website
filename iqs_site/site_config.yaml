@@ -6,6 +6,8 @@ normal:
   DB_HOST: "38.22.155.20"
   DB_PORT: 3306
   SHOW_TEST_BANNER: false
+  EMAIL_HOST_USER : "rocketboyking@gmail.com"
+  EMAIL_HOST_PASSWORD : "zwcs smbu iuof jfng"
 
 testing:
   DEBUG: true
