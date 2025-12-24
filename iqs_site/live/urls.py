@@ -6,4 +6,5 @@ app_name = "live"
 urlpatterns = [
     path('', views.live_landing, name='landing'),
     path('pull', views.live_pull, name='pull'),
+    path('overlay',views.overlay,name="pull_overlay"),
 ]

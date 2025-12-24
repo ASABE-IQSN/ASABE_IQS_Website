@@ -170,7 +170,7 @@ LOGIN_REDIRECT_URL = "users:account"
 LOGOUT_REDIRECT_URL = "events:landing"
 LOGIN_URL = "login"
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+#EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 LOGGING = {
     "version": 1,
@@ -217,3 +217,18 @@ CACHES = {
         "TIMEOUT": 60,        # default TTL seconds (override per-call as needed)
     }
 }
+
+# Email via Gmail SMTP
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+
+
+
+EMAIL_HOST_USER = SITE_CONFIG["EMAIL_HOST_USER"]
+EMAIL_HOST_PASSWORD = SITE_CONFIG["EMAIL_HOST_PASSWORD"]
+
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+SERVER_EMAIL = EMAIL_HOST_USER  # for error emails, if you use AdminEmailHandler

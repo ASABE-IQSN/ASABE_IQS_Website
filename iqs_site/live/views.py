@@ -9,3 +9,6 @@ def live_landing(request):
 
 def live_pull(request):
     return render(request,"live_pull.html")
+
+def overlay(request):
+    return render(request,"overlay.html")

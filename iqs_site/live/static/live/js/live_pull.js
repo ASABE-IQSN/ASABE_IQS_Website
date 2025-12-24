@@ -14,7 +14,7 @@ function setField(key, value, digits = null) {
 }
 
 // --- chart setup ---
-const MAX_POINTS = 1200;
+const MAX_POINTS = 10000;
 const ctx = document.getElementById("liveChart");
 let chart = null;
 

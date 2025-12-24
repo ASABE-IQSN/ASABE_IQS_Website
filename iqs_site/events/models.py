@@ -287,3 +287,39 @@ class EventTeamPhoto(models.Model):
 
     def __str__(self):
         return f"Photo {self.event_team_photo_id} for {self.event_team}"
+    
+class ScheduleItemType(models.Model):
+    schedule_item_type_id=models.AutoField(primary_key=True)
+    name=models.CharField(max_length=45)
+
+    class Meta:
+        managed=False
+        db_table="schedule_item_types"
+
+
+
+class ScheduleItem(models.Model):
+    schedule_item_id=models.AutoField(primary_key=True)
+    datetime=models.DateTimeField()
+    name=models.CharField(max_length=45)
+    type=models.ForeignKey(
+        ScheduleItemType,
+        models.DO_NOTHING,
+        db_column="type",
+        related_name="items"
+    )
+    team=models.ForeignKey(
+        Team,
+        models.DO_NOTHING,
+        db_column="team",
+        related_name="schedule_items"
+    )
+    event=models.ForeignKey(
+        Event,
+        models.DO_NOTHING,
+        db_column="event",
+        related_name="schedule_items"
+    )
+    class Meta:
+        managed=False
+        db_table="schedule_items"

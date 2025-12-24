@@ -213,3 +213,4 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 reqs.txt
+iqs_site/site_config.yaml

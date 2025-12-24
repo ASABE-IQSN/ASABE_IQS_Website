@@ -375,6 +375,8 @@
       {% endif %}
     </div>
 
+    
+
     <!-- Right: best pull of event -->
     <div class="card">
       <h3>Best Pull of Event</h3>
@@ -444,7 +446,34 @@
       <p class="empty">No pulls recorded for this team in this event.</p>
     {% endif %}
   </section>
-
+<section class="grid">
+    <!-- Left: comparison vs top 3 -->
+    <div class="card">
+      <h3>Event Schedule</h3>
+      {% if schedule_items %}
+        <table>
+          <thead>
+            <tr>
+              <th>Schedule Item</th>
+              <th>Time</th>
+              <th>Type</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for si in schedule_items %}
+              <tr>
+                <td>{{ si.name }}</td>
+                <td>{{ si.datetime }}</td>
+                <td>{{ si.type.name }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="empty">No schedule available.</p>
+      {% endif %}
+    </div>
+</section>
   {% if event_team %}
     <section class="card" style="margin-top: 1.5rem;">
       <h3>Event Photos</h3>
