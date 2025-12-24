@@ -101,13 +101,14 @@ def signup(request):
 
 def send_verification_email(request, user):
     
-    current_site = get_current_site(request)
-    current_site=Site(domain="127.0.0.1:8000/testing")
+    #current_site = get_current_site(request)
+    
+    current_site=Site(domain="internationalquarterscale.com")
     #current_site="127.0.0.1:8000"
-    print(current_site)
-    print(request.get_host())
-    print(request.build_absolute_uri())
-    print(request.session)
+    #print(current_site)
+    #print(request.get_host())
+    #print(request.build_absolute_uri())
+    #print(request.session)
     subject = "Confirm your email address"
     
     uid = urlsafe_base64_encode(force_bytes(user.pk))
