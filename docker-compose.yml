@@ -1,0 +1,48 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  web:
+    build:
+      context: .      
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - envs/production.env
+    depends_on:
+      - redis
+    ports:
+      - "8000:8000"
+    volumes:
+      # optional for dev: live-edit code without rebuilding
+      # comment this out for production to be fully image-based
+      #- .:/app
+      - static_data:/app/staticfiles
+      - media_data:/app/media
+    command: >
+      gunicorn iqs_site.wsgi:application
+      --bind 0.0.0.0:8000
+      --workers 3
+  
+  worker:
+    build: .
+    env_file: envs/production.env
+    restart: unless-stopped
+    depends_on:
+      - redis
+    command: >
+      celery -A iqs_site worker -l info
+
+  beat:
+    build: .
+    env_file: envs/production.env
+    restart: unless-stopped
+    depends_on:
+      - redis
+    command: >
+      celery -A iqs_site beat -l info
+
+volumes:
+  static_data:
+  media_data:

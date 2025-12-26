@@ -13,6 +13,19 @@ import os
 from pathlib import Path
 import yaml
 
+def env_bool(name: str, default: bool = False) -> bool:
+    val = os.environ.get(name)
+    if val is None:
+        return default
+    return val.strip().lower() in ("1", "true", "yes", "on")
+
+def env_list(name: str, default: list[str] | None = None) -> list[str]:
+    val = os.environ.get(name)
+    if not val:
+        return default or []
+    return [x.strip() for x in val.split(",") if x.strip()]
+
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 LOGGING_DIR =Path("/var/www/quarterscale/")
@@ -27,19 +40,33 @@ with open(BASE_DIR / "site_config.yaml") as f:
 SITE_CONFIG=ALL_CONFIG[SITE_VARIANT]
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-ne&$^!n&q^@6eq7sm_+c@j!n34nbnbzcf58i-_&i@h1#4hozml'
+#SECRET_KEY = 'django-insecure-ne&$^!n&q^@6eq7sm_+c@j!n34nbnbzcf58i-_&i@h1#4hozml'
+SECRET_KEY = os.environ["DJANGO_SECRET_KEY"]  # hard fail if missing
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = SITE_CONFIG["DEBUG"]
+#DEBUG = SITE_CONFIG["DEBUG"]
+DEBUG = env_bool("DJANGO_DEBUG", default=bool(SITE_CONFIG.get("DEBUG", False)))
 
-ALLOWED_HOSTS = [
-    "38.22.155.20",
-    "internationalquarterscale.com",
-    "www.internationalquarterscale.com",
-    "testing.internationalquarterscale.com",
-    "localhost",
-    "127.0.0.1",
-]
+# ALLOWED_HOSTS = [
+#     "38.22.155.20",
+#     "internationalquarterscale.com",
+#     "www.internationalquarterscale.com",
+#     "testing.internationalquarterscale.com",
+#     "localhost",
+#     "127.0.0.1",
+# ]
+
+ALLOWED_HOSTS = env_list(
+    "DJANGO_ALLOWED_HOSTS",
+    default=[
+        "38.22.155.20",
+        "internationalquarterscale.com",
+        "www.internationalquarterscale.com",
+        "testing.internationalquarterscale.com",
+        "localhost",
+        "127.0.0.1",
+    ],
+)
 
 STATICFILES_DIRS = []
 # Application definition
@@ -60,7 +87,8 @@ INSTALLED_APPS = [
     'live',
     "techin",
     "users",
-    "stats"
+    "stats",
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [
@@ -76,12 +104,23 @@ MIDDLEWARE = [
     
 ]
 
-CORS_ALLOWED_ORIGINS = [
-    "https://www.internationalquarterscale.com",
-    "https://testing.internationalquarterscale.com",
-    "http://127.0.0.1:9000",
-    "https://api.internationalquarterscale.com"
-]
+# CORS_ALLOWED_ORIGINS = [
+#     "https://www.internationalquarterscale.com",
+#     "https://testing.internationalquarterscale.com",
+#     "http://127.0.0.1:9000",
+#     "https://api.internationalquarterscale.com"
+# ]
+
+CORS_ALLOWED_ORIGINS = env_list(
+    "CORS_ALLOWED_ORIGINS",
+    default=[
+        "https://www.internationalquarterscale.com",
+        "https://testing.internationalquarterscale.com",
+        "http://127.0.0.1:9000",
+        "https://api.internationalquarterscale.com",
+    ],
+)
+
 
 
 ROOT_URLCONF = 'iqs_site.urls'
@@ -107,20 +146,47 @@ SITE_ID = 1
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.mysql",
+#         "NAME": SITE_CONFIG["DB_NAME"],
+#         "USER": SITE_CONFIG["DB_USER"],
+#         "PASSWORD": SITE_CONFIG["DB_PASSWORD"],
+#         "HOST": SITE_CONFIG["DB_HOST"],    
+#         "PORT": SITE_CONFIG["DB_PORT"],         
+#         "OPTIONS": {
+#             "charset": "utf8mb4",
+#             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
+#         },
+#     }
+# }
+
+DB_NAME = os.environ["DB_NAME"]
+DB_USER = os.environ["DB_USER"]
+DB_PASSWORD = os.environ["DB_PASSWORD"]
+DB_HOST = os.environ["DB_HOST"]
+DB_PORT = os.environ["DB_PORT"]
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": SITE_CONFIG["DB_NAME"],
-        "USER": SITE_CONFIG["DB_USER"],
-        "PASSWORD": SITE_CONFIG["DB_PASSWORD"],
-        "HOST": SITE_CONFIG["DB_HOST"],    
-        "PORT": SITE_CONFIG["DB_PORT"],         
+        "NAME": DB_NAME,
+        "USER": DB_USER,
+        "PASSWORD": DB_PASSWORD,
+        "HOST": DB_HOST,
+        "PORT": DB_PORT,
         "OPTIONS": {
             "charset": "utf8mb4",
             "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         },
     }
 }
+
+if not DEBUG:
+    for k in ("DB_NAME", "DB_USER", "DB_PASSWORD", "DB_HOST"):
+        if not os.environ.get(k):
+            raise RuntimeError(f"Missing required env var: {k}")
+
 
 
 # Password validation
@@ -206,17 +272,21 @@ LOGGING = {
     },
 }
 
+REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/1")
+REDIS_KEY_PREFIX = os.environ.get("REDIS_KEY_PREFIX", "iqs")
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",  # use db 1 (0 is fine too)
+        "LOCATION": REDIS_URL,
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         },
-        "KEY_PREFIX": "iqs",  # important if you have testing/prod on same redis
-        "TIMEOUT": 60,        # default TTL seconds (override per-call as needed)
+        "KEY_PREFIX": REDIS_KEY_PREFIX,
+        "TIMEOUT": int(os.environ.get("REDIS_DEFAULT_TIMEOUT", "60")),
     }
 }
+
 
 # Email via Gmail SMTP
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
@@ -227,8 +297,21 @@ EMAIL_USE_SSL = False
 
 
 
-EMAIL_HOST_USER = SITE_CONFIG["EMAIL_HOST_USER"]
-EMAIL_HOST_PASSWORD = SITE_CONFIG["EMAIL_HOST_PASSWORD"]
+# EMAIL_HOST_USER = SITE_CONFIG["EMAIL_HOST_USER"]
+# EMAIL_HOST_PASSWORD = SITE_CONFIG["EMAIL_HOST_PASSWORD"]
 
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-SERVER_EMAIL = EMAIL_HOST_USER  # for error emails, if you use AdminEmailHandler
+# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+# SERVER_EMAIL = EMAIL_HOST_USER  # for error emails, if you use AdminEmailHandler
+
+EMAIL_HOST_USER = os.environ["EMAIL_HOST_USER"]
+EMAIL_HOST_PASSWORD = os.environ["EMAIL_HOST_PASSWORD"]
+
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", EMAIL_HOST_USER)
+SERVER_EMAIL = os.environ.get("SERVER_EMAIL", EMAIL_HOST_USER)
+
+CELERY_BROKER_URL = os.environ.get("CELERY_BROKER_URL", REDIS_URL)
+CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", REDIS_URL)
+CELERY_ACCEPT_CONTENT = ["json"]
+CELERY_TASK_SERIALIZER = "json"
+CELERY_RESULT_SERIALIZER = "json"
+CELERY_TIMEZONE = "UTC"
