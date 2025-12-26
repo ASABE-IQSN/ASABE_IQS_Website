@@ -24,6 +24,24 @@ services:
       gunicorn iqs_site.wsgi:application
       --bind 0.0.0.0:8000
       --workers 3
+  
+  worker:
+    build: .
+    env_file: envs/production.env
+    restart: unless-stopped
+    depends_on:
+      - redis
+    command: >
+      celery -A iqs_site worker -l info
+
+  beat:
+    build: .
+    env_file: envs/production.env
+    restart: unless-stopped
+    depends_on:
+      - redis
+    command: >
+      celery -A iqs_site beat -l info
 
 volumes:
   static_data:
