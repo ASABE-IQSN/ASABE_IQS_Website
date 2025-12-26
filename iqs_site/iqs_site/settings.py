@@ -87,7 +87,8 @@ INSTALLED_APPS = [
     'live',
     "techin",
     "users",
-    "stats"
+    "stats",
+    "django_celery_beat",
 ]
 
 MIDDLEWARE = [
