@@ -2,9 +2,11 @@ normal:
   DEBUG: false
   SHOW_TEST_BANNER: false
 
+
 testing:
   DEBUG: true
   SHOW_TEST_BANNER: true
+
 
 local:
   DEBUG: true
