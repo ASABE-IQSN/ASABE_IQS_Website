@@ -122,6 +122,12 @@ CORS_ALLOWED_ORIGINS = env_list(
     ],
 )
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://testing.internationalquarterscale.com",
+    "https://internationalquarterscale.com",
+    # add others if you post from them, e.g.
+    # "https://internationalquarterscale.com",
+]
 
 
 ROOT_URLCONF = 'iqs_site.urls'
