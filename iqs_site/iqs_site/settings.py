@@ -73,6 +73,7 @@ STATICFILES_DIRS = []
 
 STATIC_ROOT = "/var/www/quarterscale/static/"
 
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
