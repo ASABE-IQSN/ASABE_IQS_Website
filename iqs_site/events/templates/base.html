@@ -110,7 +110,7 @@
       </a>
 
       
-      {% if user.is_authenticated %}
+      <!-- {% if user.is_authenticated %}
       <a href="{% url 'users:account' %}">My Account</a>
         <form action="{% url 'logout' %}" method="post" style="display:inline;">
           {% csrf_token %}
@@ -118,7 +118,9 @@
         </form>
     {% else %}
       <a href="{% url 'login' %}">Login</a>
-    {% endif %}
+    {% endif %} -->
+
+    <span id="auth-slot" style="display:none;"></span>
     </nav>
   </header>
 
@@ -137,3 +139,33 @@
 {% block extra_scripts %}{% endblock %}
 </body>
 </html>
+
+<script>
+(async function () {
+  const slot = document.getElementById("auth-slot");
+  if (!slot) return;
+
+  try {
+    const r = await fetch("{% url 'users:auth_status' %}", { credentials: "same-origin" });
+    const data = await r.json();
+
+    if (data.authenticated) {
+      slot.innerHTML = `
+        <a href="${data.accountUrl}">My Account</a>
+        <form action="${data.logoutUrl}" method="post" style="display:inline;">
+          <input type="hidden" name="csrfmiddlewaretoken" value="${data.csrfToken}">
+          <button type="submit" class="logout-button">Logout</button>
+        </form>
+      `;
+    } else {
+      slot.innerHTML = `<a href="${data.loginUrl}">Login</a>`;
+    }
+
+    slot.style.display = "inline";
+  } catch (e) {
+    // Fail gracefully: show Login if the check fails
+    slot.innerHTML = `<a href="{% url 'login' %}">Login</a>`;
+    slot.style.display = "inline";
+  }
+})();
+</script>

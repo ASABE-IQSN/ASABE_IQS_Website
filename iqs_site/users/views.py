@@ -16,6 +16,10 @@ from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponse
 from django.contrib.sites.models import Site
+from django.http import JsonResponse
+from django.middleware.csrf import get_token
+from django.views.decorators.cache import cache_control
+from django.views.decorators.vary import vary_on_cookie
 
 @login_required
 def account(request):
@@ -147,3 +151,13 @@ def verify_email(request, uidb64, token):
         return redirect("users:account")
     else:
         return HttpResponse("Invalid or expired verification link.")
+    
+@cache_control(private=True, max_age=30)
+def auth_status(request):
+    return JsonResponse({
+        "authenticated": request.user.is_authenticated,
+        #"csrfToken": get_token(request),
+        "accountUrl": "/user/account/",  # or reverse() if you prefer
+        "loginUrl": "/accounts/login/",
+        "logoutUrl": "/accounts/logout/",
+    })

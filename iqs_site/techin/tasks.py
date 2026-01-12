@@ -4,7 +4,8 @@ from celery import shared_task
 from django.conf import settings
 from django.db import transaction
 
-from techin.models import RuleCategory, TractorEvent, EventTractorRuleStatus
+from techin.models import RuleCategory, EventTractorRuleStatus
+from events.models import TractorEvent
 import resources.dict_loader as dict_loader
 
 

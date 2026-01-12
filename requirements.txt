@@ -7,3 +7,4 @@ Django==5.2.*
 celery==5.6.*
 django-celery-beat==2.8.1
 django-timezone-field==6.1.0
+gspread==6.2.1

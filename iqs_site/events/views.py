@@ -125,6 +125,7 @@ def tractor_list(request):
     return render(request, "events/tractor_list.html", context)
 
 @log_view
+@cache_page(300)
 def privacy(request):
     return render(request, "events/privacy.html", {
         "active_page": None,  # or "privacy" if you want a nav link for it
@@ -343,7 +344,7 @@ def upload_team_photo(request, event_id, team_id):
     return redirect("events:team_event_detail", event_id=event_id, team_id=team_id)
 
 @log_view
-#@cache_page(300)
+@cache_page(300)
 def event_detail(request, event_id):
     event = get_object_or_404(
         Event.objects.select_related(),  # tweak as needed
