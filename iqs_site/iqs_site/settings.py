@@ -174,6 +174,8 @@ DB_PASSWORD = os.environ["DB_PASSWORD"]
 DB_HOST = os.environ["DB_HOST"]
 DB_PORT = os.environ["DB_PORT"]
 
+
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.mysql",
@@ -293,6 +295,13 @@ CACHES = {
         "TIMEOUT": int(os.environ.get("REDIS_DEFAULT_TIMEOUT", "60")),
     }
 }
+
+if DEBUG:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        }
+    }
 
 
 # Email via Gmail SMTP
