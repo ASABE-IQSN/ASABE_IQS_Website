@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -9,7 +10,7 @@
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #020617;
+      background: #1b152d;
       color: #e5e7eb;
     }
     a { color: #38bdf8; text-decoration: none; }
@@ -21,10 +22,17 @@
       flex-direction: column;
     }
 
+    .site-logo {
+      max-height: 40px;
+      max-width: 120%;
+      height: auto;
+      width: auto;
+    }
+
     header {
       padding: 1rem 1.5rem;
       border-bottom: 1px solid #111827;
-      background: #020617;
+      background: #1b152d;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -90,7 +98,12 @@
 
 <div class="page">
   <header>
-    <div class="logo">International Quarter Scale</div>
+    <!-- <div class="logo">International Quarter Scale</div> -->
+    <img
+        src="{% static 'events/images/ASABE-IQS-logo-white.png' %}"
+        alt="International Quarter Scale"
+        class="site-logo"
+      />
     <nav class="nav-links">
       <a href="{% url 'events:landing' %}"
          class="{% if active_page == 'landing' %}active{% endif %}">
