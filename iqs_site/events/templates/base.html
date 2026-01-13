@@ -113,11 +113,13 @@
 <div class="page">
   <header>
     <!-- <div class="logo">International Quarter Scale</div> -->
-    <img
+    <a href="https://asabe.org/iqs">
+      <img
         src="{% static 'events/images/ASABE-IQS-logo-white.png' %}"
         alt="International Quarter Scale"
         class="site-logo"
-      />
+        >
+     </a>
     <nav class="nav-links">
       <a href="{% url 'events:landing' %}"
          class="{% if active_page == 'landing' %}active{% endif %}">
