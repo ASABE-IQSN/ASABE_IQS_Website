@@ -10,10 +10,10 @@
     body {
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #1b152d;
-      color: #e5e7eb;
+      background: #020617;
+      color: #f3f6e7;
     }
-    a { color: #38bdf8; text-decoration: none; }
+    a { color: #6687fc; text-decoration: none; }
     a:hover { text-decoration: underline; }
 
     .page {
@@ -32,7 +32,7 @@
     header {
       padding: 1rem 1.5rem;
       border-bottom: 1px solid #111827;
-      background: #1b152d;
+      background: #020617;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -48,8 +48,15 @@
 
     .nav-links a {
       margin-left: 1rem;
-      font-size: 1.8rem;
+      font-size: 1.0rem;
       color: #9ca3af;
+      flex: 1;                /* ← this is the key */
+      text-align: center;
+      padding: 0.75rem 0.5rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.15s ease;
+      align-items: flex-start;
     }
 
     .nav-links a.active {

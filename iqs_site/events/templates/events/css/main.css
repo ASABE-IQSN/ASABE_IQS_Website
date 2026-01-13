@@ -1,8 +1,8 @@
 body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: #1b152d;
-  color: #e5e7eb;
+  background: #020617;
+  color: #020617;
 }
 
 a {
@@ -28,12 +28,12 @@ a:hover {
 
 .site-header {
   border-bottom: 1px solid #1f2937;
-  background: #1b152d;
+  background: #020617;
 }
 .logo a {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #e5e7eb;
+  color: #020617;
 }
 
 .site-main {
@@ -62,7 +62,7 @@ h1, h2, h3, h4 {
 .card {
   padding: 1rem 1.25rem;
   border-radius: 0.5rem;
-  background: #1b152d;
+  background: #020617;
   border: 1px solid #1f2937;
 }
 
@@ -83,7 +83,7 @@ h1, h2, h3, h4 {
   font-size: 0.9rem;
 }
 .table thead {
-  background: #1b152d;
+  background: #020617;
 }
 .table th,
 .table td {
