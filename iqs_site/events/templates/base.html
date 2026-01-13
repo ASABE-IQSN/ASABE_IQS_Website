@@ -29,6 +29,13 @@
       width: auto;
     }
 
+    .asabe-logo {
+      max-height: 80px;
+      max-width: 120%;
+      height: auto;
+      width: auto;
+    }
+
     header {
       padding: 1rem 1.5rem;
       border-bottom: 1px solid #111827;
@@ -151,6 +158,11 @@
   </main>
 
   <footer>
+    <img
+        src="{% static 'events/images/ASABE_Logo_White.png' %}"
+        alt="ASABE"
+        class="asabe-logo"
+      />
     &copy; 2026 International Quarter Scale Competition •
     <a href="{% url 'events:privacy' %}">Privacy Policy</a>
   </footer>
