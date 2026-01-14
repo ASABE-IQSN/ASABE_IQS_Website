@@ -129,6 +129,7 @@ def tractor_list(request):
 def privacy(request):
     return render(request, "events/privacy.html", {
         "active_page": None,  # or "privacy" if you want a nav link for it
+        "contact_email":"asabeiqswebsite@gmail.com"
     })
 
 @log_view
