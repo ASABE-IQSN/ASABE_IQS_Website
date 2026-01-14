@@ -150,7 +150,7 @@ def team_detail(request, team_id):
         EventTeamPhoto.objects
         .select_related("event_team__event")
         .filter(event_team__team=team, approved=True)
-        .order_by("-created_at")
+        .order_by("event_team_photo_id")
     )
 
     # Build chart data from event_teams that have scores
