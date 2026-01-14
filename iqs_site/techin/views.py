@@ -505,7 +505,7 @@ def team_rule_detail(request, event_id, team_id, rule_id):
         "status_label": status_label,
         "status_class": status_class,
     }
-    print(rs.event_tractor_rule_status_id)
+    #print(rs.event_tractor_rule_status_id)
     return render(request, "tech_in/team_rule_detail.html", context)
 
 @log_view
@@ -513,6 +513,6 @@ def category_view(request,event_id,category_id):
     category=get_object_or_404(RuleCategory,pk=category_id)
     event=get_object_or_404(Event,pk=event_id)
     rts=EventTractorRuleStatus.objects.filter(event_tractor__event=event,rule__sub_category__category=category).all()
-    print(rts)
+    #print(rts)
     context={}
     return render(request,"tech_in/permission_denied.html",context)
