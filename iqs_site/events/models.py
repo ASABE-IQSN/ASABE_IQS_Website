@@ -39,6 +39,9 @@ class Event(models.Model):
 
     def __str__(self):
         return self.event_name or f"Event {self.event_id}"
+    
+    def  get_absolute_url(self):
+        return f"/event/{self.event_id}"
 
 
 class Team(models.Model):
@@ -68,6 +71,9 @@ class Team(models.Model):
 
     def __str__(self):
         return f"{self.team_name} ({self.team_number})"
+    
+    def get_absolute_url(self):
+        return f"/teams/{self.team_id}"
 
 
 class Tractor(models.Model):
@@ -91,6 +97,9 @@ class Tractor(models.Model):
 
     def __str__(self):
         return self.tractor_name or f"Tractor {self.tractor_id}"
+    
+    def get_absolute_url(self):
+        return f"/tractors/{self.tractor_id}"
 
 
 class TractorEvent(models.Model):
@@ -261,6 +270,9 @@ class EventTeam(models.Model):
 
     def __str__(self):
         return f"{self.event} – {self.team} (score {self.total_score})"
+    
+    def get_absolute_url(self):
+        return f"/team-event/{self.event.event_id}/{self.team.team_id}"
 
 
 class EventTeamPhoto(models.Model):
