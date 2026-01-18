@@ -19,6 +19,7 @@ from django.urls import path, include
 from django.conf import settings
 from .sitemap import StaticViewSitemap, EventSitemap, EventTeamsSitemap,TeamsSitemap,TractorsSitemap
 from django.contrib.sitemaps.views import sitemap
+from django.conf.urls.static import static
 
 if getattr(settings, "SITE_VARIANT", "normal") == "testing":
     root_prefix = ""   
@@ -46,3 +47,6 @@ urlpatterns = [
     path("stats/", include("stats.urls", namespace="stats")),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

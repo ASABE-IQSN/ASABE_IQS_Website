@@ -74,6 +74,15 @@ STATICFILES_DIRS = []
 
 STATIC_ROOT = "/var/www/quarterscale/static/"
 
+from pathlib import Path
+
+BASE_DIR = Path("/var/www/quarterscale")
+
+# STATIC_URL = "/static/"
+# STATIC_ROOT = BASE_DIR / "staticfiles"   # collectstatic output (prod)
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR/"static"          # uploaded photos/live media
 
 INSTALLED_APPS = [
     'django.contrib.admin',

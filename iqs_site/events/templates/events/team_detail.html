@@ -295,7 +295,7 @@
   <section class="hero">
     <div class="hero-image">
       {% if team_photos %}
-        <img src="{% static team_photos.0.photo_path %}"
+        <img src="/media/{{team_photos.0.photo_path}}"
              alt="{{ team.team_name }}">
       {% else %}
         No image
@@ -367,7 +367,7 @@
       <div class="photo-grid">
         {% for photo in team_photos %}
           <figure data-photo-index="{{ forloop.counter0 }}">
-            <img src="{% static photo.photo_path %}"
+            <img src="/media/{{photo.photo_path }}"
                  alt="{{ photo.caption|default:team.team_name }}">
 
             <figcaption>
