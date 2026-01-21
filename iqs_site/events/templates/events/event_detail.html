@@ -164,9 +164,11 @@
         <strong>{{ event_hooks|length }}</strong>
       </div>
     </div>
+    {% if event.techin_released %}
     <a href="{% url 'tech_in:overview' event_id=event.event_id %}">
                           Tech In Progress
                         </a>
+    {% endif %}
   </section>
 
   <!-- Rankings by class -->
