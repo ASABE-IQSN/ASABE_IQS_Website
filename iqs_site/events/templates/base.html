@@ -218,8 +218,8 @@
 
     if (data.authenticated) {
       slot.innerHTML = `
-        <a href="${data.accountUrl}">My Account
-          class="{% if active_page == 'my account' %}active{% endif %}"> </a>
+        <a href="${data.accountUrl}"class="{% if active_page == 'my account' %}active{% endif %}>My Account
+          "> </a>
         <form action="${data.logoutUrl}" method="post" style="display:inline;">
           <input type="hidden" name="csrfmiddlewaretoken" value="${data.csrfToken}">
           <button type="submit" class="logout-button">Logout</button>
