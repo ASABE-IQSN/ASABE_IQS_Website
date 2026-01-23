@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
-from .sitemap import StaticViewSitemap, EventSitemap, EventTeamsSitemap,TeamsSitemap,TractorsSitemap
+from .sitemap import TechinSitemap,StaticViewSitemap, EventSitemap, EventTeamsSitemap,TeamsSitemap,TractorsSitemap
 from django.contrib.sitemaps.views import sitemap
 from django.conf.urls.static import static
 
@@ -33,7 +33,8 @@ sitemaps = {
     "events": EventSitemap,
     "eventTeams": EventTeamsSitemap,
     "teams": TeamsSitemap,
-    "tractors":TractorsSitemap
+    "tractors":TractorsSitemap,
+    "techin":TechinSitemap
 }
 
 
