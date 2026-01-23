@@ -156,7 +156,7 @@ def verify_email(request, uidb64, token):
 def auth_status(request):
     return JsonResponse({
         "authenticated": request.user.is_authenticated,
-        #"csrfToken": get_token(request),
+        "csrfToken": get_token(request),
         "accountUrl": "/user/account/",  # or reverse() if you prefer
         "loginUrl": "/accounts/login/",
         "logoutUrl": "/accounts/logout/",

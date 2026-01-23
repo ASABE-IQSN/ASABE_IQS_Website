@@ -264,6 +264,8 @@ def allowed_file(filename: str) -> bool:
 @require_POST
 def upload_team_photo(request, event_id, team_id):
     print("Uploaded Photo")
+    approved = False
+    approved = request.user.is_authenticated and request.user.has_perm("events.can_auto_approve_team_photos")
     # Look up event & team so we can 404 nicely if bad IDs
     event = get_object_or_404(Event, pk=event_id)
     team = get_object_or_404(Team, pk=team_id)
@@ -339,7 +341,7 @@ def upload_team_photo(request, event_id, team_id):
         event_team=event_team,
         photo_path=rel_path,
         submitted_from_ip=ip,
-        approved=False,
+        approved=approved,
     )
 
     return redirect("events:team_event_detail", event_id=event_id, team_id=team_id)

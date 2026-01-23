@@ -297,6 +297,10 @@ class EventTeamPhoto(models.Model):
     class Meta:
         managed = False
         db_table = "event_team_photos"
+        
+        permissions = [
+            ("can_auto_approve_team_photos", "Can auto-approve uploaded team photos"),
+        ]
 
     def __str__(self):
         return f"Photo {self.event_team_photo_id} for {self.event_team}"
