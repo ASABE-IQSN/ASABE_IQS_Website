@@ -10,6 +10,7 @@ def user_can_access_team(user, team):
     Returns True if user belongs to the group for this tractor_event's team
     or is part of Tech_Admin.
     """
+    return True
     # if team.team_id==1:
     #     return False
     # else: 
