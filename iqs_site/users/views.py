@@ -89,6 +89,7 @@ def manage_team_members(request, team_id):
     return render(request, "teams/manage_team_members.html", {
         "team": team,
         "members": members,
+        "active_page": "my account",
     })
 
 def signup(request):

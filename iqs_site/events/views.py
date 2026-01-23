@@ -43,7 +43,7 @@ def landing(request):
         .first()
     )
 
-    return render(request, "landing.html", {"next_event": next_event,"active_event":active_event})
+    return render(request, "landing.html", {"next_event": next_event,"active_event":active_event,"active_page": "home",})
 
 
 @log_view
