@@ -39,6 +39,7 @@ def account(request):
         "user": user,
         "teams_member": teams_member,
         "teams_admin": teams_admin,
+        "active_page": "my account",
     })
 
 User = get_user_model()
