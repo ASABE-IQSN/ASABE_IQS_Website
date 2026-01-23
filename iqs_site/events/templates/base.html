@@ -98,6 +98,32 @@
       text-align: center;
     }
 
+    .announcement-card {
+      max-width: 900px;
+      margin: 0 auto 1.5rem;
+      padding: 1rem 1.25rem;
+      border-radius: 1rem;
+      background: linear-gradient(135deg, #020617, #020617) padding-box,
+                  linear-gradient(135deg, #6687FC, #0ea5e9) border-box;
+      border: 1px solid transparent;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .announcement-text {
+      font-size: 0.95rem;
+      color: #F3F6E7;
+      line-height: 1.4;
+    }
+
+  .announcement-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
+
     {% block extra_styles %}{% endblock %}
   </style>
 

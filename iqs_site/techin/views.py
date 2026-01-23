@@ -301,7 +301,7 @@ def team_tech_overview(request, event_id, team_id):
     
     team = get_object_or_404(Team, pk=team_id)
 
-    if user_can_access_team(request.user,team):
+    if not user_can_access_team(request.user,team):
         return render(request,"tech_in/permission_denied.html")
 
     key=request.get_full_path()
@@ -394,7 +394,7 @@ def team_tech_overview(request, event_id, team_id):
 def team_subcategory_detail(request, event_id, team_id, subcategory_id):
     team = get_object_or_404(Team,pk=team_id)
 
-    if user_can_access_team(request.user,team):
+    if not user_can_access_team(request.user,team):
         return render(request,"tech_in/permission_denied.html")
 
     key=request.get_full_path()
@@ -459,8 +459,11 @@ def team_subcategory_detail(request, event_id, team_id, subcategory_id):
 
 @log_view
 def team_rule_detail(request, event_id, team_id, rule_id):
-    event = get_object_or_404(Event, pk=event_id)
     team = get_object_or_404(Team,pk=team_id)
+    if not user_can_access_team(request.user,team):
+        return render(request,"tech_in/permission_denied.html")
+    event = get_object_or_404(Event, pk=event_id)
+    
     te = get_object_or_404(
         TractorEvent.objects.select_related("team", "event"),
         team=team,
