@@ -107,7 +107,7 @@ def send_verification_email(request, user):
     
     #current_site = get_current_site(request)
     
-    current_site=Site(domain="internationalquarterscale.com")
+    current_site=Site(domain="iqsconnect.org")
     #current_site="127.0.0.1:8000"
     #print(current_site)
     #print(request.get_host())
