@@ -113,6 +113,9 @@ def team_list(request):
     return render(request, "events/teams.html", context)
 
 
+def health(request):
+    return HttpResponse("ok")
+
 @log_view
 @cache_page(300)
 def tractor_list(request):

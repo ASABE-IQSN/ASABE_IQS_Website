@@ -47,6 +47,7 @@ urlpatterns = [
     path(root_prefix+"user/", include("users.urls",namespace="user")),
     path("stats/", include("stats.urls", namespace="stats")),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}),
+    
 ]
 
 if settings.DEBUG:
