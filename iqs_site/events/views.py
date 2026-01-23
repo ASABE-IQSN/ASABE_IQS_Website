@@ -17,6 +17,7 @@ from django.http import HttpRequest, HttpResponse
 from iqs_site.utilities import log_view
 from django.core.cache import cache
 from django.views.decorators.cache import cache_page
+from django.db.models import Q
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
@@ -512,16 +513,28 @@ def tractor_detail(request, tractor_id):
 
     # Photos: EventTeamPhoto -> EventTeam (event, team).
     # We want photos where the (event, team) pair matches a TractorEvent for this tractor.
+    #This line does not work, it needs to specfically look for photos where this tractor was present and look for the team that it represented.
+    #This presents a bug with A/X teams
+
+    photo_filter = Q()
+    for te in tractor_events:
+        photo_filter |= Q(
+            event_team__event=te.event,
+            event_team__team=te.team,
+        )
+
     tractor_photos = (
         EventTeamPhoto.objects
-        .filter(
-            event_team__event__tractor_events__tractor=tractor,
-            event_team__team__tractor_events__tractor=tractor,
-        )
-        .select_related("event_team__event")
+        .filter(photo_filter)
+        .select_related("event_team__event","event_team__team")
         .distinct()
         .order_by("created_at")
     )
+
+    for te in tractor_events:
+        photos=EventTeamPhoto.objects.filter(event_team__event=te.event,event_team__team=te.team)
+
+
 
     context = {
         "tractor": tractor,
