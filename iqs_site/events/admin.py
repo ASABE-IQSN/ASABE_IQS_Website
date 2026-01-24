@@ -1,4 +1,4 @@
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.conf import settings
 from django.utils.html import format_html
 from .models import (
@@ -85,6 +85,16 @@ class EventTeamPhotoAdmin(admin.ModelAdmin):
         "created_at",
         "photo_preview",
     )
+
+    @admin.action(description="Approve selected photos")
+    def approve_photos(self, request, queryset):
+        updated = queryset.filter(approved=False).update(approved=True)
+        self.message_user(request, f"Approved {updated} photo(s).", level=messages.SUCCESS)
+
+    @admin.action(description="Unapprove selected photos")
+    def unapprove_photos(self, request, queryset):
+        updated = queryset.filter(approved=True).update(approved=False)
+        self.message_user(request, f"Unapproved {updated} photo(s).", level=messages.WARNING)
 
     def photo_preview(self, obj):
         if not obj.photo_path:
