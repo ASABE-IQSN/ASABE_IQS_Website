@@ -367,6 +367,8 @@ def event_detail(request, event_id):
 
     # rankings_by_class: { "Comp A": [EventTeam, ...], "Comp B": [...] }
     rankings_by_class = OrderedDict()
+    rankings_by_class["A Team"]=[]
+
     for et in event_teams:
         team_class = getattr(et.team, "team_class", None)
         class_name = team_class.name if team_class else "Unclassified"
