@@ -86,6 +86,8 @@ class EventTeamPhotoAdmin(admin.ModelAdmin):
         "photo_preview",
     )
 
+    actions = ["approve_photos", "unapprove_photos"]
+
     @admin.action(description="Approve selected photos")
     def approve_photos(self, request, queryset):
         updated = queryset.filter(approved=False).update(approved=True)
@@ -102,7 +104,7 @@ class EventTeamPhotoAdmin(admin.ModelAdmin):
 
         # photo_path is relative to /static, e.g. "team_photos/foo.jpg"
         # Build the URL that will actually serve it
-        url = "http://internationalquarterscale.com/static/" + obj.photo_path.lstrip("/")#settings.STATIC_URL + obj.photo_path.lstrip("/")
+        url = "http://iqsconnect.org/static/" + obj.photo_path.lstrip("/")#settings.STATIC_URL + obj.photo_path.lstrip("/")
 
         return format_html(
             '<img src="{}" style="max-width: 400px; max-height: 300px; border-radius: 8px; border: 1px solid #1f2937;" />',
