@@ -18,6 +18,7 @@ from iqs_site.utilities import log_view
 from django.core.cache import cache
 from django.views.decorators.cache import cache_page
 from django.db.models import Q
+from django.views.decorators.csrf import csrf_exempt
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
@@ -264,7 +265,7 @@ def team_event_detail(request, event_id, team_id):
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
+@csrf_exempt
 @require_POST
 def upload_team_photo(request, event_id, team_id):
     print("Uploaded Photo")
