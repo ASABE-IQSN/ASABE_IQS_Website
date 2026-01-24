@@ -13,6 +13,14 @@ from .models import (
     EventTeam,
     EventTeamPhoto,
 )
+from .models import (
+    ScoreCategory,
+    ScoreSubCategory,
+    ScoreCategoryInstance,
+    ScoreSubCategoryInstance,
+    ScoreSubCategoryScore,
+)
+
 
 @admin.register(TeamClass)
 class TeamClassAdmin(admin.ModelAdmin):
@@ -130,3 +138,62 @@ class TractorEventAdmin(admin.ModelAdmin):
         "team__team_name",
         "event__event_name",
     )
+
+@admin.register(ScoreCategory)
+class ScoreCategoryAdmin(admin.ModelAdmin):
+    list_display = ("score_category_id", "category_name")
+    search_fields = ("category_name",)
+    ordering = ("category_name",)
+
+@admin.register(ScoreSubCategory)
+class ScoreSubCategoryAdmin(admin.ModelAdmin):
+    list_display = ("score_subcategory_id", "subcategory_name")
+    search_fields = ("subcategory_name",)
+    ordering = ("subcategory_name",)
+
+@admin.register(ScoreCategoryInstance)
+class ScoreCategoryInstanceAdmin(admin.ModelAdmin):
+    list_display = (
+        "score_category_instance_id",
+        "score_category",
+        "event",
+        "max_points",
+        "released",
+    )
+
+    list_filter = ("released", "event", "score_category")
+    search_fields = ("score_category__category_name", "event__event_name")
+
+    ordering = ("event", "score_category")
+
+@admin.register(ScoreSubCategoryInstance)
+class ScoreSubCategoryInstanceAdmin(admin.ModelAdmin):
+    list_display = (
+        "score_subcategory_instance_id",
+        "score_subcategory",
+        "event",
+        "max_points",
+        "released",
+    )
+
+    list_filter = ("released", "event", "score_subcategory")
+    search_fields = ("score_subcategory__subcategory_name", "event__event_name")
+
+    ordering = ("event", "score_subcategory")
+
+@admin.register(ScoreSubCategoryScore)
+class ScoreSubCategoryScoreAdmin(admin.ModelAdmin):
+    list_display = (
+        "score_subcategory_score_id",
+        "team",
+        "subcategory",
+    )
+
+    list_filter = ("team", "subcategory__event")
+    search_fields = (
+        "team__team_name",
+        "subcategory__score_subcategory__subcategory_name",
+        "subcategory__event__event_name",
+    )
+
+    ordering = ("subcategory__event", "team")
