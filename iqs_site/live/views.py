@@ -8,7 +8,9 @@ def live_landing(request):
     return render(request,"live_landing.html",{"active_event":current_event})
 
 def live_pull(request):
-    return render(request,"live_pull.html")
+    context={}
+    context["api_url"]="http://127.0.0.1:9002"
+    return render(request,"live_pull.html",context)
 
 def overlay(request):
     return render(request,"overlay.html")

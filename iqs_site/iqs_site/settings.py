@@ -67,11 +67,22 @@ ALLOWED_HOSTS = env_list(
         "127.0.0.1",
     ],
 )
+#ALLOWED_HOSTS=["192.168.3.100","127.0.0.1"]
 
 STATICFILES_DIRS = []
 # Application definition
 
 STATIC_ROOT = "/var/www/quarterscale/static/"
+
+from pathlib import Path
+
+MEDIA_BASE_DIR = Path("/var/www/quarterscale")
+
+# STATIC_URL = "/static/"
+# STATIC_ROOT = BASE_DIR / "staticfiles"   # collectstatic output (prod)
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = MEDIA_BASE_DIR/"static"          # uploaded photos/live media
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -118,8 +129,19 @@ CORS_ALLOWED_ORIGINS = env_list(
         "https://testing.internationalquarterscale.com",
         "http://127.0.0.1:9000",
         "https://api.internationalquarterscale.com",
+        "https://api.iqsconnect.org",
+        "https://iqsconnect.org"
+        
     ],
 )
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://testing.internationalquarterscale.com",
+    "https://internationalquarterscale.com",
+    "https://iqsconnect.org"
+    # add others if you post from them, e.g.
+    # "https://internationalquarterscale.com",
+]
 
 
 
@@ -166,6 +188,8 @@ DB_USER = os.environ["DB_USER"]
 DB_PASSWORD = os.environ["DB_PASSWORD"]
 DB_HOST = os.environ["DB_HOST"]
 DB_PORT = os.environ["DB_PORT"]
+
+
 
 DATABASES = {
     "default": {
@@ -286,6 +310,13 @@ CACHES = {
         "TIMEOUT": int(os.environ.get("REDIS_DEFAULT_TIMEOUT", "60")),
     }
 }
+
+if DEBUG:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.dummy.DummyCache",
+        }
+    }
 
 
 # Email via Gmail SMTP

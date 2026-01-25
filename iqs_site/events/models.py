@@ -26,6 +26,7 @@ class Event(models.Model):
     event_name = models.CharField(max_length=255, blank=True, null=True)
     event_datetime = models.DateTimeField(blank=True, null=True)
     event_active = models.BooleanField(blank=False,null=False)
+    techin_released = models.BooleanField(blank=False,null=False)
     # Convenience many-to-many – all tractors in this event
     tractors = models.ManyToManyField(
         "Tractor",
@@ -39,6 +40,9 @@ class Event(models.Model):
 
     def __str__(self):
         return self.event_name or f"Event {self.event_id}"
+    
+    def  get_absolute_url(self):
+        return f"/event/{self.event_id}"
 
 
 class Team(models.Model):
@@ -68,6 +72,9 @@ class Team(models.Model):
 
     def __str__(self):
         return f"{self.team_name} ({self.team_number})"
+    
+    def get_absolute_url(self):
+        return f"/teams/{self.team_id}"
 
 
 class Tractor(models.Model):
@@ -91,6 +98,9 @@ class Tractor(models.Model):
 
     def __str__(self):
         return self.tractor_name or f"Tractor {self.tractor_id}"
+    
+    def get_absolute_url(self):
+        return f"/tractors/{self.tractor_id}"
 
 
 class TractorEvent(models.Model):
@@ -261,6 +271,9 @@ class EventTeam(models.Model):
 
     def __str__(self):
         return f"{self.event} – {self.team} (score {self.total_score})"
+    
+    def get_absolute_url(self):
+        return f"/team-event/{self.event.event_id}/{self.team.team_id}"
 
 
 class EventTeamPhoto(models.Model):
@@ -284,6 +297,10 @@ class EventTeamPhoto(models.Model):
     class Meta:
         managed = False
         db_table = "event_team_photos"
+        
+        permissions = [
+            ("can_auto_approve_team_photos", "Can auto-approve uploaded team photos"),
+        ]
 
     def __str__(self):
         return f"Photo {self.event_team_photo_id} for {self.event_team}"
@@ -323,3 +340,61 @@ class ScheduleItem(models.Model):
     class Meta:
         managed=False
         db_table="schedule_items"
+
+class ScoreCategory(models.Model):
+    score_category_id=models.AutoField(primary_key=True)
+    category_name=models.CharField(max_length=45)
+
+    def __str__(self):
+        return self.category_name
+
+    class Meta:
+        managed=True
+        db_table="score_categories"
+
+class ScoreSubCategory(models.Model):
+    score_subcategory_id=models.AutoField(primary_key=True)
+    subcategory_name=models.CharField(max_length=45)
+
+    def __str__(self):
+        return self.subcategory_name
+
+    class Meta:
+        managed=True
+        db_table="score_subcategories"
+
+class ScoreCategoryInstance(models.Model):
+    score_category_instance_id=models.AutoField(primary_key=True)
+    score_category=models.ForeignKey(ScoreCategory,models.DO_NOTHING,db_column="score_category_id",related_name="instances")
+    event=models.ForeignKey(Event,models.DO_NOTHING,db_column="event_id",related_name="score_category_instances",to_field="event_id",)
+    max_points=models.IntegerField()
+    released=models.BooleanField()
+    def __str__(self):
+        return f"{self.event} - {self.score_category}"
+    class Meta:
+        managed=True
+        db_table="score_category_instances"
+
+class ScoreSubCategoryInstance(models.Model):
+    score_subcategory_instance_id=models.AutoField(primary_key=True)
+    score_subcategory=models.ForeignKey(ScoreSubCategory,models.DO_NOTHING,db_column="score_subcategory_id",related_name="instances")
+    event=models.ForeignKey(Event,models.DO_NOTHING,db_column="event_id",related_name="score_subcategory_instances")
+    max_points=models.IntegerField()
+    released=models.BooleanField()
+
+    def __str__(self):
+        return f"{self.event} - {self.score_subcategory}"
+    class Meta:
+        managed=True
+        db_table="score_subcategory_instances"
+
+class ScoreSubCategoryScore(models.Model):
+    score_subcategory_score_id=models.AutoField(primary_key=True)
+    team=models.ForeignKey(Team,models.DO_NOTHING,db_column="team_id",related_name="event_score_subcategory_scores")
+    subcategory=models.ForeignKey(ScoreSubCategoryInstance,models.DO_NOTHING,db_column="subcategory_instance_id",related_name="team_scores")
+    def __str__(self):
+        return f"{self.team} → {self.subcategory}"
+    
+    class Meta:
+        managed=True
+        db_table="score_subcategory_scores"

@@ -15,5 +15,5 @@ urlpatterns = [
     path("tractors/<int:tractor_id>", views.tractor_detail, name="tractor_detail"),
     path("privacy/", views.privacy, name="privacy"),
     path("team-event/<int:event_id>/<int:team_id>/", views.team_event_detail, name="team_event_detail"),
-
+    path("health/", views.health, name="health")
 ]

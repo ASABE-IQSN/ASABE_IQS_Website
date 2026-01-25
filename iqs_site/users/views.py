@@ -16,6 +16,10 @@ from django.template.loader import render_to_string
 from django.utils.http import urlsafe_base64_decode
 from django.http import HttpResponse
 from django.contrib.sites.models import Site
+from django.http import JsonResponse
+from django.middleware.csrf import get_token
+from django.views.decorators.cache import cache_control
+from django.views.decorators.vary import vary_on_cookie
 
 @login_required
 def account(request):
@@ -35,6 +39,7 @@ def account(request):
         "user": user,
         "teams_member": teams_member,
         "teams_admin": teams_admin,
+        "active_page": "my account",
     })
 
 User = get_user_model()
@@ -85,6 +90,7 @@ def manage_team_members(request, team_id):
     return render(request, "teams/manage_team_members.html", {
         "team": team,
         "members": members,
+        "active_page": "my account",
     })
 
 def signup(request):
@@ -103,7 +109,7 @@ def send_verification_email(request, user):
     
     #current_site = get_current_site(request)
     
-    current_site=Site(domain="internationalquarterscale.com")
+    current_site=Site(domain="iqsconnect.org")
     #current_site="127.0.0.1:8000"
     #print(current_site)
     #print(request.get_host())
@@ -147,3 +153,13 @@ def verify_email(request, uidb64, token):
         return redirect("users:account")
     else:
         return HttpResponse("Invalid or expired verification link.")
+    
+@cache_control(private=True, max_age=30)
+def auth_status(request):
+    return JsonResponse({
+        "authenticated": request.user.is_authenticated,
+        "csrfToken": get_token(request),
+        "accountUrl": "/user/account/",  # or reverse() if you prefer
+        "loginUrl": "/accounts/login/",
+        "logoutUrl": "/accounts/logout/",
+    })

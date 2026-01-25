@@ -2,7 +2,7 @@ body {
   margin: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   background: #020617;
-  color: #e5e7eb;
+  color: #020617;
 }
 
 a {
@@ -33,7 +33,7 @@ a:hover {
 .logo a {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #e5e7eb;
+  color: #020617;
 }
 
 .site-main {

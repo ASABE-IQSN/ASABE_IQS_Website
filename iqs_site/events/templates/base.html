@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,15 +11,29 @@
       margin: 0;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
       background: #020617;
-      color: #e5e7eb;
+      color: #f3f6e7;
     }
-    a { color: #38bdf8; text-decoration: none; }
+    a { color: #6687fc; text-decoration: none; }
     a:hover { text-decoration: underline; }
 
     .page {
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+    }
+
+    .site-logo {
+      max-height: 80px;
+      max-width: 120%;
+      height: auto;
+      width: auto;
+    }
+
+    .asabe-logo {
+      max-height: 40px;
+      max-width: 120%;
+      height: auto;
+      width: auto;
     }
 
     header {
@@ -40,8 +55,15 @@
 
     .nav-links a {
       margin-left: 1rem;
-      font-size: 0.9rem;
+      font-size: 1.0rem;
       color: #9ca3af;
+      flex: 1;                /* ← this is the key */
+      text-align: center;
+      padding: 0.75rem 0.5rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 0.15s ease;
+      align-items: flex-start;
     }
 
     .nav-links a.active {
@@ -69,8 +91,38 @@
       border-top: 1px solid #111827;
       font-size: 0.8rem;
       color: #6b7280;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
       text-align: center;
     }
+
+    .announcement-card {
+      max-width: 900px;
+      margin: 0 auto 1.5rem;
+      padding: 1rem 1.25rem;
+      border-radius: 1rem;
+      background: linear-gradient(135deg, #020617, #020617) padding-box,
+                  linear-gradient(135deg, #6687FC, #0ea5e9) border-box;
+      border: 1px solid transparent;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .announcement-text {
+      font-size: 0.95rem;
+      color: #F3F6E7;
+      line-height: 1.4;
+    }
+
+  .announcement-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+  }
 
     {% block extra_styles %}{% endblock %}
   </style>
@@ -90,7 +142,14 @@
 
 <div class="page">
   <header>
-    <div class="logo">International Quarter Scale</div>
+    <!-- <div class="logo">International Quarter Scale</div> -->
+    <a href="https://asabe.org/iqs">
+      <img
+        src="{% static 'events/images/ASABE-IQS-logo-white.png' %}"
+        alt="International Quarter Scale"
+        class="site-logo"
+        >
+     </a>
     <nav class="nav-links">
       <a href="{% url 'events:landing' %}"
          class="{% if active_page == 'landing' %}active{% endif %}">
@@ -110,7 +169,7 @@
       </a>
 
       
-      {% if user.is_authenticated %}
+      <!-- {% if user.is_authenticated %}
       <a href="{% url 'users:account' %}">My Account</a>
         <form action="{% url 'logout' %}" method="post" style="display:inline;">
           {% csrf_token %}
@@ -118,7 +177,9 @@
         </form>
     {% else %}
       <a href="{% url 'login' %}">Login</a>
-    {% endif %}
+    {% endif %} -->
+
+    <span id="auth-slot" style="display:none;"></span>
     </nav>
   </header>
 
@@ -129,6 +190,14 @@
   </main>
 
   <footer>
+    <a href="https://asabe.org/">
+      <img
+        src="{% static 'events/images/ASABE_Logo_White.png' %}"
+        alt="ASABE"
+        class="asabe-logo"
+      >
+    </a>
+    
     &copy; 2026 International Quarter Scale Competition •
     <a href="{% url 'events:privacy' %}">Privacy Policy</a>
   </footer>
@@ -137,3 +206,34 @@
 {% block extra_scripts %}{% endblock %}
 </body>
 </html>
+
+<script>
+(async function () {
+  const slot = document.getElementById("auth-slot");
+  if (!slot) return;
+
+  try {
+    const r = await fetch("{% url 'users:auth_status' %}", { credentials: "same-origin" });
+    const data = await r.json();
+
+    if (data.authenticated) {
+      slot.innerHTML = `
+        <a href="${data.accountUrl}"class="{% if active_page == 'my account' %}active{% endif %}">My Account
+           </a>
+        <form action="${data.logoutUrl}" method="post" style="display:inline;">
+          <input type="hidden" name="csrfmiddlewaretoken" value="${data.csrfToken}">
+          <button type="submit" class="logout-button">Logout</button>
+        </form>
+      `;
+    } else {
+      slot.innerHTML = `<a href="${data.loginUrl}">Login</a>`;
+    }
+
+    slot.style.display = "inline";
+  } catch (e) {
+    // Fail gracefully: show Login if the check fails
+    slot.innerHTML = `<a href="{% url 'login' %}">Login</a>`;
+    slot.style.display = "inline";
+  }
+})();
+</script>

@@ -10,6 +10,7 @@ from django.shortcuts import redirect
 from iqs_site.utilities import log_view
 from django.core.cache import cache
 from django.views.decorators.cache import cache_page
+from django.http import Http404
 
 # @log_view
 # @cache_page(300)
@@ -301,7 +302,7 @@ def team_tech_overview(request, event_id, team_id):
     
     team = get_object_or_404(Team, pk=team_id)
 
-    if user_can_access_team(request.user,team):
+    if not user_can_access_team(request.user,team):
         return render(request,"tech_in/permission_denied.html")
 
     key=request.get_full_path()
@@ -310,7 +311,8 @@ def team_tech_overview(request, event_id, team_id):
 
         
         event = get_object_or_404(Event, pk=event_id)
-        
+        if not event.techin_released:
+            raise Http404("Page not found")
         te = get_object_or_404(
             TractorEvent.objects.select_related("team", "event"),
             team=team,
@@ -394,7 +396,7 @@ def team_tech_overview(request, event_id, team_id):
 def team_subcategory_detail(request, event_id, team_id, subcategory_id):
     team = get_object_or_404(Team,pk=team_id)
 
-    if user_can_access_team(request.user,team):
+    if not user_can_access_team(request.user,team):
         return render(request,"tech_in/permission_denied.html")
 
     key=request.get_full_path()
@@ -402,7 +404,8 @@ def team_subcategory_detail(request, event_id, team_id, subcategory_id):
 
     if not ren:
         event = get_object_or_404(Event, pk=event_id)
-        
+        if not event.techin_released:
+            raise Http404("Page not found")
         te = get_object_or_404(
             TractorEvent.objects.select_related("team", "event"),
             team=team,
@@ -459,8 +462,12 @@ def team_subcategory_detail(request, event_id, team_id, subcategory_id):
 
 @log_view
 def team_rule_detail(request, event_id, team_id, rule_id):
-    event = get_object_or_404(Event, pk=event_id)
     team = get_object_or_404(Team,pk=team_id)
+    if not user_can_access_team(request.user,team):
+        return render(request,"tech_in/permission_denied.html")
+    event = get_object_or_404(Event, pk=event_id)
+    if not event.techin_released:
+        raise Http404("Page not found")
     te = get_object_or_404(
         TractorEvent.objects.select_related("team", "event"),
         team=team,
@@ -505,7 +512,7 @@ def team_rule_detail(request, event_id, team_id, rule_id):
         "status_label": status_label,
         "status_class": status_class,
     }
-    print(rs.event_tractor_rule_status_id)
+    #print(rs.event_tractor_rule_status_id)
     return render(request, "tech_in/team_rule_detail.html", context)
 
 @log_view
@@ -513,6 +520,6 @@ def category_view(request,event_id,category_id):
     category=get_object_or_404(RuleCategory,pk=category_id)
     event=get_object_or_404(Event,pk=event_id)
     rts=EventTractorRuleStatus.objects.filter(event_tractor__event=event,rule__sub_category__category=category).all()
-    print(rts)
+    #print(rts)
     context={}
     return render(request,"tech_in/permission_denied.html",context)

@@ -234,7 +234,7 @@
 
   .lightbox-caption {
     font-size: 0.9rem;
-    color: #e5e7eb;
+    color: #F3F6E7;
     text-align: center;
     max-width: 70ch;
   }
@@ -253,7 +253,7 @@
     justify-content: center;
     cursor: pointer;
     font-size: 1rem;
-    color: #e5e7eb;
+    color: #F3F6E7;
   }
 
   .lightbox-arrow {
@@ -270,7 +270,7 @@
     justify-content: center;
     cursor: pointer;
     font-size: 1.1rem;
-    color: #e5e7eb;
+    color: #F3F6E7;
   }
 
   .lightbox-arrow.left {
@@ -306,7 +306,7 @@
   <section class="hero">
     <div class="hero-image">
       {% if event_photos %}
-        <img src="{% static event_photos.0.photo_path %}"
+        <img src="/media/{{event_photos.0.photo_path}}"
              alt="{{ team.team_name }}">
       {% else %}
         No image
@@ -482,7 +482,7 @@
         <div class="event-photo-grid">
           {% for photo in event_photos %}
             <figure data-photo-index="{{ forloop.counter0 }}">
-              <img src="{% static photo.photo_path %}"
+              <img src="/media/{{photo.photo_path}}"
                    alt="{{ photo.caption|default:team.team_name }}">
               {% if photo.caption %}
                 <figcaption>
@@ -532,7 +532,7 @@
                style="margin-bottom: 0.5rem;">
         <br>
         <button type="submit"
-                style="padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid #1f2937; background: #0f172a; color: #e5e7eb; cursor: pointer;">
+                style="padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid #1f2937; background: #0f172a; color: #020617; cursor: pointer;">
           Upload
         </button>
       </form>

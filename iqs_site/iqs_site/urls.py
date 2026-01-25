@@ -17,11 +17,26 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
+from .sitemap import TechinSitemap,StaticViewSitemap, EventSitemap, EventTeamsSitemap,TeamsSitemap,TractorsSitemap
+from django.contrib.sitemaps.views import sitemap
+from django.conf.urls.static import static
 
 if getattr(settings, "SITE_VARIANT", "normal") == "testing":
     root_prefix = ""   
 else:
     root_prefix = ""           
+
+
+
+sitemaps = {
+    "static": StaticViewSitemap,
+    "events": EventSitemap,
+    "eventTeams": EventTeamsSitemap,
+    "teams": TeamsSitemap,
+    "tractors":TractorsSitemap,
+    "techin":TechinSitemap
+}
+
 
 urlpatterns = [
     path(root_prefix+'admin/', admin.site.urls),
@@ -31,4 +46,9 @@ urlpatterns = [
     path(root_prefix+"accounts/", include("django.contrib.auth.urls")),
     path(root_prefix+"user/", include("users.urls",namespace="user")),
     path("stats/", include("stats.urls", namespace="stats")),
+    path("sitemap.xml", sitemap, {"sitemaps": sitemaps}),
+    
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

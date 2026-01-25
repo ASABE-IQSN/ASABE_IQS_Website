@@ -17,6 +17,8 @@ from django.http import HttpRequest, HttpResponse
 from iqs_site.utilities import log_view
 from django.core.cache import cache
 from django.views.decorators.cache import cache_page
+from django.db.models import Q
+from django.views.decorators.csrf import csrf_exempt
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
@@ -42,7 +44,7 @@ def landing(request):
         .first()
     )
 
-    return render(request, "landing.html", {"next_event": next_event,"active_event":active_event})
+    return render(request, "landing.html", {"next_event": next_event,"active_event":active_event,"active_page": "landing",})
 
 
 @log_view
@@ -113,6 +115,9 @@ def team_list(request):
     return render(request, "events/teams.html", context)
 
 
+def health(request):
+    return HttpResponse("ok")
+
 @log_view
 @cache_page(300)
 def tractor_list(request):
@@ -125,9 +130,11 @@ def tractor_list(request):
     return render(request, "events/tractor_list.html", context)
 
 @log_view
+@cache_page(300)
 def privacy(request):
     return render(request, "events/privacy.html", {
         "active_page": None,  # or "privacy" if you want a nav link for it
+        "contact_email":"asabeiqswebsite@gmail.com"
     })
 
 @log_view
@@ -148,7 +155,7 @@ def team_detail(request, team_id):
         EventTeamPhoto.objects
         .select_related("event_team__event")
         .filter(event_team__team=team, approved=True)
-        .order_by("-created_at")
+        .order_by("-event_team_photo_id")
     )
 
     # Build chart data from event_teams that have scores
@@ -233,7 +240,7 @@ def team_event_detail(request, event_id, team_id):
         event_photos = (
             EventTeamPhoto.objects
             .filter(event_team=event_team, approved=True)
-            .order_by("-created_at")
+            .order_by("event_team_photo_id")
         )
     else:
         event_photos = []
@@ -258,10 +265,12 @@ def team_event_detail(request, event_id, team_id):
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
+@csrf_exempt
 @require_POST
 def upload_team_photo(request, event_id, team_id):
     print("Uploaded Photo")
+    approved = False
+    approved = request.user.is_authenticated and request.user.has_perm("events.can_auto_approve_team_photos")
     # Look up event & team so we can 404 nicely if bad IDs
     event = get_object_or_404(Event, pk=event_id)
     team = get_object_or_404(Team, pk=team_id)
@@ -337,13 +346,13 @@ def upload_team_photo(request, event_id, team_id):
         event_team=event_team,
         photo_path=rel_path,
         submitted_from_ip=ip,
-        approved=False,
+        approved=approved,
     )
 
     return redirect("events:team_event_detail", event_id=event_id, team_id=team_id)
 
 @log_view
-#@cache_page(300)
+@cache_page(300)
 def event_detail(request, event_id):
     event = get_object_or_404(
         Event.objects.select_related(),  # tweak as needed
@@ -358,6 +367,8 @@ def event_detail(request, event_id):
 
     # rankings_by_class: { "Comp A": [EventTeam, ...], "Comp B": [...] }
     rankings_by_class = OrderedDict()
+    rankings_by_class["A Team"]=[]
+
     for et in event_teams:
         team_class = getattr(et.team, "team_class", None)
         class_name = team_class.name if team_class else "Unclassified"
@@ -505,16 +516,28 @@ def tractor_detail(request, tractor_id):
 
     # Photos: EventTeamPhoto -> EventTeam (event, team).
     # We want photos where the (event, team) pair matches a TractorEvent for this tractor.
+    #This line does not work, it needs to specfically look for photos where this tractor was present and look for the team that it represented.
+    #This presents a bug with A/X teams
+
+    photo_filter = Q()
+    for te in tractor_events:
+        photo_filter |= Q(
+            event_team__event=te.event,
+            event_team__team=te.team,
+        )
+
     tractor_photos = (
         EventTeamPhoto.objects
-        .filter(
-            event_team__event__tractor_events__tractor=tractor,
-            event_team__team__tractor_events__tractor=tractor,
-        )
-        .select_related("event_team__event")
+        .filter(photo_filter)
+        .select_related("event_team__event","event_team__team")
         .distinct()
         .order_by("created_at")
     )
+
+    for te in tractor_events:
+        photos=EventTeamPhoto.objects.filter(event_team__event=te.event,event_team__team=te.team)
+
+
 
     context = {
         "tractor": tractor,

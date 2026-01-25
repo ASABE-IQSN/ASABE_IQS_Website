@@ -300,7 +300,7 @@
         <div class="tractor-photo-grid">
           {% for photo in tractor_photos %}
             <figure>
-              <img src="{% static photo.photo_path %}"
+              <img src="/media/{{photo.photo_path}}"
                    alt="{% if photo.caption %}{{ photo.caption }}{% else %}{{ tractor.tractor_name }}{% endif %}">
               <figcaption>
                 {% if photo.caption %}

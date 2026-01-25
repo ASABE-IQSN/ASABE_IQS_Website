@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}International Quarter Scale Competition{% endblock %}
+{% block title %}IQS Connect{% endblock %}
 
 {% block extra_styles %}
   /* Center the hero vertically on this page */
@@ -81,68 +81,144 @@
     font-weight: 600;
     border: 1px solid #1f2937;
     background: #0f172a;
-    color: #e5e7eb;
+    color: #F3F6E7;
     cursor: pointer;
   }
 
   .btn-primary {
-    background: linear-gradient(135deg, #38bdf8, #0ea5e9);
+    background: linear-gradient(135deg, #6687FC, #0ea5e9);
     color: #0b1120;
     border-color: transparent;
   }
+  /* Survey announcement card */
+.announcement-card {
+  max-width: 900px;
+  margin: 0 auto 1.5rem;
+  padding: 1rem 1.25rem;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #020617, #020617) padding-box,
+              linear-gradient(135deg, #6687FC, #0ea5e9) border-box;
+  border: 1px solid transparent;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.announcement-text {
+  font-size: 0.95rem;
+  color: #F3F6E7;
+  line-height: 1.4;
+}
+
+.announcement-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Smaller button variant */
+.btn-sm {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+}
+
+/* Subtle ghost button */
+.btn-ghost {
+  background: transparent;
+  border: 1px solid #1f2937;
+  color: #9ca3af;
+}
+
+.btn-ghost:hover {
+  color: #020617;
+  border-color: #6687FC;
+}
+
+/* Mobile friendliness */
+@media (max-width: 640px) {
+  .announcement-card {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+/* Stack announcement above hero inside centered main */
+.landing-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
 {% endblock %}
 
 {% block content %}
-  <section class="hero">
-    <h1 class="hero-title">International Quarter Scale Competition</h1>
-    <p class="hero-sub">
-      
-    </p>
-
-    {% if next_event %}
-      <div class="countdown" id="countdown">
-        <div class="count-block">
-          <div class="count-number" id="days">--</div>
-          <div class="count-label">Days</div>
-        </div>
-        <div class="count-block">
-          <div class="count-number" id="hours">--</div>
-          <div class="count-label">Hours</div>
-        </div>
-        <div class="count-block">
-          <div class="count-number" id="minutes">--</div>
-          <div class="count-label">Minutes</div>
-        </div>
-        <div class="count-block">
-          <div class="count-number" id="seconds">--</div>
-          <div class="count-label">Seconds</div>
-        </div>
+  <div class="landing-stack">
+    <div class="announcement-card" id="survey-announcement">
+      <div class="announcement-text">
+        <strong>Please give us your thoughts!</strong><br>
+        We are running a survey on our new website and livestream changes. Please take our short survey.
       </div>
-
-      <div class="next-event-info">
-        Next event:
-        <strong>{{ next_event.event_name }}</strong><br>
-        <span>
-          {{ next_event.event_datetime|date:"F d, Y h:i A" }}
-        </span>
+      <div class="announcement-actions">
+        <a
+          href="https://forms.gle/B7VGaBxrSPxB3ntc9"
+          target="_blank"
+          rel="noopener"
+          class="btn btn-primary btn-sm"
+        >
+          Take the Survey
+        </a>
+        
       </div>
-    {% else %}
-      <p class="hero-sub">
-        There are currently no upcoming events scheduled. Please check back later
-        for the latest schedule.
-      </p>
-    {% endif %}
-
-    <div class="buttons">
-      <a class="btn btn-primary" href="{% url 'events:event_list' %}">View Events</a>
-      <a class="btn" href="{% url 'events:team_list' %}">View Teams</a>
-      <a class="btn" href="{% url 'events:tractor_list' %}">View Tractors</a>
-      {% if active_event %}
-      <a class="btn" href="{% url 'live:landing' %}">View Live Event</a>
-      {% endif %}
     </div>
-  </section>
+
+    <section class="hero">
+      <h1 class="hero-title">International Quarter Scale Connect</h1>
+      <p class="hero-sub"></p>
+
+      {% if next_event %}
+        <div class="countdown" id="countdown">
+          <div class="count-block">
+            <div class="count-number" id="days">--</div>
+            <div class="count-label">Days</div>
+          </div>
+          <div class="count-block">
+            <div class="count-number" id="hours">--</div>
+            <div class="count-label">Hours</div>
+          </div>
+          <div class="count-block">
+            <div class="count-number" id="minutes">--</div>
+            <div class="count-label">Minutes</div>
+          </div>
+          <div class="count-block">
+            <div class="count-number" id="seconds">--</div>
+            <div class="count-label">Seconds</div>
+          </div>
+        </div>
+
+        <div class="next-event-info">
+          Next event:
+          <strong>{{ next_event.event_name }}</strong><br>
+          <span>{{ next_event.event_datetime|date:"F d, Y h:i A" }}</span>
+        </div>
+      {% else %}
+        <p class="hero-sub">
+          There are currently no upcoming events scheduled. Please check back later
+          for the latest schedule.
+        </p>
+      {% endif %}
+
+      <div class="buttons">
+        <a class="btn btn-primary" href="{% url 'events:event_list' %}">View Events</a>
+        <a class="btn" href="{% url 'events:team_list' %}">View Teams</a>
+        <a class="btn" href="{% url 'events:tractor_list' %}">View Tractors</a>
+        {% if active_event %}
+          <a class="btn" href="{% url 'live:landing' %}">View Live Event</a>
+        {% endif %}
+      </div>
+    </section>
+  </div>
 {% endblock %}
+
 
 {% block extra_scripts %}
   {% if next_event %}

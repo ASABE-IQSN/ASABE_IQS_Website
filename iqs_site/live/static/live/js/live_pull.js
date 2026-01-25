@@ -16,6 +16,7 @@ function setField(key, value, digits = null) {
 // --- chart setup ---
 const MAX_POINTS = 10000;
 const ctx = document.getElementById("liveChart");
+
 let chart = null;
 
 function initChart() {
@@ -75,12 +76,12 @@ let pull_active = false;
 
 // --- SSE hookup ---
 function startSSE() {
-  const es = new EventSource("https://api.internationalquarterscale.com/api/stream");
+  const es = new EventSource(window.IQS.apiUrl+"/api/stream");
 
   es.addEventListener("status", (e) => {
     const s = JSON.parse(e.data);
 
-    // detect pull change
+    // detect pull changehttps://api.internationalquarterscale.com
     if (s.pull_id !== pull_id) {
       console.log("Pull changed:", s.pull_id);
       pull_id = s.pull_id;
