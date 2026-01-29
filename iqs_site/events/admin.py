@@ -20,6 +20,7 @@ from .models import (
     ScoreSubCategoryInstance,
     ScoreSubCategoryScore,
 )
+from django.db.models import Q
 
 
 @admin.register(TeamClass)
@@ -197,3 +198,83 @@ class ScoreSubCategoryScoreAdmin(admin.ModelAdmin):
     )
 
     ordering = ("subcategory__event", "team")
+
+
+from .models import DurabilityRun
+
+
+@admin.register(DurabilityRun)
+class DurabilityRunAdmin(admin.ModelAdmin):
+    list_display = (
+        "durability_run_id",
+        "event",
+        "team",
+        "tractor",
+        "attempt_number",
+        "final_lap_count",
+        "final_time",
+        "status",
+        "created_at",
+    )
+    list_filter = (
+        "status",
+        "event",
+    )
+    search_fields = (
+        "team__team_name",
+        "team__team_number",
+        "team__team_abbreviation",
+        "tractor__tractor_name",
+        "event__event_name",
+    )
+    ordering = ("-created_at",)
+    date_hierarchy = "created_at"
+
+    fields = (
+        "event",
+        "team",
+        "tractor",
+        "attempt_number",
+        "final_lap_count",
+        "final_time",
+        "status",
+        "notes",
+        "created_at",
+        "updated_at",
+    )
+    readonly_fields = ("created_at", "updated_at")
+
+    autocomplete_fields = ("event", "team", "tractor")
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.select_related("event", "team", "tractor")
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """
+        Optional quality-of-life:
+        - In the add form, if event is selected via ?event_id=25 in the URL,
+          pre-filter Team/Tractor dropdowns to those that participated in that event
+          (via TractorEvent).
+        """
+        if db_field.name in ("team", "tractor"):
+            event_id = request.GET.get("event") or request.GET.get("event_id")
+            if event_id:
+                try:
+                    event_id_int = int(event_id)
+                except (TypeError, ValueError):
+                    event_id_int = None
+
+                if event_id_int:
+                    if db_field.name == "team":
+                        # teams that appeared in tractor_events for this event
+                        kwargs["queryset"] = kwargs["queryset"].filter(
+                            Q(tractor_events__event__event_id=event_id_int)
+                        ).distinct()
+                    else:
+                        # tractors that appeared in tractor_events for this event
+                        kwargs["queryset"] = kwargs["queryset"].filter(
+                            Q(tractor_events__event__event_id=event_id_int)
+                        ).distinct()
+
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)

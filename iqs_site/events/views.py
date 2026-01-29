@@ -20,6 +20,10 @@ from django.views.decorators.cache import cache_page
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
 
+from django.db.models import Case, When, Value, IntegerField
+
+from .models import DurabilityRun
+
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
 @log_view
@@ -549,3 +553,54 @@ def tractor_detail(request, tractor_id):
         "active_page": "tractors",
     }
     return render(request, "events/tractor_detail.html", context)
+
+def durability_event_results(request, event_id: int):
+    event = get_object_or_404(Event, event_id=event_id)
+
+    # Sort priority:
+    #  1) Completed runs first
+    #  2) More laps is better
+    #  3) Lower time is better
+    #  4) Then stable tie-breakers
+    status_rank = Case(
+        When(status=DurabilityRun.RunStatus.COMPLETED, then=Value(0)),
+        When(status=DurabilityRun.RunStatus.DNF, then=Value(1)),
+        When(status=DurabilityRun.RunStatus.DNS, then=Value(2)),
+        When(status=DurabilityRun.RunStatus.DSQ, then=Value(3)),
+        default=Value(9),
+        output_field=IntegerField(),
+    )
+
+    runs = (
+        DurabilityRun.objects
+        .filter(event=event)
+        .select_related("team", "tractor", "event")
+        .annotate(_status_rank=status_rank)
+        .order_by(
+            "_status_rank",
+            "-final_lap_count",
+            "final_time",
+            "team__team_name",      # adjust if your field is different
+            "tractor__tractor_name" # adjust if your field is different
+        )
+    )
+
+    # Optional: assign ranks only to completed runs
+    ranked_rows = []
+    rank = 0
+    for r in runs:
+        if r.status == DurabilityRun.RunStatus.COMPLETED and r.final_lap_count is not None:
+            rank += 1
+            display_rank = rank
+        else:
+            display_rank = None
+        ranked_rows.append((display_rank, r))
+
+    return render(
+        request,
+        "events/durability_event_results.html",
+        {
+            "event": event,
+            "ranked_rows": ranked_rows,
+        },
+    )

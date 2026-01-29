@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Durability Results – {{ event.event_name|default:"Event" }}{% endblock %}
+
+{% block content %}
+  <div style="max-width: 1100px; margin: 0 auto; padding: 1.5rem;">
+    <h1 style="margin: 0 0 0.25rem 0;">Durability Results</h1>
+    <div style="color: #9ca3af; margin-bottom: 1rem;">
+      Event: {{ event.event_name|default:event.event_id }}
+    </div>
+
+    <div style="overflow-x: auto; border: 1px solid #1f2937; border-radius: 12px;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <thead>
+          <tr style="background: #0b1220;">
+            <th style="text-align:left; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Rank</th>
+            <th style="text-align:left; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Team</th>
+            <th style="text-align:left; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Tractor</th>
+            <th style="text-align:right; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Laps</th>
+            <th style="text-align:right; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Time</th>
+            <th style="text-align:left; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Status</th>
+            <th style="text-align:left; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rank, run in ranked_rows %}
+            <tr>
+              <td style="padding: 0.75rem; border-bottom: 1px solid #111827;">
+                {% if rank %}{{ rank }}{% else %}—{% endif %}
+              </td>
+
+              <td style="padding: 0.75rem; border-bottom: 1px solid #111827;">
+                {{ run.team.team_name|default:run.team.team_id }}
+              </td>
+
+              <td style="padding: 0.75rem; border-bottom: 1px solid #111827;">
+                {{ run.tractor.tractor_name|default:run.tractor.tractor_id }}
+              </td>
+
+              <td style="padding: 0.75rem; border-bottom: 1px solid #111827; text-align:right;">
+                {{ run.final_lap_count|default:"—" }}
+              </td>
+
+              <td style="padding: 0.75rem; border-bottom: 1px solid #111827; text-align:right;">
+                {% if run.final_time %}
+                  {{ run.final_time }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+
+              <td style="padding: 0.75rem; border-bottom: 1px solid #111827;">
+                {{ run.get_status_display }}
+              </td>
+
+              <td style="padding: 0.75rem; border-bottom: 1px solid #111827;">
+                {{ run.notes|default:"" }}
+              </td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="7" style="padding: 1rem; color: #9ca3af;">
+                No durability results have been entered for this event yet.
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

@@ -15,5 +15,6 @@ urlpatterns = [
     path("tractors/<int:tractor_id>", views.tractor_detail, name="tractor_detail"),
     path("privacy/", views.privacy, name="privacy"),
     path("team-event/<int:event_id>/<int:team_id>/", views.team_event_detail, name="team_event_detail"),
-    path("health/", views.health, name="health")
+    path("health/", views.health, name="health"),
+    path("durability/event/<int:event_id>/",views.durability_event_results,name="durability_event_results"),
 ]

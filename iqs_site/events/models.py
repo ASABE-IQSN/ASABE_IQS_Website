@@ -7,7 +7,7 @@
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 from datetime import datetime
-
+from django.core.validators import MinValueValidator
 
 class TeamClass(models.Model):
     team_class_id = models.AutoField(primary_key=True)
@@ -398,3 +398,86 @@ class ScoreSubCategoryScore(models.Model):
     class Meta:
         managed=True
         db_table="score_subcategory_scores"
+
+class DurabilityRun(models.Model):
+    class RunStatus(models.TextChoices):
+        COMPLETED = "completed", "Completed"
+        DNF = "dnf", "DNF"
+        DNS = "dns", "DNS"
+        DSQ = "dsq", "DSQ"
+
+    durability_run_id = models.AutoField(primary_key=True)
+
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.PROTECT,
+        db_column="event_id",
+        to_field="event_id",
+        related_name="durability_runs",
+        db_constraint=False,
+    )
+
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.PROTECT,
+        db_column="team_id",
+        to_field="team_id",
+        related_name="durability_runs",
+        db_constraint=False,
+    )
+
+    tractor = models.ForeignKey(
+        Tractor,
+        on_delete=models.PROTECT,
+        db_column="tractor_id",
+        to_field="tractor_id",
+        related_name="durability_runs",
+        db_constraint=False,
+    )
+
+    attempt_number = models.PositiveSmallIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        help_text="1 for the first attempt; increment for re-runs.",
+    )
+
+    final_lap_count = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Total completed laps. Leave blank until the run is finished.",
+    )
+
+    final_time = models.DurationField(
+        null=True,
+        blank=True,
+        help_text="Elapsed time for the run (hh:mm:ss). Leave blank until finished.",
+    )
+
+    status = models.CharField(
+        max_length=12,
+        choices=RunStatus.choices,
+        default=RunStatus.COMPLETED,
+    )
+
+    notes = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        managed = True
+        db_table = "durability_runs"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "team", "tractor", "attempt_number"],
+                name="uniq_dur_run_event_team_tractor_attempt",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["event", "status"]),
+            models.Index(fields=["event", "team"]),
+            models.Index(fields=["event", "tractor"]),
+        ]
+
+    def __str__(self):
+        return f"DurabilityRun(event={self.event_id}, team={self.team_id}, tractor={self.tractor_id}, attempt={self.attempt_number})"
