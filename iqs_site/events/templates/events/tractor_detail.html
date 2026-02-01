@@ -265,7 +265,7 @@
               <tr>
                 <td>
                   {% if u.team %}
-                    <a href="{% url 'events:team_detail' team_id=u.team.team_id %}">
+                    <a href="{% url 'events:team_event_detail' team_id=u.team.team_id event_id=u.event.event_id%}">
                       {{ u.team.team_name }}
                     </a>
                   {% else %}
