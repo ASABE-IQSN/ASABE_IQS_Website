@@ -163,6 +163,8 @@ def team_detail(request, team_id):
     )
 
     instagram=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.INSTAGRAM).first()
+    facebook=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.FACEBOOK).first()
+    linkedin=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.LINKEDIN).first()
 
     # Build chart data from event_teams that have scores
     labels = []
@@ -172,7 +174,7 @@ def team_detail(request, team_id):
             # Label: event name (you could also add date here)
             labels.append(et.event.event_name)
             scores.append(et.total_score)
-    print(instagram.info)
+    
     context = {
         "team": team,
         "event_teams": event_teams,
@@ -182,7 +184,9 @@ def team_detail(request, team_id):
         "chart_labels_json": json.dumps(labels),
         "chart_scores_json": json.dumps(scores),
         "active_page": "teams",
-        "instagram":instagram
+        "instagram":instagram,
+        "facebook":facebook,
+        "linkedin":linkedin
     }
 
     return render(request, "events/team_detail.html", context)

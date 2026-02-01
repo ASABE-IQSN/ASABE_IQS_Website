@@ -309,12 +309,38 @@
       <div class="hero-meta">
         <div><strong>Team #:</strong> {{ team.team_number }}</div>
       </div>
+      {% if instagram %}
+      
       <a href="https://instagram.com/{{ instagram.info }}"
         target="_blank"
         class="instagram-link">
         <i class="fa-brands fa-instagram"></i>
         @{{instagram.info}}
       </a>
+      
+      {% endif %}
+      {% if facebook %}
+      <br>
+      <a href="https://facebook.com/{{facebook.info}}"
+        target="_blank"
+        class="social-link facebook">
+        <i class="fa-brands fa-facebook"></i>
+        /{{facebook.info}}
+      </a>
+      
+      {% endif %}
+
+      {% if linkedin %}
+      <br>
+      <a href={{linkedin.info}}
+        target="_blank"
+        class="social-link linkedin">
+        <i class="fa-brands fa-linkedin"></i>
+        LinkedIn
+      </a>
+
+
+      {% endif %}
 
       <div class="hero-bio">
         {% if team.bio %}
