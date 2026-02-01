@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from .models import Event
 from django.conf import settings
-from .models import TeamClass, Team,PullMedia, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem
+from .models import TeamClass, Team,PullMedia,TeamInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from functools import wraps
@@ -162,6 +162,8 @@ def team_detail(request, team_id):
         .order_by("-event_team_photo_id")
     )
 
+    instagram=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.INSTAGRAM).first()
+
     # Build chart data from event_teams that have scores
     labels = []
     scores = []
@@ -170,7 +172,7 @@ def team_detail(request, team_id):
             # Label: event name (you could also add date here)
             labels.append(et.event.event_name)
             scores.append(et.total_score)
-
+    print(instagram.info)
     context = {
         "team": team,
         "event_teams": event_teams,
@@ -180,7 +182,9 @@ def team_detail(request, team_id):
         "chart_labels_json": json.dumps(labels),
         "chart_scores_json": json.dumps(scores),
         "active_page": "teams",
+        "instagram":instagram
     }
+
     return render(request, "events/team_detail.html", context)
 
 @log_view

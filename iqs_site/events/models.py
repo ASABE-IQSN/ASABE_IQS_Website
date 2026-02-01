@@ -349,7 +349,7 @@ class ScoreCategory(models.Model):
         return self.category_name
 
     class Meta:
-        managed=True
+        managed=False
         db_table="score_categories"
 
 class ScoreSubCategory(models.Model):
@@ -360,7 +360,7 @@ class ScoreSubCategory(models.Model):
         return self.subcategory_name
 
     class Meta:
-        managed=True
+        managed=False
         db_table="score_subcategories"
 
 class ScoreCategoryInstance(models.Model):
@@ -372,7 +372,7 @@ class ScoreCategoryInstance(models.Model):
     def __str__(self):
         return f"{self.event} - {self.score_category}"
     class Meta:
-        managed=True
+        managed=False
         db_table="score_category_instances"
 
 class ScoreSubCategoryInstance(models.Model):
@@ -385,7 +385,7 @@ class ScoreSubCategoryInstance(models.Model):
     def __str__(self):
         return f"{self.event} - {self.score_subcategory}"
     class Meta:
-        managed=True
+        managed=False
         db_table="score_subcategory_instances"
 
 class ScoreSubCategoryScore(models.Model):
@@ -396,7 +396,7 @@ class ScoreSubCategoryScore(models.Model):
         return f"{self.team} → {self.subcategory}"
     
     class Meta:
-        managed=True
+        managed=False
         db_table="score_subcategory_scores"
 
 class DurabilityRun(models.Model):
@@ -465,7 +465,7 @@ class DurabilityRun(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        managed = True
+        managed = False
         db_table = "durability_runs"
         constraints = [
             models.UniqueConstraint(
@@ -481,3 +481,39 @@ class DurabilityRun(models.Model):
 
     def __str__(self):
         return f"DurabilityRun(event={self.event_id}, team={self.team_id}, tractor={self.tractor_id}, attempt={self.attempt_number})"
+
+class DurabilityData(models.Model):
+    
+    durability_data_id=models.AutoField(primary_key=True)
+    durability_run=models.ForeignKey(
+        DurabilityRun,
+        on_delete=models.PROTECT,
+        db_column="durability_run_id",
+        to_field="durability_run_id",
+        related_name="data",
+        db_constraint=False,
+    )
+    speed=models.FloatField()
+    pressure=models.FloatField()
+    power=models.FloatField()
+    class Meta:
+        managed = False
+        db_table = "durability_data"
+
+class TeamInfo(models.Model):
+    class InfoTypes(models.IntegerChoices):
+        INSTAGRAM=1
+        FACEBOOK=2
+        WEBSITE=3
+        BIO=4
+        NICKNAME=5
+        YOUTUBE=6
+        LINKEDIN=7
+    team_info_id=models.AutoField(primary_key=True)
+
+    info_type=models.IntegerField(choices=InfoTypes)
+    team=models.ForeignKey(Team,models.DO_NOTHING,db_column="team_id",to_field="team_id")
+    info=models.CharField(max_length=255)
+    class Meta:
+        managed = False
+        db_table = "team_info"

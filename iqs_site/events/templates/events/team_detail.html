@@ -7,6 +7,8 @@
 {% block extra_head %}
   <!-- Chart.js for scores plot -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+   <link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 {% endblock %}
 
 {% block extra_styles %}
@@ -307,6 +309,12 @@
       <div class="hero-meta">
         <div><strong>Team #:</strong> {{ team.team_number }}</div>
       </div>
+      <a href="https://instagram.com/{{ instagram.info }}"
+        target="_blank"
+        class="instagram-link">
+        <i class="fa-brands fa-instagram"></i>
+        @{{instagram.info}}
+      </a>
 
       <div class="hero-bio">
         {% if team.bio %}
