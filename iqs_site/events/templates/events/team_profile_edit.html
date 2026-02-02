@@ -9,10 +9,13 @@
     <a href="{% url 'events:team_detail' team.team_id %}" style="color:#9ca3af;">{{ team.team_name }}</a>
     <span>›</span>
     <span>Edit</span>
+    
   </div>
 
   <section class="card" style="max-width: 900px;">
     <h2 style="margin-top:0;">Edit profile</h2>
+    <p>Edits may take up to 5 minutes to appear on the main site</p>
+    <p>Team Photos can be uploaded to the team listing for a specfic event</p>
 
     <form method="post">
       {% csrf_token %}
@@ -21,16 +24,19 @@
         <div>
           <label><strong>Nickname</strong></label><br>
           {{ form.nickname }}
+          <div style="font-size:0.8rem; color:#9ca3af;">Display name for your team</div>
         </div>
 
         <div>
           <label><strong>Bio</strong></label><br>
           {{ form.bio }}
+          <div style="font-size:0.8rem; color:#9ca3af;">Up to 255 characters</div>
         </div>
 
         <div>
           <label><strong>Website</strong></label><br>
           {{ form.website }}
+          <div style="font-size:0.8rem; color:#9ca3af;">Full URL</div>
         </div>
 
         <hr style="border:0; border-top:1px solid #1f2937; margin:0.25rem 0;">
@@ -44,16 +50,19 @@
         <div>
           <label><strong>Facebook</strong></label><br>
           {{ form.facebook }}
+          <div style="font-size:0.8rem; color:#9ca3af;">Handle only, no @</div>
         </div>
 
         <div>
           <label><strong>LinkedIn</strong></label><br>
           {{ form.linkedin }}
+          <div style="font-size:0.8rem; color:#9ca3af;">Full link to profile</div>
         </div>
 
         <div>
           <label><strong>YouTube</strong></label><br>
           {{ form.youtube }}
+          <div style="font-size:0.8rem; color:#9ca3af;">Handle only, no @</div>
         </div>
       </div>
 
