@@ -89,7 +89,7 @@ class Tractor(models.Model):
         blank=True,
         null=True,
     )
-
+    year=models.IntegerField()
     # tractor_events M2M via explicit through model is handled below
 
     class Meta:
@@ -101,6 +101,19 @@ class Tractor(models.Model):
     
     def get_absolute_url(self):
         return f"/tractors/{self.tractor_id}"
+    
+    @property
+    def nickname(self) -> str | None:
+        # If you add related_name="infos" to the FK, use self.infos.filter(...)
+        ti = TractorInfo.objects.filter(
+            tractor=self,
+            info_type=TractorInfo.InfoTypes.NICKNAME,
+        ).only("info").first()
+        return ti.info if ti and ti.info else None
+
+    @property
+    def display_name(self) -> str:
+        return self.nickname or self.tractor_name  # replace tractor_name with your real field
 
 
 class TractorEvent(models.Model):
@@ -511,9 +524,27 @@ class TeamInfo(models.Model):
         LINKEDIN=7
     team_info_id=models.AutoField(primary_key=True)
 
-    info_type=models.IntegerField(choices=InfoTypes)
+    info_type=models.IntegerField(choices=InfoTypes.choices)
     team=models.ForeignKey(Team,models.DO_NOTHING,db_column="team_id",to_field="team_id")
     info=models.CharField(max_length=255)
     class Meta:
         managed = False
         db_table = "team_info"
+
+class TractorInfo(models.Model):
+    class InfoTypes(models.IntegerChoices):
+        INSTAGRAM=1
+        FACEBOOK=2
+        WEBSITE=3
+        BIO=4
+        NICKNAME=5
+        YOUTUBE=6
+        LINKEDIN=7
+    tractor_info_id=models.AutoField(primary_key=True)
+
+    info_type=models.IntegerField(choices=InfoTypes.choices)
+    tractor=models.ForeignKey(Tractor,models.DO_NOTHING,db_column="tractor_id",to_field="tractor_id")
+    info=models.CharField(max_length=255)
+    class Meta:
+        managed = False
+        db_table = "tractor_info"

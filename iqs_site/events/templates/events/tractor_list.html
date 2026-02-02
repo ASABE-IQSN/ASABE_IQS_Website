@@ -103,6 +103,7 @@
         <tr>
           <th>Name</th>
           <th>Original Team</th>
+          <th>Original Year</th>
           <th>Details</th>
         </tr>
       </thead>
@@ -115,7 +116,7 @@
               {% else %}
                 data-team-name=""
               {% endif %}>
-            <td>{{ tractor.tractor_name|default:"Unnamed Tractor" }}</td>
+            <td>{{ tractor.nickname_info|default:tractor.tractor_name }}</td>
 
             <td>
               {% if tractor.original_team %}
@@ -124,7 +125,7 @@
                 N/A
               {% endif %}
             </td>
-
+            <td>{{tractor.year}}</td>
             <td>
               <a href="{% url 'events:tractor_detail' tractor_id=tractor.tractor_id %}">
                 View details

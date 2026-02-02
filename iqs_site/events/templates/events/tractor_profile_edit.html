@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Edit Tractor {{ tractor.tractor_id }}{% endblock %}
+
+{% block content %}
+  <div class="breadcrumbs" style="font-size:0.8rem; color:#9ca3af; margin-bottom:0.75rem;">
+    <a href="{% url 'events:tractor_list' %}" style="color:#9ca3af;">Tractors</a>
+    <span>›</span>
+    <a href="{% url 'events:tractor_detail' tractor_id=tractor.tractor_id %}" style="color:#9ca3af;">
+      {% if tractor.display_name %}{{ tractor.display_name }}{% else %}Tractor {{ tractor.tractor_id }}{% endif %}
+    </a>
+    <span>›</span>
+    <span>Edit</span>
+  </div>
+
+  <section class="card" style="max-width: 900px;">
+    <h2 style="margin-top:0;">Edit tractor profile</h2>
+
+    <form method="post">
+      {% csrf_token %}
+
+      <div style="display:grid; gap:0.9rem;">
+        <div>
+          <label><strong>Nickname</strong></label><br>
+          {{ form.nickname }}
+        </div>
+
+        <div>
+          <label><strong>Bio</strong></label><br>
+          {{ form.bio }}
+        </div>
+
+        <div>
+          <label><strong>Website</strong></label><br>
+          {{ form.website }}
+        </div>
+
+        <hr style="border:0; border-top:1px solid #1f2937; margin:0.25rem 0;">
+
+      </div>
+
+      <div style="margin-top: 1rem; display:flex; gap:0.5rem;">
+        <button type="submit"
+                style="padding:0.45rem 1rem; border-radius:999px; border:1px solid #1f2937; background:#22c55e; color:#020617; cursor:pointer;">
+          Save
+        </button>
+
+        <a href="{% url 'events:tractor_detail' tractor_id=tractor.tractor_id %}"
+           style="padding:0.45rem 1rem; border-radius:999px; border:1px solid #1f2937; background:#111827; color:#F3F6E7; text-decoration:none;">
+          Cancel
+        </a>
+      </div>
+    </form>
+  </section>
+{% endblock %}
