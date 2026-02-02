@@ -167,7 +167,7 @@ def team_detail_page(request, team_id):
         EventTeam.objects
         .select_related("event", "team")
         .filter(team=team)
-        .order_by("event__event_datetime")
+        .order_by("-event__event_datetime")
     )
 
     # Photos for this team (approved only), newest first

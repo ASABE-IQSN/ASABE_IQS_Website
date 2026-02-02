@@ -402,8 +402,8 @@
                 {% endif %}
               </div>
               <div class="event-score">
-                <span class="event-score-label">Score</span>
-                {{ et.total_score|default:"N/A" }}
+                <span class="event-score-label"><string>Score:</string>{{ et.total_score|default:"N/A" }}</span>
+                
               </div>
             </li>
           {% endfor %}
