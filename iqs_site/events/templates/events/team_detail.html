@@ -7,6 +7,8 @@
 {% block extra_head %}
   <!-- Chart.js for scores plot -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+   <link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 {% endblock %}
 
 {% block extra_styles %}
@@ -69,8 +71,8 @@
   }
 
   .hero-image {
-    width: 96px;
-    height: 96px;
+    width: 200px;
+    height: 200px;
     border-radius: 0.9rem;
     overflow: hidden;
     flex-shrink: 0;
@@ -315,13 +317,64 @@
 
     <div class="hero-main">
       <h1>{{ team.team_name }}</h1>
+      {% if nickname %}
+      <strong>{{ nickname.info }}</strong>
+      {% endif %}
       <div class="hero-meta">
         <div><strong>Team #:</strong> {{ team.team_number }}</div>
       </div>
+      {% if instagram %}
+      
+      <a href="https://instagram.com/{{ instagram.info }}"
+        target="_blank"
+        class="instagram-link">
+        <i class="fa-brands fa-instagram"></i>
+        @{{instagram.info}}
+      </a>
+      
+      {% endif %}
+      {% if facebook %}
+      <br>
+      <a href="https://facebook.com/{{facebook.info}}"
+        target="_blank"
+        class="social-link facebook">
+        <i class="fa-brands fa-facebook"></i>
+        /{{facebook.info}}
+      </a>
+      
+      {% endif %}
+
+      {% if linkedin %}
+      <br>
+      <a href={{linkedin.info}}
+        target="_blank"
+        class="social-link linkedin">
+        <i class="fa-brands fa-linkedin"></i>
+        LinkedIn
+      </a>
+
+      {% endif %}
+      {% if youtube %}
+      <br>
+      <a href=https://youtube.com/{{youtube.info}}
+        target="_blank"
+        class="social-link youtube">
+        <i class="fa-brands fa-youtube"></i>
+        {{ youtube.info }}
+      </a>
+
+      {% endif %}
+      {% if website %}
+      <br>
+      <a href="https://{{website.info|cut:'https://'|cut:'http://'}}">
+        {{ website.info }}</a>
+
+      {% endif %}
 
       <div class="hero-bio">
-        {% if team.bio %}
-          {{ team.bio }}
+        {% if bio %}
+        <span style="color:#9ca3af;">{{ bio.info }}</span>
+          
         {% else %}
           <span style="color:#9ca3af;">Team bio coming soon.</span>
         {% endif %}
@@ -421,6 +474,12 @@
         </button>
       </div>
     </div>
+    <div style="margin-top: 0.6rem;">
+    <a href="{% url 'events:team_profile_edit' team.team_id %}"
+       style="display:inline-block; padding:0.35rem 0.9rem; border-radius:999px; border:1px solid #1f2937; background:#111827; color:#F3F6E7; text-decoration:none;">
+      Edit profile
+    </a>
+  </div>
   {% endif %}
 
 {% endblock %}

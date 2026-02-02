@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from .models import Event
 from django.conf import settings
-from .models import TeamClass, Team,PullMedia, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem
+from .models import TeamClass, Team,PullMedia,TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from functools import wraps
@@ -19,6 +19,23 @@ from django.core.cache import cache
 from django.views.decorators.cache import cache_page
 from django.db.models import Q
 from django.views.decorators.csrf import csrf_exempt
+from django.shortcuts import get_object_or_404, render
+from .models import Team, TeamInfo
+from .permissions import can_edit_team
+from django.core.exceptions import PermissionDenied
+from .teaminfo_utils import INFO_MAP
+from django.contrib.auth.decorators import login_required
+from django.http import Http404
+from .forms import TeamProfileEditForm
+from django.db.models import OuterRef, Subquery
+
+from django.db.models import Case, When, Value, IntegerField
+
+from .models import DurabilityRun
+from .models import Tractor, TractorInfo
+from .forms import TractorProfileEditForm
+from .permissions import can_edit_tractor
+from .tractorinfo_utils import TRACTOR_INFO_MAP
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 
@@ -121,8 +138,11 @@ def health(request):
 @log_view
 @cache_page(300)
 def tractor_list(request):
-    tractors = Tractor.objects.select_related("original_team").order_by("tractor_name")
-
+    
+    nickname_sq = TractorInfo.objects.filter(
+    tractor_id=OuterRef("tractor_id"),
+    info_type=TractorInfo.InfoTypes.NICKNAME,).values("info")[:1]
+    tractors = Tractor.objects.select_related("original_team").order_by("original_team","year").annotate(nickname_info=Subquery(nickname_sq))
     context = {
         "tractors": tractors,
         "active_page": "tractors",
@@ -139,7 +159,7 @@ def privacy(request):
 
 @log_view
 @cache_page(300)
-def team_detail(request, team_id):
+def team_detail_page(request, team_id):
     team = get_object_or_404(Team, pk=team_id)
 
     # All event-team rows for this team (with events preloaded)
@@ -158,6 +178,14 @@ def team_detail(request, team_id):
         .order_by("-event_team_photo_id")
     )
 
+    instagram=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.INSTAGRAM).first()
+    facebook=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.FACEBOOK).first()
+    linkedin=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.LINKEDIN).first()
+    bio=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.BIO).first()
+    website=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.WEBSITE).first()
+    youtube=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.YOUTUBE).first()
+    nickname=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.NICKNAME).first()
+
     # Build chart data from event_teams that have scores
     labels = []
     scores = []
@@ -166,7 +194,7 @@ def team_detail(request, team_id):
             # Label: event name (you could also add date here)
             labels.append(et.event.event_name)
             scores.append(et.total_score)
-
+    
     context = {
         "team": team,
         "event_teams": event_teams,
@@ -176,7 +204,15 @@ def team_detail(request, team_id):
         "chart_labels_json": json.dumps(labels),
         "chart_scores_json": json.dumps(scores),
         "active_page": "teams",
+        "instagram":instagram,
+        "facebook":facebook,
+        "linkedin":linkedin,
+        "bio":bio,
+        "youtube":youtube,
+        "website":website,
+        "nickname":nickname
     }
+
     return render(request, "events/team_detail.html", context)
 
 @log_view
@@ -502,6 +538,15 @@ def tractor_detail(request, tractor_id):
         .order_by("event__event_datetime", "team__team_name")
     )
 
+    instagram=TractorInfo.objects.filter(tractor=tractor,info_type=TractorInfo.InfoTypes.INSTAGRAM).first()
+    facebook=TractorInfo.objects.filter(tractor=tractor,info_type=TractorInfo.InfoTypes.FACEBOOK).first()
+    linkedin=TractorInfo.objects.filter(tractor=tractor,info_type=TractorInfo.InfoTypes.LINKEDIN).first()
+    bio=TractorInfo.objects.filter(tractor=tractor,info_type=TractorInfo.InfoTypes.BIO).first()
+    website=TractorInfo.objects.filter(tractor=tractor,info_type=TractorInfo.InfoTypes.WEBSITE).first()
+    youtube=TractorInfo.objects.filter(tractor=tractor,info_type=TractorInfo.InfoTypes.YOUTUBE).first()
+    nickname=TractorInfo.objects.filter(tractor=tractor,info_type=TractorInfo.InfoTypes.NICKNAME).first()
+
+
     usages = []
     for te in tractor_events:
         if te.event and te.event.event_datetime:
@@ -547,5 +592,183 @@ def tractor_detail(request, tractor_id):
         "usages": usages,
         "tractor_photos": tractor_photos,
         "active_page": "tractors",
+        "nickname":nickname,
+        "website":website,
+        "bio":bio
     }
     return render(request, "events/tractor_detail.html", context)
+
+def durability_event_results(request, event_id: int):
+    event = get_object_or_404(Event, event_id=event_id)
+
+    # Sort priority:
+    #  1) Completed runs first
+    #  2) More laps is better
+    #  3) Lower time is better
+    #  4) Then stable tie-breakers
+    status_rank = Case(
+        When(status=DurabilityRun.RunStatus.COMPLETED, then=Value(0)),
+        When(status=DurabilityRun.RunStatus.DNF, then=Value(1)),
+        When(status=DurabilityRun.RunStatus.DNS, then=Value(2)),
+        When(status=DurabilityRun.RunStatus.DSQ, then=Value(3)),
+        default=Value(9),
+        output_field=IntegerField(),
+    )
+
+    runs = (
+        DurabilityRun.objects
+        .filter(event=event)
+        .select_related("team", "tractor", "event")
+        .annotate(_status_rank=status_rank)
+        .order_by(
+            "_status_rank",
+            "-final_lap_count",
+            "final_time",
+            "team__team_name",      # adjust if your field is different
+            "tractor__tractor_name" # adjust if your field is different
+        )
+    )
+
+    # Optional: assign ranks only to completed runs
+    ranked_rows = []
+    rank = 0
+    for r in runs:
+        if r.status == DurabilityRun.RunStatus.COMPLETED and r.final_lap_count is not None:
+            rank += 1
+            display_rank = rank
+        else:
+            display_rank = None
+        ranked_rows.append((display_rank, r))
+
+    return render(
+        request,
+        "events/durability_event_results.html",
+        {
+            "event": event,
+            "ranked_rows": ranked_rows,
+        },
+    )
+
+# def team_detail(request, team_id):
+#     team = get_object_or_404(Team, team_id=team_id)
+
+#     # Fetch all infos for this team once
+#     infos = TeamInfo.objects.filter(team=team, info_type__in=INFO_MAP.values())
+#     info_by_type = {ti.info_type: ti for ti in infos}
+
+#     context = {
+#         "team": team,
+#         "can_edit": can_edit_team(request.user, team),
+
+#         # match your template variables
+#         "nickname": info_by_type.get(TeamInfo.InfoTypes.NICKNAME),
+#         "bio": info_by_type.get(TeamInfo.InfoTypes.BIO),
+#         "website": info_by_type.get(TeamInfo.InfoTypes.WEBSITE),
+#         "instagram": info_by_type.get(TeamInfo.InfoTypes.INSTAGRAM),
+#         "facebook": info_by_type.get(TeamInfo.InfoTypes.FACEBOOK),
+#         "linkedin": info_by_type.get(TeamInfo.InfoTypes.LINKEDIN),
+#         "youtube": info_by_type.get(TeamInfo.InfoTypes.YOUTUBE),
+
+#         # keep your existing stuff too (event_teams, team_photos, chart_*, etc.)
+#         # ...
+#     }
+#     return render(request, "events/team_detail.html", context)
+
+def _initial_from_teaminfo(team):
+    qs = TeamInfo.objects.filter(team=team, info_type__in=INFO_MAP.values())
+    by_type = {row.info_type: row.info for row in qs}
+    return {
+        key: by_type.get(int(info_type), "")
+        for key, info_type in INFO_MAP.items()
+    }
+
+def _upsert_teaminfo(team, info_type, value: str):
+    value = (value or "").strip()
+
+    # If blank => delete any existing row(s) for tidiness
+    if value == "":
+        TeamInfo.objects.filter(team=team, info_type=int(info_type)).delete()
+        return
+
+    # If you have unique(team, info_type) this will be 0/1 rows; if not, we normalize:
+    qs = TeamInfo.objects.filter(team=team, info_type=int(info_type)).order_by("team_info_id")
+    existing = qs.first()
+
+    if existing:
+        # delete any accidental duplicates
+        qs.exclude(team_info_id=existing.team_info_id).delete()
+        existing.info = value
+        existing.save(update_fields=["info"])
+    else:
+        TeamInfo.objects.create(team=team, info_type=int(info_type), info=value)
+
+@login_required
+def team_profile_edit(request, team_id: int):
+    team = get_object_or_404(Team, team_id=team_id)
+
+    if not can_edit_team(request.user, team):
+        raise PermissionDenied
+
+    if request.method == "POST":
+        form = TeamProfileEditForm(request.POST)
+        if form.is_valid():
+            for field_name, info_type in INFO_MAP.items():
+                _upsert_teaminfo(team, info_type, form.cleaned_data.get(field_name, ""))
+
+            messages.success(request, "Team profile updated.")
+            return redirect("events:team_detail", team.team_id)
+    else:
+        form = TeamProfileEditForm(initial=_initial_from_teaminfo(team))
+
+    return render(request, "events/team_profile_edit.html", {
+        "team": team,
+        "form": form,
+    })
+
+def _tractor_initial(tractor):
+    qs = TractorInfo.objects.filter(
+        tractor=tractor,
+        info_type__in=TRACTOR_INFO_MAP.values(),
+    )
+    by_type = {row.info_type: row.info for row in qs}
+    return {k: by_type.get(int(t), "") for k, t in TRACTOR_INFO_MAP.items()}
+
+def _tractor_upsert(tractor, info_type, value: str):
+    value = (value or "").strip()
+
+    if value == "":
+        TractorInfo.objects.filter(tractor=tractor, info_type=int(info_type)).delete()
+        return
+
+    qs = TractorInfo.objects.filter(tractor=tractor, info_type=int(info_type)).order_by("tractor_info_id")
+    existing = qs.first()
+
+    if existing:
+        qs.exclude(tractor_info_id=existing.tractor_info_id).delete()
+        existing.info = value
+        existing.save(update_fields=["info"])
+    else:
+        TractorInfo.objects.create(tractor=tractor, info_type=int(info_type), info=value)
+
+@login_required
+def tractor_profile_edit(request, tractor_id: int):
+    tractor = get_object_or_404(Tractor, tractor_id=tractor_id)
+
+    if not can_edit_tractor(request.user, tractor):
+        raise PermissionDenied  # shows your 403 template
+
+    if request.method == "POST":
+        form = TractorProfileEditForm(request.POST)
+        if form.is_valid():
+            for field_name, info_type in TRACTOR_INFO_MAP.items():
+                _tractor_upsert(tractor, info_type, form.cleaned_data.get(field_name, ""))
+
+            messages.success(request, "Tractor profile updated.")
+            return redirect("events:tractor_detail", tractor.tractor_id)
+    else:
+        form = TractorProfileEditForm(initial=_tractor_initial(tractor))
+
+    return render(request, "events/tractor_profile_edit.html", {
+        "tractor": tractor,
+        "form": form,
+    })

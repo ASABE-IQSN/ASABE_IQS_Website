@@ -7,7 +7,7 @@
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 from datetime import datetime
-
+from django.core.validators import MinValueValidator
 
 class TeamClass(models.Model):
     team_class_id = models.AutoField(primary_key=True)
@@ -89,7 +89,7 @@ class Tractor(models.Model):
         blank=True,
         null=True,
     )
-
+    year=models.IntegerField()
     # tractor_events M2M via explicit through model is handled below
 
     class Meta:
@@ -101,6 +101,19 @@ class Tractor(models.Model):
     
     def get_absolute_url(self):
         return f"/tractors/{self.tractor_id}"
+    
+    @property
+    def nickname(self) -> str | None:
+        # If you add related_name="infos" to the FK, use self.infos.filter(...)
+        ti = TractorInfo.objects.filter(
+            tractor=self,
+            info_type=TractorInfo.InfoTypes.NICKNAME,
+        ).only("info").first()
+        return ti.info if ti and ti.info else None
+
+    @property
+    def display_name(self) -> str:
+        return self.nickname or self.tractor_name  # replace tractor_name with your real field
 
 
 class TractorEvent(models.Model):
@@ -349,7 +362,7 @@ class ScoreCategory(models.Model):
         return self.category_name
 
     class Meta:
-        managed=True
+        managed=False
         db_table="score_categories"
 
 class ScoreSubCategory(models.Model):
@@ -360,7 +373,7 @@ class ScoreSubCategory(models.Model):
         return self.subcategory_name
 
     class Meta:
-        managed=True
+        managed=False
         db_table="score_subcategories"
 
 class ScoreCategoryInstance(models.Model):
@@ -372,7 +385,7 @@ class ScoreCategoryInstance(models.Model):
     def __str__(self):
         return f"{self.event} - {self.score_category}"
     class Meta:
-        managed=True
+        managed=False
         db_table="score_category_instances"
 
 class ScoreSubCategoryInstance(models.Model):
@@ -385,7 +398,7 @@ class ScoreSubCategoryInstance(models.Model):
     def __str__(self):
         return f"{self.event} - {self.score_subcategory}"
     class Meta:
-        managed=True
+        managed=False
         db_table="score_subcategory_instances"
 
 class ScoreSubCategoryScore(models.Model):
@@ -396,5 +409,142 @@ class ScoreSubCategoryScore(models.Model):
         return f"{self.team} → {self.subcategory}"
     
     class Meta:
-        managed=True
+        managed=False
         db_table="score_subcategory_scores"
+
+class DurabilityRun(models.Model):
+    class RunStatus(models.TextChoices):
+        COMPLETED = "completed", "Completed"
+        DNF = "dnf", "DNF"
+        DNS = "dns", "DNS"
+        DSQ = "dsq", "DSQ"
+
+    durability_run_id = models.AutoField(primary_key=True)
+
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.PROTECT,
+        db_column="event_id",
+        to_field="event_id",
+        related_name="durability_runs",
+        db_constraint=False,
+    )
+
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.PROTECT,
+        db_column="team_id",
+        to_field="team_id",
+        related_name="durability_runs",
+        db_constraint=False,
+    )
+
+    tractor = models.ForeignKey(
+        Tractor,
+        on_delete=models.PROTECT,
+        db_column="tractor_id",
+        to_field="tractor_id",
+        related_name="durability_runs",
+        db_constraint=False,
+    )
+
+    attempt_number = models.PositiveSmallIntegerField(
+        default=1,
+        validators=[MinValueValidator(1)],
+        help_text="1 for the first attempt; increment for re-runs.",
+    )
+
+    final_lap_count = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        help_text="Total completed laps. Leave blank until the run is finished.",
+    )
+
+    final_time = models.DurationField(
+        null=True,
+        blank=True,
+        help_text="Elapsed time for the run (hh:mm:ss). Leave blank until finished.",
+    )
+
+    status = models.CharField(
+        max_length=12,
+        choices=RunStatus.choices,
+        default=RunStatus.COMPLETED,
+    )
+
+    notes = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        managed = False
+        db_table = "durability_runs"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "team", "tractor", "attempt_number"],
+                name="uniq_dur_run_event_team_tractor_attempt",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["event", "status"]),
+            models.Index(fields=["event", "team"]),
+            models.Index(fields=["event", "tractor"]),
+        ]
+
+    def __str__(self):
+        return f"DurabilityRun(event={self.event_id}, team={self.team_id}, tractor={self.tractor_id}, attempt={self.attempt_number})"
+
+class DurabilityData(models.Model):
+    
+    durability_data_id=models.AutoField(primary_key=True)
+    durability_run=models.ForeignKey(
+        DurabilityRun,
+        on_delete=models.PROTECT,
+        db_column="durability_run_id",
+        to_field="durability_run_id",
+        related_name="data",
+        db_constraint=False,
+    )
+    speed=models.FloatField()
+    pressure=models.FloatField()
+    power=models.FloatField()
+    class Meta:
+        managed = False
+        db_table = "durability_data"
+
+class TeamInfo(models.Model):
+    class InfoTypes(models.IntegerChoices):
+        INSTAGRAM=1
+        FACEBOOK=2
+        WEBSITE=3
+        BIO=4
+        NICKNAME=5
+        YOUTUBE=6
+        LINKEDIN=7
+    team_info_id=models.AutoField(primary_key=True)
+
+    info_type=models.IntegerField(choices=InfoTypes.choices)
+    team=models.ForeignKey(Team,models.DO_NOTHING,db_column="team_id",to_field="team_id")
+    info=models.CharField(max_length=255)
+    class Meta:
+        managed = False
+        db_table = "team_info"
+
+class TractorInfo(models.Model):
+    class InfoTypes(models.IntegerChoices):
+        INSTAGRAM=1
+        FACEBOOK=2
+        WEBSITE=3
+        BIO=4
+        NICKNAME=5
+        YOUTUBE=6
+        LINKEDIN=7
+    tractor_info_id=models.AutoField(primary_key=True)
+
+    info_type=models.IntegerField(choices=InfoTypes.choices)
+    tractor=models.ForeignKey(Tractor,models.DO_NOTHING,db_column="tractor_id",to_field="tractor_id")
+    info=models.CharField(max_length=255)
+    class Meta:
+        managed = False
+        db_table = "tractor_info"
