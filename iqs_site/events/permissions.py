@@ -15,7 +15,7 @@ def can_edit_team(user, team):
     if user.is_superuser:
         return True
 
-    expected_group = f"Team_{team.team_name.replace(' ', '')}"
+    expected_group = f"team_{team.team_id}_{team.team_name.replace(' ', '_')}"
    
 
     return user.groups.filter(name=expected_group).exists()
@@ -38,7 +38,7 @@ def can_edit_tractor(user, tractor) -> bool:
     # If tractors should be editable by the owning/original team group:
     # (Adjust this to match your actual ownership model)
     if getattr(tractor, "original_team_id", None):
-        expected_group = f"Team_{tractor.original_team_id}"
+        expected_group = f"team_{tractor.original_team.team_id}_{tractor.original_team.team_name.replace(" ","_")}"
         return user.groups.filter(name=expected_group).exists()
 
     return False
