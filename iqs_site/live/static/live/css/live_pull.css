@@ -106,11 +106,6 @@
   border: 1px solid rgba(148, 163, 184, 0.14);
 }
 
-/* Current pull panel (if you add it) */
-.panel-current{
-  margin-top: 1rem;
-}
-
 .current-meta{
   padding: 1rem 1.1rem 1.1rem;
   display: grid;
@@ -295,4 +290,64 @@
   .panel-video{
     margin-top:.5rem;
   }
+}
+
+/* Current Pull: two-column layout */
+.panel-current .current-grid{
+  display: grid;
+  grid-template-columns: 1.2fr .8fr; /* left meta, right live stats */
+  gap: 1rem;
+  align-items: stretch;
+}
+
+@media (max-width: 900px){
+  .panel-current .current-grid{
+    grid-template-columns: 1fr; /* stack on mobile */
+  }
+}
+
+/* Right side live stats */
+.current-live{
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: .6rem;
+  padding-left: 1rem;
+  border-left: 1px solid rgba(255,255,255,.08);
+}
+
+@media (max-width: 900px){
+  .current-live{
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid rgba(255,255,255,.08);
+    padding-top: .75rem;
+  }
+}
+
+.live-stat{
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: .5rem .6rem;
+  border-radius: .75rem;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.06);
+}
+
+.live-label{
+  font-size: .8rem;
+  color: #9ca3af;
+}
+
+.live-value{
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.live-unit{
+  font-size: .85rem;
+  color: #9ca3af;
+  font-weight: 600;
+  margin-left: .25rem;
 }
