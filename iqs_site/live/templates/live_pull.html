@@ -25,15 +25,31 @@
       Live Pull
     </h1>
 
-    <div class="pull-meta">
+    <!-- <div class="pull-meta">
       Team: <strong><span data-field="team_name">TEAM</span></strong> <span data-field="team_number">NUMBER</span><br>
       Distance: <span data-field="distance">0</span> ft<br>
       Hook : <span data-field="hook_name">HOOK</span>
-    </div>
+    </div> -->
 
   </header>
+  <section class="panel panel-video">
+  <div class="panel-head">
+    <h2 class="panel-title">Live Stream</h2>
+    <div class="chip chip-live">STREAM</div>
+  </div>
 
-  <div class="panel panel-current">
+  <div class="video-wrap">
+    <iframe
+      src="https://www.youtube.com/embed/X6kVYh22shk?autoplay=1&mute=1&rel=0&modestbranding=1"
+      title="Live Pull Stream"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen>
+    </iframe>
+  </div>
+</section>
+
+ <div class="panel panel-current">
   <div class="panel-head">
     <h2 class="panel-title">Current Pull</h2>
     <div class="chip chip-live" id="sseStatus">LIVE</div>
@@ -41,7 +57,7 @@
   <div class="current-meta">
     <div><span class="k">Team</span> <strong><span data-field="team_name">TEAM</span></strong> <span class="muted">#<span data-field="team_number">NUMBER</span></span></div>
     <div><span class="k">Hook</span> <strong><span data-field="hook_name">HOOK</span></strong></div>
-    <div><span class="k">Distance</span> <strong><span data-field="distance">0</span></strong> <span class="muted">ft</span></div>
+    <div><span class="k">Tractor</span> <strong><span data-field="tractor_name">None</span></strong> <span class="muted"></span></div>
   </div>
 </div>
 
@@ -68,7 +84,6 @@
 </div>
 
 
-<!-- Chart.js (CDN for now) -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <div class="card">
   <h1>
