@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from events.models import Team, Event, EventTeam
+from django.conf import settings
 # Create your views here.
 
 
@@ -9,7 +10,7 @@ def live_landing(request):
 
 def live_pull(request):
     context={}
-    context["api_url"]="http://127.0.0.1:9002"
+    context["api_url"]=settings.APIURL
     return render(request,"live_pull.html",context)
 
 def overlay(request):
