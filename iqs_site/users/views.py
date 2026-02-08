@@ -7,6 +7,7 @@ from django.contrib import messages
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
 from .forms import CustomUserCreationForm
+from .tasks import assign_user_to_teams
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode
 from django.contrib.auth.tokens import default_token_generator
@@ -149,6 +150,11 @@ def verify_email(request, uidb64, token):
     if user and default_token_generator.check_token(user, token):
         user.is_active = True
         user.save()
+
+        # Trigger team assignment task asynchronously
+        print("queuing assignment")
+        assign_user_to_teams.delay(user.pk)
+
         login(request, user)
         return redirect("users:account")
     else:
