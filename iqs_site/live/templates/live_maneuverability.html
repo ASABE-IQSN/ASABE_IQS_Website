@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Live Maneuverability – {{ event.event_name|default:"IQS Live" }}{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'live/css/live_maneuverability.css' %}?1">
+{% endblock %}
+
+{% block content %}
+
+<script>
+  window.IQS = {
+    apiUrl: "{{ api_url }}",
+  };
+</script>
+
+<script defer src="{% static 'live/js/live_maneuverability.js' %}"></script>
+
+<div class="live-page">
+  <header>
+    <h1>Live Maneuverability</h1>
+  </header>
+
+  <section class="panel panel-video">
+    <div class="panel-head">
+      <h2 class="panel-title">Live Stream</h2>
+      <div class="chip chip-live">STREAM</div>
+    </div>
+
+    <div class="video-wrap">
+      <iframe
+        src="https://www.youtube.com/embed/X6kVYh22shk?autoplay=1&mute=1&rel=0&modestbranding=1"
+        title="Live Maneuverability Stream"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allowfullscreen>
+      </iframe>
+    </div>
+  </section>
+
+  <div class="panel panel-current">
+    <div class="panel-head">
+      <h2 class="panel-title">Current Run</h2>
+      <div class="chip chip-live" id="sseStatus">LIVE</div>
+    </div>
+
+    <div class="current-grid">
+      <!-- left side: metadata -->
+      <div class="current-meta">
+        <div>
+          <span class="k">Team</span>
+          <strong><span data-field="team_name">Waiting...</span></strong>
+          <span class="muted">#<span data-field="team_number">-</span></span>
+        </div>
+        <div>
+          <span class="k">Tractor</span>
+          <strong><span data-field="tractor_name">None</span></strong>
+        </div>
+        <div>
+          <span class="k">Event</span>
+          <strong><span data-field="event">-</span></strong>
+        </div>
+      </div>
+
+      <!-- right side: status -->
+      <div class="current-live">
+        <div class="live-stat">
+          <div class="live-label">Status</div>
+          <div class="live-value"><span data-field="status">Waiting</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Up Next Panel -->
+  <div class="panel panel-up-next">
+    <div class="panel-head">
+      <div>
+        <h2 class="panel-title">Up Next</h2>
+        <div class="panel-subtitle">Next 5 teams to run</div>
+      </div>
+      <div class="chip" id="upNextCount">0</div>
+    </div>
+
+    <div id="upNextList" class="up-next-list">
+      <div class="empty" id="upNextEmpty">No teams queued.</div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

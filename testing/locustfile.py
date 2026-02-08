@@ -1,11 +1,24 @@
 import os
 import random
 from locust import HttpUser, task, between
-
+#from ....resources.secrets.python import local_secrets
+import mysql.connector
 # ---------------------------
 # Helpers / configuration
 # ---------------------------
 
+DB_IP="38.22.155.20"
+ADMINUNAME="####"
+ADMINPWORD="####"
+DB_NAME="IQS_Production_Environment"
+
+cnx = mysql.connector.connect(
+    host=DB_IP,
+    port=3306,
+    user=ADMINUNAME,
+    password=ADMINPWORD,
+    database=DB_NAME)
+cursor=cnx.cursor(dictionary=True)
 def _csv_ints(env_name: str, default: str) -> list[int]:
     raw = os.getenv(env_name, default).strip()
     return [int(x) for x in raw.split(",") if x.strip().isdigit()]
@@ -13,7 +26,7 @@ def _csv_ints(env_name: str, default: str) -> list[int]:
 def pick(lst):
     return random.choice(lst)
 
-BASE_PATH = "/testing"  # "", "/testing"
+BASE_PATH = ""  # "", "/testing"
 LOGIN_PATH = os.getenv("LOCUST_LOGIN_PATH", f"{BASE_PATH}/accounts/login/")
 
 # Root-level IDs
@@ -22,11 +35,60 @@ TEAM_IDS = _csv_ints("LOCUST_TEAM_IDS", "1")
 TRACTOR_IDS = _csv_ints("LOCUST_TRACTOR_IDS", "1")
 PULL_IDS = _csv_ints("LOCUST_PULL_IDS", "1")
 
+sql="SELECT * FROM events"
+cursor.execute(sql)
+x=cursor.fetchall()
+for res in x:
+    EVENT_IDS.append(res["event_id"])
+
+sql="SELECT * FROM teams"
+cursor.execute(sql)
+x=cursor.fetchall()
+for res in x:
+    TEAM_IDS.append(res["team_id"])
+
+sql="SELECT * FROM tractors"
+cursor.execute(sql)
+x=cursor.fetchall()
+for res in x:
+    TRACTOR_IDS.append(res["tractor_id"])
+
+sql="SELECT * FROM pulls"
+cursor.execute(sql)
+x=cursor.fetchall()
+for res in x:
+    PULL_IDS.append(res["pull_id"])
+
+TECHIN_TEAM_PAIRS=[]
+
+sql="SELECT * FROM event_teams et JOIN events e ON et.event_id=e.event_id WHERE e.techin_released"
+cursor.execute(sql)
+x=cursor.fetchall()
+for res in x:
+    TECHIN_TEAM_PAIRS.append((res["event_id"],res["team_id"]))
+
 # Tech-in IDs
-TRACTOR_EVENT_IDS = _csv_ints("LOCUST_TRACTOR_EVENT_IDS", "1")
-CATEGORY_IDS = _csv_ints("LOCUST_CATEGORY_IDS", "1")
-SUBCATEGORY_IDS = _csv_ints("LOCUST_SUBCATEGORY_IDS", "1")
-RULE_IDS = _csv_ints("LOCUST_RULE_IDS", "1")
+CATEGORY_IDS = []#_csv_ints("LOCUST_CATEGORY_IDS", "1")
+SUBCATEGORY_IDS = []#_csv_ints("LOCUST_SUBCATEGORY_IDS", "1")
+RULE_IDS = []#_csv_ints("LOCUST_RULE_IDS", "1")
+
+sql="SELECT * FROM rule_categories"
+cursor.execute(sql)
+x=cursor.fetchall()
+for res in x:
+    CATEGORY_IDS.append(res["rule_category_id"])
+
+sql="SELECT * FROM rule_subcategories WHERE rule_category_id !=6"
+cursor.execute(sql)
+x=cursor.fetchall()
+for res in x:
+    SUBCATEGORY_IDS.append(res["rule_subcategory_id"])
+
+sql="SELECT * FROM rules r JOIN rule_subcategories rs ON r.rule_subcategory_id=rs.rule_subcategory_id WHERE rs.rule_category_id !=6"
+cursor.execute(sql)
+x=cursor.fetchall()
+for res in x:
+    RULE_IDS.append(res["rule_id"])
 
 USERNAME = os.getenv("LOCUST_USERNAME", "")
 PASSWORD = os.getenv("LOCUST_PASSWORD", "")
@@ -125,29 +187,33 @@ class WebsiteUser(HttpUser):
             name="techin_event_overview"
         )
 
-    # @task(4)
-    # def techin_team_overview(self):
-    #     self.client.get(
-    #         f"{TECHIN_PREFIX}/event/{pick(EVENT_IDS)}/team/{pick(TRACTOR_EVENT_IDS)}/",
-    #         name="techin_team_overview"
-    #     )
+    @task(4)
+    def techin_team_overview(self):
+        pair=pick(TECHIN_TEAM_PAIRS)
+        self.client.get(
+            f"{TECHIN_PREFIX}/event/{pair[0]}/team/{pair[1]}/",
+            name="techin_team_overview"
+        )
 
-    # @task(2)
-    # def techin_team_subcategory(self):
-    #     self.client.get(
-    #         f"{TECHIN_PREFIX}/event/{pick(EVENT_IDS)}/team/{pick(TRACTOR_EVENT_IDS)}/subcategory/{pick(SUBCATEGORY_IDS)}/",
-    #         name="techin_team_subcategory"
-    #     )
+    @task(2)
+    def techin_team_subcategory(self):
+        pair=pick(TECHIN_TEAM_PAIRS)
+        self.client.get(
+            f"{TECHIN_PREFIX}/event/{pair[0]}/team/{pair[1]}/subcategory/{pick(SUBCATEGORY_IDS)}/",
+            name="techin_team_subcategory"
+        )
 
-    # @task(2)
-    # def techin_team_rule(self):
-    #     self.client.get(
-    #         f"{TECHIN_PREFIX}/event/{pick(EVENT_IDS)}/team/{pick(TRACTOR_EVENT_IDS)}/rule/{pick(RULE_IDS)}/",
-    #         name="techin_team_rule"
-    #     )
+    @task(2)
+    def techin_team_rule(self):
+        pair=pick(TECHIN_TEAM_PAIRS)
+        self.client.get(
+            f"{TECHIN_PREFIX}/event/{pair[0]}/team/{pair[1]}/rule/{pick(RULE_IDS)}/",
+            name="techin_team_rule"
+        )
 
     # @task(2)
     # def techin_category_view(self):
+    #     pair=pick(TECHIN_TEAM_PAIRS)
     #     self.client.get(
     #         f"{TECHIN_PREFIX}/event/{pick(EVENT_IDS)}/category/{pick(CATEGORY_IDS)}",
     #         name="techin_category_view"
