@@ -1,6 +1,7 @@
 from django.contrib import admin, messages
 from django.conf import settings
 from django.utils.html import format_html
+from django import forms
 from .models import (
     TeamClass,
     Team,
@@ -43,11 +44,28 @@ class TractorAdmin(admin.ModelAdmin):
     list_filter = ("original_team",)
 
 
+class EventForm(forms.ModelForm):
+    event_id = forms.IntegerField(required=False, label="Event ID")
+
+    class Meta:
+        model = Event
+        fields = ["event_id", "event_name", "event_datetime", "event_active", "techin_released"]
+
+
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
+    form = EventForm
     list_display = ("event_id", "event_name", "event_datetime")
     search_fields = ("event_name",)
     list_filter = ("event_datetime",)
+
+    fields = ("event_id", "event_name", "event_datetime", "event_active", "techin_released")
+
+    def get_readonly_fields(self, request, obj=None):
+        # Make event_id readonly when editing an existing event, but editable when creating new one
+        if obj:  # Editing an existing object
+            return ("event_id",)
+        return ()  # Creating a new object
 
 
 @admin.register(Hook)
