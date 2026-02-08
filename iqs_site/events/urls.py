@@ -18,6 +18,7 @@ urlpatterns = [
     path("health/", views.health, name="health"),
     path("durability/event/<int:event_id>/",views.durability_event_results,name="durability_event_results"),
     path("durability/runs/<int:run_id>/", views.durability_run_detail, name="durability_run_detail"),
+    path("maneuverability/runs/<int:run_id>/", views.maneuverability_run_detail, name="maneuverability_run_detail"),
     path("teams/<int:team_id>/edit/", views.team_profile_edit, name="team_profile_edit"),
     path("tractor/<int:tractor_id>/edit/", views.tractor_profile_edit, name="tractor_profile_edit"),
 ]

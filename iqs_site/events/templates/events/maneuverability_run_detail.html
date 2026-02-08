@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Maneuverability Run – {{ maneuverability_run.team.team_name }}{% endblock %}
+
+{% block extra_styles %}
+  .man-page-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .man-page-header h1 {
+    margin: 0 0 0.25rem;
+  }
+
+  .man-meta {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+{% endblock %}
+
+{% block content %}
+  <header class="man-page-header">
+    <h1>Maneuverability Run</h1>
+    <div class="man-meta">
+      Team: <strong>{{ maneuverability_run.team.team_name }}</strong> ({{ maneuverability_run.team.team_number }})<br>
+      Event: {{ maneuverability_run.event.event_name|default:maneuverability_run.event_id }}<br>
+      Run Order: {{ maneuverability_run.run_order }}<br>
+      State: {{ maneuverability_run.state }}<br>
+      Updated: {{ maneuverability_run.updated_at }} ({{ maneuverability_run.updated_by_source }})
+    </div>
+  </header>
+
+  {% for vid in yt_embed %}
+    <iframe
+      width="1000"
+      height="500"
+      src="https://www.youtube.com/embed/{{ vid.link }}"
+      title="YouTube video player"
+      frameborder="0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen>
+    </iframe>
+  {% endfor %}
+
+  {% if not yt_embed %}
+    <p>No media available for this run.</p>
+  {% endif %}
+{% endblock %}

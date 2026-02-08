@@ -518,6 +518,53 @@ class DurabilityData(models.Model):
             models.Index(fields=["durability_run"]),
         ]
 
+class ManeuverabilityRun(models.Model):
+    maneuverability_run_id = models.AutoField(primary_key=True)
+
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.PROTECT,
+        db_column="event_id",
+        to_field="event_id",
+        related_name="maneuverability_runs",
+        db_constraint=False,
+    )
+
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.PROTECT,
+        db_column="team_id",
+        to_field="team_id",
+        related_name="maneuverability_runs",
+        db_constraint=False,
+    )
+
+    run_order = models.IntegerField()
+
+    state = models.CharField(
+        max_length=24,
+        default="SCHEDULED",
+    )
+
+    updated_at = models.DateTimeField()
+
+    updated_by_source = models.CharField(
+        max_length=16,
+        default="system",
+    )
+
+    class Meta:
+        managed = False
+        db_table = "maneuverability_runs"
+        indexes = [
+            models.Index(fields=["event", "run_order"]),
+            models.Index(fields=["event", "team"]),
+            models.Index(fields=["event", "state", "run_order"]),
+        ]
+
+    def __str__(self):
+        return f"ManeuverabilityRun(event={self.event_id}, team={self.team_id}, run_order={self.run_order})"
+
 class TeamInfo(models.Model):
     class InfoTypes(models.IntegerChoices):
         INSTAGRAM=1

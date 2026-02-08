@@ -346,6 +346,40 @@
       <p class="empty">No durability runs recorded for this event.</p>
     {% endif %}
   </section>
+  <section>
+    <h2>Maneuverability Runs</h2>
+
+    {% if maneuverability_runs %}
+      <table>
+        <thead>
+          <tr>
+            <th>Run Order</th>
+            <th>Team</th>
+            <th>Team #</th>
+            <th>State</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in maneuverability_runs %}
+            <tr>
+              <td>{{ run.run_order }}</td>
+              <td>{{ run.team.team_name }}</td>
+              <td>{{ run.team.team_number }}</td>
+              <td>{{ run.state }}</td>
+              <td>
+                <a href="{% url 'events:maneuverability_run_detail' run.maneuverability_run_id %}">
+                  View run
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">No maneuverability runs recorded for this event.</p>
+    {% endif %}
+  </section>
   <section class="grid">
     <!-- Left: comparison vs top 3 -->
     <div class="card">

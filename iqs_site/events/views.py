@@ -30,7 +30,7 @@ from .forms import TeamProfileEditForm
 from django.db.models import OuterRef, Subquery
 
 
-from .models import DurabilityRun, DurabilityData, PerformanceEventMedia
+from .models import DurabilityRun, DurabilityData, ManeuverabilityRun, PerformanceEventMedia
 from .models import Tractor, TractorInfo
 from .forms import TractorProfileEditForm
 from .permissions import can_edit_tractor
@@ -259,6 +259,12 @@ def team_event_detail(request, event_id, team_id):
         .filter(event=event, team=team)
         .order_by("run_order")
     )
+
+    maneuverability_runs = (
+        ManeuverabilityRun.objects
+        .filter(event=event, team=team)
+        .order_by("run_order")
+    )
     
     schedule_items=(
         ScheduleItem.objects
@@ -296,6 +302,7 @@ def team_event_detail(request, event_id, team_id):
         "best_pull_overall": best_pull_overall,
         "pulls": pulls,
         "durability_runs": durability_runs,
+        "maneuverability_runs": maneuverability_runs,
         "chart_labels_json": json.dumps(chart_labels),
         "chart_distances_json": json.dumps(chart_distances),
         "event_photos": event_photos,
@@ -445,12 +452,20 @@ def event_detail(request, event_id):
         .order_by("-total_laps", "run_order")
     )
 
+    maneuverability_runs = (
+        ManeuverabilityRun.objects
+        .filter(event=event)
+        .select_related("team")
+        .order_by("run_order")
+    )
+
     context = {
         "event": event,
         "event_teams": event_teams,
         "rankings_by_class": rankings_by_class,
         "event_hooks": event_hooks,
         "durability_runs": durability_runs,
+        "maneuverability_runs": maneuverability_runs,
         "active_page": "events",
         "schedule_items":schedule_items,
     }
@@ -579,6 +594,29 @@ def durability_run_detail(request, run_id: int):
     }
 
     return render(request, "events/durability_run_detail.html", context)
+
+@log_view
+@cache_page(300)
+def maneuverability_run_detail(request, run_id: int):
+    maneuverability_run = (
+        ManeuverabilityRun.objects
+        .select_related("team", "event")
+        .get(pk=run_id)
+    )
+
+    yt_vids = PerformanceEventMedia.objects.filter(
+        performance_event_type=PerformanceEventMedia.EventTypes.MANEUVERABILITY,
+        performance_event_id=maneuverability_run.maneuverability_run_id,
+        media_type=PerformanceEventMedia.MediaTypes.YOUTUBE_VIDEO,
+    )
+
+    context = {
+        "maneuverability_run": maneuverability_run,
+        "yt_embed": yt_vids,
+        "active_page": "events",
+    }
+
+    return render(request, "events/maneuverability_run_detail.html", context)
 
 @log_view
 @cache_page(300)
