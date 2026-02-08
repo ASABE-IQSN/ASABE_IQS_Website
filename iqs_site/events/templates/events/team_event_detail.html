@@ -457,6 +457,70 @@
       <p class="empty">No pulls recorded for this team in this event.</p>
     {% endif %}
   </section>
+  <section style="margin-top: 1.5rem;">
+    <h2>Durability Runs</h2>
+
+    {% if durability_runs %}
+      <table>
+        <thead>
+          <tr>
+            <th>Run Order</th>
+            <th>Tractor</th>
+            <th>Laps</th>
+            <th>State</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in durability_runs %}
+            <tr>
+              <td>{{ run.run_order }}</td>
+              <td>{{ run.tractor.tractor_name|default:"—" }}</td>
+              <td>{{ run.total_laps|default:"—" }}</td>
+              <td>{{ run.state }}</td>
+              <td>
+                <a href="{% url 'events:durability_run_detail' run.durability_run_id %}">
+                  View run
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">No durability runs recorded for this team in this event.</p>
+    {% endif %}
+  </section>
+  <section style="margin-top: 1.5rem;">
+    <h2>Maneuverability Runs</h2>
+
+    {% if maneuverability_runs %}
+      <table>
+        <thead>
+          <tr>
+            <th>Run Order</th>
+            <th>State</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in maneuverability_runs %}
+            <tr>
+              <td>{{ run.run_order }}</td>
+              <td>{{ run.state }}</td>
+              <td>
+                <a href="{% url 'events:maneuverability_run_detail' run.maneuverability_run_id %}">
+                  View run
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">No maneuverability runs recorded for this team in this event.</p>
+    {% endif %}
+  </section>
 <section class="grid">
     <!-- Left: comparison vs top 3 -->
     <div class="card">

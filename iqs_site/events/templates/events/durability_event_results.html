@@ -17,9 +17,8 @@
             <th style="text-align:left; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Team</th>
             <th style="text-align:left; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Tractor</th>
             <th style="text-align:right; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Laps</th>
-            <th style="text-align:right; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Time</th>
-            <th style="text-align:left; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Status</th>
-            <th style="text-align:left; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Notes</th>
+            <th style="text-align:left; padding: 0.75rem; border-bottom: 1px solid #1f2937;">State</th>
+            <th style="text-align:left; padding: 0.75rem; border-bottom: 1px solid #1f2937;">Run</th>
           </tr>
         </thead>
         <tbody>
@@ -38,28 +37,20 @@
               </td>
 
               <td style="padding: 0.75rem; border-bottom: 1px solid #111827; text-align:right;">
-                {{ run.final_lap_count|default:"—" }}
-              </td>
-
-              <td style="padding: 0.75rem; border-bottom: 1px solid #111827; text-align:right;">
-                {% if run.final_time %}
-                  {{ run.final_time }}
-                {% else %}
-                  —
-                {% endif %}
+                {{ run.total_laps|default:"—" }}
               </td>
 
               <td style="padding: 0.75rem; border-bottom: 1px solid #111827;">
-                {{ run.get_status_display }}
+                {{ run.state }}
               </td>
 
               <td style="padding: 0.75rem; border-bottom: 1px solid #111827;">
-                {{ run.notes|default:"" }}
+                <a href="{% url 'events:durability_run_detail' run.durability_run_id %}">View run</a>
               </td>
             </tr>
           {% empty %}
             <tr>
-              <td colspan="7" style="padding: 1rem; color: #9ca3af;">
+              <td colspan="6" style="padding: 1rem; color: #9ca3af;">
                 No durability results have been entered for this event yet.
               </td>
             </tr>

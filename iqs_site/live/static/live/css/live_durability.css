@@ -351,3 +351,44 @@
   font-weight: 600;
   margin-left: .25rem;
 }
+
+/* ============================================
+   Up Next List Styles (Maneuverability-specific)
+   ============================================ */
+.panel-up-next {
+  margin-top: 1rem;
+}
+
+.up-next-list {
+  padding: .75rem;
+  display: grid;
+  gap: .5rem;
+}
+
+.up-next-item {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: .75rem;
+  align-items: center;
+  padding: .7rem .8rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.02);
+}
+
+.up-next-position {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  background: rgba(148,163,184,.12);
+  border: 1px solid rgba(148,163,184,.16);
+  font-size: .9rem;
+}
+
+.up-next-name {
+  font-size: .98rem;
+  font-weight: 600;
+}

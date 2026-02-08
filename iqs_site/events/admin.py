@@ -200,7 +200,7 @@ class ScoreSubCategoryScoreAdmin(admin.ModelAdmin):
     ordering = ("subcategory__event", "team")
 
 
-from .models import DurabilityRun
+from .models import DurabilityRun, DurabilityData, PerformanceEventMedia
 
 
 @admin.register(DurabilityRun)
@@ -209,15 +209,14 @@ class DurabilityRunAdmin(admin.ModelAdmin):
         "durability_run_id",
         "event",
         "team",
+        "run_order",
+        "state",
+        "total_laps",
         "tractor",
-        "attempt_number",
-        "final_lap_count",
-        "final_time",
-        "status",
-        "created_at",
+        "updated_at",
     )
     list_filter = (
-        "status",
+        "state",
         "event",
     )
     search_fields = (
@@ -227,22 +226,20 @@ class DurabilityRunAdmin(admin.ModelAdmin):
         "tractor__tractor_name",
         "event__event_name",
     )
-    ordering = ("-created_at",)
-    date_hierarchy = "created_at"
+    ordering = ("event", "run_order")
+    date_hierarchy = "updated_at"
 
     fields = (
         "event",
         "team",
+        "run_order",
+        "state",
+        "total_laps",
         "tractor",
-        "attempt_number",
-        "final_lap_count",
-        "final_time",
-        "status",
-        "notes",
-        "created_at",
         "updated_at",
+        "updated_by_source",
     )
-    readonly_fields = ("created_at", "updated_at")
+    readonly_fields = ("updated_at",)
 
     autocomplete_fields = ("event", "team", "tractor")
 
@@ -278,3 +275,38 @@ class DurabilityRunAdmin(admin.ModelAdmin):
                         ).distinct()
 
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+
+@admin.register(DurabilityData)
+class DurabilityDataAdmin(admin.ModelAdmin):
+    list_display = (
+        "durability_data_id",
+        "durability_run",
+        "speed",
+        "pressure",
+        "power",
+    )
+    list_filter = ("durability_run",)
+    search_fields = (
+        "durability_run__team__team_name",
+        "durability_run__team__team_number",
+        "durability_run__tractor__tractor_name",
+        "durability_run__event__event_name",
+    )
+    ordering = ("durability_data_id",)
+
+
+@admin.register(PerformanceEventMedia)
+class PerformanceEventMediaAdmin(admin.ModelAdmin):
+    list_display = (
+        "media_id",
+        "media_type",
+        "performance_event_type",
+        "performance_event_id",
+        "link",
+    )
+    list_filter = ("media_type", "performance_event_type")
+    search_fields = (
+        "link",
+    )
+    ordering = ("media_id",)

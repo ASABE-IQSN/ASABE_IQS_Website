@@ -13,6 +13,66 @@ function setField(key, value, digits = null) {
       : String(value);
 }
 
+// --- leaderboard render ---
+const leaderboardEl = document.getElementById("leaderboard");
+const boardEmptyEl = document.getElementById("boardEmpty");
+const boardCountEl = document.getElementById("boardCount");
+
+function renderHookLeaderboard(hookLeaders) {
+  if (!leaderboardEl) return;
+
+  // Normalize / validate
+  const leaders = Array.isArray(hookLeaders) ? hookLeaders : [];
+
+  // Clear current rows (but we'll re-add the empty message if needed)
+  leaderboardEl.innerHTML = "";
+
+  if (leaders.length === 0) {
+    // show "No standings yet."
+    if (boardEmptyEl) {
+      boardEmptyEl.style.display = "";
+      leaderboardEl.appendChild(boardEmptyEl);
+    } else {
+      const empty = document.createElement("div");
+      empty.className = "empty";
+      empty.textContent = "No standings yet.";
+      leaderboardEl.appendChild(empty);
+    }
+    if (boardCountEl) boardCountEl.textContent = "0";
+    return;
+  }
+
+  // hide empty message if it exists elsewhere
+  if (boardEmptyEl) boardEmptyEl.style.display = "none";
+  if (boardCountEl) boardCountEl.textContent = String(leaders.length);
+
+  leaders.forEach((row, idx) => {
+    const team = row?.team ?? "";
+    const distance = Number(row?.distance);
+
+    const item = document.createElement("div");
+    item.className = "lb-row"; // style in CSS if you want
+
+    const rank = document.createElement("div");
+    rank.className = "lb-rank";
+    rank.textContent = String(idx + 1);
+
+    const name = document.createElement("div");
+    name.className = "lb-team";
+    name.textContent = String(team);
+
+    const dist = document.createElement("div");
+    dist.className = "lb-distance";
+    dist.textContent = Number.isFinite(distance) ? distance.toFixed(1) : "—";
+
+    item.appendChild(rank);
+    item.appendChild(name);
+    item.appendChild(dist);
+
+    leaderboardEl.appendChild(item);
+  });
+}
+
 // --- chart setup ---
 const MAX_POINTS = 10000;
 const ctx = document.getElementById("liveChart");
@@ -102,6 +162,8 @@ function startSSE() {
     setField("hook_name", info.hook_name);
     setField("team_name", info.team_name);
     setField("team_number", info.team_number);
+    setField("tractor_name",info.tractor_name);
+    renderHookLeaderboard(info.hook_leaders);
   });
 
   es.addEventListener("data", (e) => {

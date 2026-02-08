@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from .models import Event
 from django.conf import settings
-from .models import TeamClass, Team,PullMedia,TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem
+from .models import TeamClass, Team, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from functools import wraps
@@ -29,9 +29,8 @@ from django.http import Http404
 from .forms import TeamProfileEditForm
 from django.db.models import OuterRef, Subquery
 
-from django.db.models import Case, When, Value, IntegerField
 
-from .models import DurabilityRun
+from .models import DurabilityRun, DurabilityData, ManeuverabilityRun, PerformanceEventMedia
 from .models import Tractor, TractorInfo
 from .forms import TractorProfileEditForm
 from .permissions import can_edit_tractor
@@ -253,6 +252,19 @@ def team_event_detail(request, event_id, team_id):
         .filter(event=event, team=team)
         .order_by("hook__hook_name", "pull_id")
     )
+
+    durability_runs = (
+        DurabilityRun.objects
+        .select_related("tractor")
+        .filter(event=event, team=team)
+        .order_by("run_order")
+    )
+
+    maneuverability_runs = (
+        ManeuverabilityRun.objects
+        .filter(event=event, team=team)
+        .order_by("run_order")
+    )
     
     schedule_items=(
         ScheduleItem.objects
@@ -289,6 +301,8 @@ def team_event_detail(request, event_id, team_id):
         "team_in_top3": team_in_top3,
         "best_pull_overall": best_pull_overall,
         "pulls": pulls,
+        "durability_runs": durability_runs,
+        "maneuverability_runs": maneuverability_runs,
         "chart_labels_json": json.dumps(chart_labels),
         "chart_distances_json": json.dumps(chart_distances),
         "event_photos": event_photos,
@@ -431,11 +445,27 @@ def event_detail(request, event_id):
         hook.best_pull = pulls[0] if pulls else None
         event_hooks.append(hook)
 
+    durability_runs = (
+        DurabilityRun.objects
+        .filter(event=event)
+        .select_related("team", "tractor")
+        .order_by("-total_laps", "run_order")
+    )
+
+    maneuverability_runs = (
+        ManeuverabilityRun.objects
+        .filter(event=event)
+        .select_related("team")
+        .order_by("run_order")
+    )
+
     context = {
         "event": event,
         "event_teams": event_teams,
         "rankings_by_class": rankings_by_class,
         "event_hooks": event_hooks,
+        "durability_runs": durability_runs,
+        "maneuverability_runs": maneuverability_runs,
         "active_page": "events",
         "schedule_items":schedule_items,
     }
@@ -474,7 +504,13 @@ def pull_detail(request, pull_id):
     pull_name=pull.team.team_abbreviation+" " + pull.hook.hook_name
     #media=PullMedia.objects.filter(pull_media_type=PullMedia.types.YOUTUBE_VIDEO)
     #print(media)
-    yt_vids=pull.pull_media.all().filter(pull_media_type=PullMedia.types.YOUTUBE_VIDEO)
+    yt_vids = PerformanceEventMedia.objects.filter(
+        performance_event_type=PerformanceEventMedia.EventTypes.PULL,
+        performance_event_id=pull.pull_id,
+        media_type=PerformanceEventMedia.MediaTypes.YOUTUBE_VIDEO,
+    )
+    if not yt_vids.exists():
+        yt_vids = pull.pull_media.all().filter(pull_media_type=PullMedia.types.YOUTUBE_VIDEO)
     #print(yt_vids)
     context = {
         "yt_embed":yt_vids,
@@ -488,6 +524,99 @@ def pull_detail(request, pull_id):
     }
 
     return render(request, "events/pull_detail.html", context)
+
+@log_view
+@cache_page(300)
+def durability_run_detail(request, run_id: int):
+    durability_run = (
+        DurabilityRun.objects
+        .select_related("team", "event", "tractor")
+        .get(pk=run_id)
+    )
+
+    data_qs = (
+        DurabilityData.objects
+        .filter(durability_run=durability_run)
+        .order_by("durability_data_id")
+        .only("durability_data_id", "speed", "pressure", "power")
+    )
+
+    rows = list(data_qs)
+
+    x_values = []
+    speeds = []
+    pressures = []
+    powers = []
+
+    for idx, row in enumerate(rows):
+        if row.speed is None or row.pressure is None or row.power is None:
+            continue
+        x_values.append(float(idx))
+        speeds.append(float(row.speed))
+        pressures.append(float(row.pressure))
+        powers.append(float(row.power))
+
+    total_points = len(x_values)
+    max_points = 5000
+    sampled = False
+
+    if total_points > max_points and max_points > 0:
+        step = (total_points // max_points) + 1
+        x_values = x_values[::step]
+        speeds = speeds[::step]
+        pressures = pressures[::step]
+        powers = powers[::step]
+        sampled = True
+
+    has_data = bool(x_values) and bool(speeds) and bool(pressures) and bool(powers)
+    table_rows = list(zip(x_values, speeds, pressures, powers))
+
+    yt_vids = PerformanceEventMedia.objects.filter(
+        performance_event_type=PerformanceEventMedia.EventTypes.DURABILITY,
+        performance_event_id=durability_run.durability_run_id,
+        media_type=PerformanceEventMedia.MediaTypes.YOUTUBE_VIDEO,
+    )
+
+    context = {
+        "durability_run": durability_run,
+        "yt_embed": yt_vids,
+        "has_data": has_data,
+        "sampled": sampled,
+        "total_points": total_points,
+        "shown_points": len(x_values),
+        "x_label": "Sample #",
+        "x_values_json": json.dumps(x_values),
+        "speeds_json": json.dumps(speeds),
+        "pressures_json": json.dumps(pressures),
+        "powers_json": json.dumps(powers),
+        "table_rows": table_rows,
+        "active_page": "events",
+    }
+
+    return render(request, "events/durability_run_detail.html", context)
+
+@log_view
+@cache_page(300)
+def maneuverability_run_detail(request, run_id: int):
+    maneuverability_run = (
+        ManeuverabilityRun.objects
+        .select_related("team", "event")
+        .get(pk=run_id)
+    )
+
+    yt_vids = PerformanceEventMedia.objects.filter(
+        performance_event_type=PerformanceEventMedia.EventTypes.MANEUVERABILITY,
+        performance_event_id=maneuverability_run.maneuverability_run_id,
+        media_type=PerformanceEventMedia.MediaTypes.YOUTUBE_VIDEO,
+    )
+
+    context = {
+        "maneuverability_run": maneuverability_run,
+        "yt_embed": yt_vids,
+        "active_page": "events",
+    }
+
+    return render(request, "events/maneuverability_run_detail.html", context)
 
 @log_view
 @cache_page(300)
@@ -601,39 +730,23 @@ def tractor_detail(request, tractor_id):
 def durability_event_results(request, event_id: int):
     event = get_object_or_404(Event, event_id=event_id)
 
-    # Sort priority:
-    #  1) Completed runs first
-    #  2) More laps is better
-    #  3) Lower time is better
-    #  4) Then stable tie-breakers
-    status_rank = Case(
-        When(status=DurabilityRun.RunStatus.COMPLETED, then=Value(0)),
-        When(status=DurabilityRun.RunStatus.DNF, then=Value(1)),
-        When(status=DurabilityRun.RunStatus.DNS, then=Value(2)),
-        When(status=DurabilityRun.RunStatus.DSQ, then=Value(3)),
-        default=Value(9),
-        output_field=IntegerField(),
-    )
-
     runs = (
         DurabilityRun.objects
         .filter(event=event)
         .select_related("team", "tractor", "event")
-        .annotate(_status_rank=status_rank)
         .order_by(
-            "_status_rank",
-            "-final_lap_count",
-            "final_time",
-            "team__team_name",      # adjust if your field is different
-            "tractor__tractor_name" # adjust if your field is different
+            "-total_laps",
+            "run_order",
+            "team__team_name",
+            "tractor__tractor_name"
         )
     )
 
-    # Optional: assign ranks only to completed runs
+    # Optional: assign ranks only to runs with laps recorded
     ranked_rows = []
     rank = 0
     for r in runs:
-        if r.status == DurabilityRun.RunStatus.COMPLETED and r.final_lap_count is not None:
+        if r.total_laps is not None and r.total_laps > 0:
             rank += 1
             display_rank = rank
         else:

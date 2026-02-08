@@ -7,7 +7,6 @@
 # Feel free to rename the models, but don't rename db_table values or field names.
 from django.db import models
 from datetime import datetime
-from django.core.validators import MinValueValidator
 
 class TeamClass(models.Model):
     team_class_id = models.AutoField(primary_key=True)
@@ -234,6 +233,27 @@ class PullMedia(models.Model):
     pull_media_type=models.IntegerField(choices=types)
     link=models.CharField(max_length=255)
 
+class PerformanceEventMedia(models.Model):
+    media_id = models.AutoField(primary_key=True)
+
+    class EventTypes(models.IntegerChoices):
+        PULL = 1, "Pull"
+        MANEUVERABILITY = 2, "Maneuverability"
+        DURABILITY = 3, "Durability"
+
+    class MediaTypes(models.IntegerChoices):
+        YOUTUBE_VIDEO = PullMedia.types.YOUTUBE_VIDEO
+        IMAGE = PullMedia.types.IMAGE
+
+    media_type = models.IntegerField(choices=MediaTypes.choices, blank=True, null=True)
+    link = models.CharField(max_length=255, blank=True, null=True)
+    performance_event_id = models.IntegerField(blank=True, null=True)
+    performance_event_type = models.IntegerField(choices=EventTypes.choices, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = "performance_event_media"
+
 
 
 
@@ -413,12 +433,6 @@ class ScoreSubCategoryScore(models.Model):
         db_table="score_subcategory_scores"
 
 class DurabilityRun(models.Model):
-    class RunStatus(models.TextChoices):
-        COMPLETED = "completed", "Completed"
-        DNF = "dnf", "DNF"
-        DNS = "dns", "DNS"
-        DSQ = "dsq", "DSQ"
-
     durability_run_id = models.AutoField(primary_key=True)
 
     event = models.ForeignKey(
@@ -439,6 +453,27 @@ class DurabilityRun(models.Model):
         db_constraint=False,
     )
 
+    run_order = models.IntegerField()
+
+    state = models.CharField(
+        max_length=24,
+        default="SCHEDULED",
+    )
+
+    updated_at = models.DateTimeField()
+
+    updated_by_source = models.CharField(
+        max_length=16,
+        default="system",
+    )
+
+    total_laps = models.IntegerField(
+        blank=True,
+        null=True,
+        default=0,
+        db_column="total_laps",
+    )
+
     tractor = models.ForeignKey(
         Tractor,
         on_delete=models.PROTECT,
@@ -446,54 +481,21 @@ class DurabilityRun(models.Model):
         to_field="tractor_id",
         related_name="durability_runs",
         db_constraint=False,
-    )
-
-    attempt_number = models.PositiveSmallIntegerField(
-        default=1,
-        validators=[MinValueValidator(1)],
-        help_text="1 for the first attempt; increment for re-runs.",
-    )
-
-    final_lap_count = models.PositiveSmallIntegerField(
-        null=True,
         blank=True,
-        help_text="Total completed laps. Leave blank until the run is finished.",
-    )
-
-    final_time = models.DurationField(
         null=True,
-        blank=True,
-        help_text="Elapsed time for the run (hh:mm:ss). Leave blank until finished.",
     )
-
-    status = models.CharField(
-        max_length=12,
-        choices=RunStatus.choices,
-        default=RunStatus.COMPLETED,
-    )
-
-    notes = models.TextField(blank=True, default="")
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         managed = False
         db_table = "durability_runs"
-        constraints = [
-            models.UniqueConstraint(
-                fields=["event", "team", "tractor", "attempt_number"],
-                name="uniq_dur_run_event_team_tractor_attempt",
-            ),
-        ]
         indexes = [
-            models.Index(fields=["event", "status"]),
+            models.Index(fields=["event", "run_order"]),
             models.Index(fields=["event", "team"]),
-            models.Index(fields=["event", "tractor"]),
+            models.Index(fields=["event", "state", "run_order"]),
         ]
 
     def __str__(self):
-        return f"DurabilityRun(event={self.event_id}, team={self.team_id}, tractor={self.tractor_id}, attempt={self.attempt_number})"
+        return f"DurabilityRun(event={self.event_id}, team={self.team_id}, run_order={self.run_order})"
 
 class DurabilityData(models.Model):
     
@@ -512,6 +514,56 @@ class DurabilityData(models.Model):
     class Meta:
         managed = False
         db_table = "durability_data"
+        indexes = [
+            models.Index(fields=["durability_run"]),
+        ]
+
+class ManeuverabilityRun(models.Model):
+    maneuverability_run_id = models.AutoField(primary_key=True)
+
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.PROTECT,
+        db_column="event_id",
+        to_field="event_id",
+        related_name="maneuverability_runs",
+        db_constraint=False,
+    )
+
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.PROTECT,
+        db_column="team_id",
+        to_field="team_id",
+        related_name="maneuverability_runs",
+        db_constraint=False,
+    )
+
+    run_order = models.IntegerField()
+
+    state = models.CharField(
+        max_length=24,
+        default="SCHEDULED",
+    )
+
+    updated_at = models.DateTimeField()
+
+    updated_by_source = models.CharField(
+        max_length=16,
+        default="system",
+    )
+
+    class Meta:
+        managed = False
+        db_table = "maneuverability_runs"
+        indexes = [
+            models.Index(fields=["event", "run_order"]),
+            models.Index(fields=["event", "team"]),
+            models.Index(fields=["event", "state", "run_order"]),
+        ]
+
+    def __str__(self):
+        return f"ManeuverabilityRun(event={self.event_id}, team={self.team_id}, run_order={self.run_order})"
 
 class TeamInfo(models.Model):
     class InfoTypes(models.IntegerChoices):
