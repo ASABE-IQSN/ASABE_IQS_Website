@@ -18,5 +18,10 @@ def live_maneuverability(request):
     context["api_url"] = settings.APIURL
     return render(request, "live_maneuverability.html", context)
 
+def live_durability(request):
+    context = {}
+    context["api_url"] = settings.APIURL
+    return render(request, "live_durability.html", context)
+
 def overlay(request):
     return render(request,"overlay.html")
