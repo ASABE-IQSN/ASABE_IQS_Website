@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Durability Run – {{ durability_run.team.team_name }}{% endblock %}
+
+{% block extra_head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block extra_styles %}
+  .dur-page-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .dur-page-header h1 {
+    margin: 0 0 0.25rem;
+  }
+
+  .dur-meta {
+    font-size: 0.9rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+
+  .chart-card {
+    background: #0f172a;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    box-shadow: 0 10px 30px rgba(15,23,42,0.8);
+    margin-bottom: 1.25rem;
+  }
+
+  .chart-card h2 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+  }
+
+  .chart-card canvas {
+    max-width: 100%;
+    height: 400px;
+  }
+
+  .data-table-wrap {
+    overflow-x: auto;
+    border: 1px solid #1f2937;
+    border-radius: 12px;
+    margin-top: 1rem;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .data-table th,
+  .data-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid #111827;
+    text-align: right;
+  }
+
+  .data-table th:first-child,
+  .data-table td:first-child {
+    text-align: left;
+  }
+
+  .data-table thead th {
+    background: #0b1220;
+    border-bottom: 1px solid #1f2937;
+  }
+
+  .sample-note {
+    color: #9ca3af;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+  }
+{% endblock %}
+
+{% block content %}
+  <header class="dur-page-header">
+    <h1>Durability Run</h1>
+    <div class="dur-meta">
+      Team: <strong>{{ durability_run.team.team_name }}</strong> ({{ durability_run.team.team_number }})<br>
+      Tractor: {{ durability_run.tractor.tractor_name|default:"N/A" }}<br>
+      Event: {{ durability_run.event.event_name|default:durability_run.event_id }}<br>
+      Run Order: {{ durability_run.run_order }}<br>
+      Laps: {{ durability_run.total_laps|default:"—" }}<br>
+      State: {{ durability_run.state }}<br>
+      Updated: {{ durability_run.updated_at }} ({{ durability_run.updated_by_source }})
+    </div>
+  </header>
+
+  {% for vid in yt_embed %}
+    <iframe
+      width="1000"
+      height="500"
+      src="https://www.youtube.com/embed/{{ vid.link }}"
+      title="YouTube video player"
+      frameborder="0"
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allowfullscreen>
+    </iframe>
+  {% endfor %}
+
+  <section class="chart-card">
+    <h2>Speed vs {{ x_label }}</h2>
+    {% if has_data %}
+      <canvas id="speedChart"></canvas>
+    {% else %}
+      <p>No durability data available for this run.</p>
+    {% endif %}
+  </section>
+
+  <section class="chart-card">
+    <h2>Pressure vs {{ x_label }}</h2>
+    {% if has_data %}
+      <canvas id="pressureChart"></canvas>
+    {% else %}
+      <p>No durability data available for this run.</p>
+    {% endif %}
+  </section>
+
+  <section class="chart-card">
+    <h2>Power vs {{ x_label }}</h2>
+    {% if has_data %}
+      <canvas id="powerChart"></canvas>
+    {% else %}
+      <p>No durability data available for this run.</p>
+    {% endif %}
+  </section>
+
+  <section class="chart-card">
+    <h2>Durability Data</h2>
+    {% if has_data %}
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>{{ x_label }}</th>
+              <th>Speed</th>
+              <th>Pressure</th>
+              <th>Power</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for x_val, speed, pressure, power in table_rows %}
+              <tr>
+                <td>{{ x_val }}</td>
+                <td>{{ speed }}</td>
+                <td>{{ pressure }}</td>
+                <td>{{ power }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% if sampled %}
+        <div class="sample-note">
+          Showing {{ shown_points }} of {{ total_points }} points (downsampled for performance).
+        </div>
+      {% endif %}
+    {% else %}
+      <p>No durability data available for this run.</p>
+    {% endif %}
+  </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {% if has_data %}
+  <script>
+    const xValues = {{ x_values_json|safe }};
+    const speeds = {{ speeds_json|safe }};
+    const pressures = {{ pressures_json|safe }};
+    const powers = {{ powers_json|safe }};
+    const xLabel = "{{ x_label }}";
+
+    function buildPoints(xs, ys) {
+      return xs.map((x, i) => ({ x, y: ys[i] }));
+    }
+
+    new Chart(document.getElementById('speedChart'), {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Speed',
+          data: buildPoints(xValues, speeds),
+          pointRadius: 2,
+          showLine: true
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { type: 'linear', title: { display: true, text: xLabel } },
+          y: { title: { display: true, text: 'Speed' } }
+        }
+      }
+    });
+
+    new Chart(document.getElementById('pressureChart'), {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Pressure',
+          data: buildPoints(xValues, pressures),
+          pointRadius: 2,
+          showLine: true
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { type: 'linear', title: { display: true, text: xLabel } },
+          y: { title: { display: true, text: 'Pressure' } }
+        }
+      }
+    });
+
+    new Chart(document.getElementById('powerChart'), {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Power',
+          data: buildPoints(xValues, powers),
+          pointRadius: 2,
+          showLine: true
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { type: 'linear', title: { display: true, text: xLabel } },
+          y: { title: { display: true, text: 'Power' } }
+        }
+      }
+    });
+  </script>
+  {% endif %}
+{% endblock %}

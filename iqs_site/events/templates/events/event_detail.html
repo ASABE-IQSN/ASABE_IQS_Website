@@ -308,6 +308,44 @@
       <p class="empty">No hooks defined for this event.</p>
     {% endif %}
   </section>
+  <section>
+    <h2>Durability Runs</h2>
+
+    {% if durability_runs %}
+      <table>
+        <thead>
+          <tr>
+            <th>Rank</th>
+            <th>Team</th>
+            <th>Team #</th>
+            <th>Tractor</th>
+            <th>Laps</th>
+            <th>State</th>
+            <th>Detail</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for run in durability_runs %}
+            <tr>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ run.team.team_name }}</td>
+              <td>{{ run.team.team_number }}</td>
+              <td>{{ run.tractor.tractor_name|default:"—" }}</td>
+              <td>{{ run.total_laps|default:"—" }}</td>
+              <td>{{ run.state }}</td>
+              <td>
+                <a href="{% url 'events:durability_run_detail' run.durability_run_id %}">
+                  View run
+                </a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty">No durability runs recorded for this event.</p>
+    {% endif %}
+  </section>
   <section class="grid">
     <!-- Left: comparison vs top 3 -->
     <div class="card">
