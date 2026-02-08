@@ -342,6 +342,9 @@ class ScheduleItemType(models.Model):
     schedule_item_type_id=models.AutoField(primary_key=True)
     name=models.CharField(max_length=45)
 
+    def __str__(self):
+        return self.name or f"ScheduleItemType {self.schedule_item_type_id}"
+
     class Meta:
         managed=False
         db_table="schedule_item_types"
