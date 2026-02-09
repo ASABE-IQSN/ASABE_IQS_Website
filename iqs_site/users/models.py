@@ -73,3 +73,64 @@ class TeamEmail(models.Model):
 
     def __str__(self):
         return f"{self.email} → {self.team}"
+
+
+class TeamEnrollmentRequest(models.Model):
+    """
+    Stores user requests to join teams.
+    Team admins can approve/reject these requests.
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    request_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='team_enrollment_requests'
+    )
+    team = models.ForeignKey(
+        Team,
+        on_delete=models.CASCADE,
+        db_column='team_id',
+        related_name='enrollment_requests',
+        db_constraint=False
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        db_index=True
+    )
+    message = models.TextField(blank=True, null=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_team_requests'
+    )
+
+    class Meta:
+        db_table = 'team_enrollment_requests'
+        ordering = ['-requested_at']
+        indexes = [
+            models.Index(fields=['status', 'team']),
+            models.Index(fields=['user', 'team']),
+        ]
+        # Ensure one active request per user-team pair
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'team'],
+                condition=models.Q(status='pending'),
+                name='unique_pending_request_per_user_team'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} → {self.team.team_name} ({self.status})"

@@ -3,7 +3,7 @@
 {% block content %}
   <h1>My Account</h1>
 
-  <h2>Teams I’m a Member Of</h2>
+  <h2>Teams I'm a Member Of</h2>
   {% if teams_member %}
     <ul>
       {% for team in teams_member %}
@@ -32,5 +32,50 @@
     </ul>
   {% else %}
     <p>You are not an admin of any teams.</p>
+  {% endif %}
+
+  <!-- NEW SECTION: Pending Enrollment Requests -->
+  {% if pending_requests %}
+    <h2>Pending Team Enrollment Requests</h2>
+    <ul>
+      {% for request in pending_requests %}
+        <li>
+          {{ request.team.team_name }} ({{ request.team.team_number }})
+          - Requested on {{ request.requested_at|date:"M d, Y" }}
+          {% if request.message %}
+            <br><em>Your message: "{{ request.message }}"</em>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
+  <!-- NEW SECTION: Request to Join a Team -->
+  <h2>Request to Join a Team</h2>
+  {% if available_teams %}
+    <form method="post">
+      {% csrf_token %}
+      <label>
+        Select a team:
+        <select name="team_id" required>
+          <option value="">-- Choose a team --</option>
+          {% for team in available_teams %}
+            <option value="{{ team.team_id }}">
+              {{ team.team_name }} ({{ team.team_number }})
+            </option>
+          {% endfor %}
+        </select>
+      </label>
+      <br><br>
+      <label>
+        Optional message to team admins:
+        <br>
+        <textarea name="message" rows="3" cols="50" placeholder="Tell the team why you'd like to join..."></textarea>
+      </label>
+      <br><br>
+      <button type="submit">Send Join Request</button>
+    </form>
+  {% else %}
+    <p>You are already a member of all available teams, or have pending requests for all other teams.</p>
   {% endif %}
 {% endblock %}

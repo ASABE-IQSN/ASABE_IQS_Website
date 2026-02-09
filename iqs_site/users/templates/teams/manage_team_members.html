@@ -3,17 +3,67 @@
 {% block content %}
   <h1>Manage Members – {{ team.team_name }} ({{ team.team_number }})</h1>
 
+  <!-- NEW SECTION: Pending Enrollment Requests -->
+  {% if pending_requests %}
+    <h2>Pending Enrollment Requests</h2>
+    <ul>
+      {% for req in pending_requests %}
+        <li>
+          <strong>{{ req.user.username }}</strong> ({{ req.user.email|default:"no email" }})
+          - Requested {{ req.requested_at|date:"M d, Y g:i A" }}
+          {% if req.message %}
+            <br><em>Message: "{{ req.message }}"</em>
+          {% endif %}
+          <br>
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="approve_request">
+            <input type="hidden" name="request_id" value="{{ req.request_id }}">
+            <button type="submit" style="background-color: green; color: white;">Approve</button>
+          </form>
+          <form method="post" style="display:inline;">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="reject_request">
+            <input type="hidden" name="request_id" value="{{ req.request_id }}">
+            <button type="submit" style="background-color: red; color: white;">Reject</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p><em>No pending enrollment requests.</em></p>
+  {% endif %}
+
+  <hr>
+
   <h2>Current Members</h2>
   {% if members %}
     <ul>
       {% for member in members %}
         <li>
           {{ member.username }} ({{ member.email|default:"no email" }})
+          {% if member.id in admin_user_ids %}
+            <strong style="color: #0066cc;">[Admin]</strong>
+            <form method="post" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="remove_admin">
+              <input type="hidden" name="user_id" value="{{ member.id }}">
+              <button type="submit" style="background-color: #ff9900; color: white;">Remove Admin</button>
+            </form>
+          {% else %}
+            <form method="post" style="display:inline;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="make_admin">
+              <input type="hidden" name="user_id" value="{{ member.id }}">
+              <button type="submit" style="background-color: #0066cc; color: white;">Make Admin</button>
+            </form>
+          {% endif %}
+
           <form method="post" style="display:inline;">
             {% csrf_token %}
             <input type="hidden" name="action" value="remove">
             <input type="hidden" name="user_id" value="{{ member.id }}">
-            <button type="submit">Remove</button>
+            <button type="submit" onclick="return confirm('Are you sure you want to remove {{ member.username }} from the team?');">Remove</button>
           </form>
         </li>
       {% endfor %}

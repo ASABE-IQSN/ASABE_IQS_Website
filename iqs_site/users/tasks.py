@@ -2,9 +2,11 @@ from celery import shared_task
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.db import transaction
+from django.core.mail import send_mail
+from django.template.loader import render_to_string
 import logging
 
-from users.models import GroupProfile, TeamEmail
+from users.models import GroupProfile, TeamEmail, TeamEnrollmentRequest
 from events.models import Team
 
 logger = logging.getLogger(__name__)
@@ -102,3 +104,77 @@ def assign_user_to_teams(self, user_id: int) -> dict:
 
     logger.info(f"Team assignment complete for {user.username}: {len(teams_assigned)} teams")
     return result
+
+
+@shared_task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3
+)
+def notify_team_admins_of_request(self, request_id: int) -> dict:
+    """
+    Send email notification to all team admins when a user requests to join.
+
+    Returns:
+        dict: Summary with emails sent count
+    """
+    try:
+        enrollment_request = TeamEnrollmentRequest.objects.select_related(
+            'user', 'team', 'team__group_profile'
+        ).get(request_id=request_id)
+    except TeamEnrollmentRequest.DoesNotExist:
+        logger.error(f"TeamEnrollmentRequest {request_id} not found")
+        return {"error": "Request not found", "request_id": request_id}
+
+    team = enrollment_request.team
+    user = enrollment_request.user
+
+    # Get team admins
+    group_profile = getattr(team, 'group_profile', None)
+    if not group_profile:
+        logger.warning(f"Team {team.team_id} has no group_profile")
+        return {"error": "No group profile", "team_id": team.team_id}
+
+    admins = group_profile.admins.all()
+
+    if not admins.exists():
+        logger.warning(f"Team {team.team_id} has no admins")
+        return {"error": "No admins found", "team_id": team.team_id}
+
+    # Prepare email
+    subject = f"New team enrollment request for {team.team_name}"
+
+    manage_url = f"https://iqsconnect.org/user/teams/{team.team_id}/members/"
+
+    message = render_to_string("emails/team_enrollment_request.txt", {
+        "team": team,
+        "user": user,
+        "message": enrollment_request.message,
+        "requested_at": enrollment_request.requested_at,
+        "manage_url": manage_url,
+    })
+
+    # Send to all admins
+    admin_emails = [admin.email for admin in admins if admin.email]
+
+    if not admin_emails:
+        logger.warning(f"No admin emails found for team {team.team_id}")
+        return {"error": "No admin emails", "team_id": team.team_id}
+
+    send_mail(
+        subject,
+        message,
+        "no-reply@internationalquarterscale.com",
+        admin_emails,
+        fail_silently=False,
+    )
+
+    logger.info(f"Sent enrollment notification to {len(admin_emails)} admins for team {team.team_id}")
+
+    return {
+        "request_id": request_id,
+        "team_id": team.team_id,
+        "emails_sent": len(admin_emails),
+        "recipients": admin_emails,
+    }
