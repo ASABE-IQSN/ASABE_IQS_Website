@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from .models import Event
 from django.conf import settings
-from .models import TeamClass, Team, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem
+from .models import TeamClass, Team, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem, TractorMedia
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from functools import wraps
@@ -711,7 +711,13 @@ def tractor_detail(request, tractor_id):
     for te in tractor_events:
         photos=EventTeamPhoto.objects.filter(event_team__event=te.event,event_team__team=te.team)
 
-
+    # Get tractor-specific media (images)
+    tractor_media = (
+        TractorMedia.objects
+        .filter(tractor=tractor, approved=True, media_type=TractorMedia.MediaTypes.IMAGE)
+        .select_related("uploaded_by")
+        .order_by("-created_at")
+    )
 
     context = {
         "tractor": tractor,
@@ -720,6 +726,7 @@ def tractor_detail(request, tractor_id):
         "teams": teams,
         "usages": usages,
         "tractor_photos": tractor_photos,
+        "tractor_media": tractor_media,
         "active_page": "tractors",
         "nickname":nickname,
         "website":website,
@@ -875,6 +882,48 @@ def tractor_profile_edit(request, tractor_id: int):
         if form.is_valid():
             for field_name, info_type in TRACTOR_INFO_MAP.items():
                 _tractor_upsert(tractor, info_type, form.cleaned_data.get(field_name, ""))
+
+            # Handle photo upload if present
+            photo_file = request.FILES.get("photo")
+            if photo_file and photo_file.name:
+                approved = request.user.has_perm("events.can_auto_approve_tractor_media")
+
+                # Get client IP
+                xff = request.META.get("HTTP_X_FORWARDED_FOR")
+                ip = xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")
+
+                filename = photo_file.name
+
+                # Validate file extension (reuses existing allowed_file function)
+                if allowed_file(filename):
+                    # Sanitize filename
+                    name_root, ext = os.path.splitext(filename)
+                    ext = ext.lower()
+                    safe_root = "".join(c for c in name_root if c.isalnum() or c in ("-", "_"))
+                    if not safe_root:
+                        safe_root = "photo"
+
+                    filename = f"tractor{tractor_id}_{safe_root}{ext}"
+                    save_path = Path(f"/var/www/quarterscale/static/photos/{filename}")
+                    save_path.parent.mkdir(parents=True, exist_ok=True)
+
+                    with save_path.open("wb+") as dest:
+                        for chunk in photo_file.chunks():
+                            dest.write(chunk)
+
+                    # Create database record using PerformanceEventMedia pattern
+                    rel_path = f"photos/{filename}"
+                    TractorMedia.objects.create(
+                        tractor=tractor,
+                        media_type=TractorMedia.MediaTypes.IMAGE,
+                        link=rel_path,
+                        uploaded_by=request.user,
+                        submitted_from_ip=ip,
+                        approved=approved,
+                    )
+                    messages.success(request, "Photo uploaded successfully!")
+                else:
+                    messages.error(request, "Invalid file type. Please upload an image (png, jpg, jpeg, gif, webp).")
 
             messages.success(request, "Tractor profile updated.")
             return redirect("events:tractor_detail", tractor.tractor_id)

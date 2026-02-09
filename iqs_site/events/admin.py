@@ -15,6 +15,7 @@ from .models import (
     EventTeamPhoto,
     ScheduleItem,
     ScheduleItemType,
+    TractorMedia,
 )
 from .models import (
     ScoreCategory,
@@ -344,3 +345,38 @@ class PerformanceEventMediaAdmin(admin.ModelAdmin):
         "link",
     )
     ordering = ("media_id",)
+
+
+@admin.register(TractorMedia)
+class TractorMediaAdmin(admin.ModelAdmin):
+    list_display = ("media_id", "tractor", "media_type", "uploaded_by", "approved", "created_at", "media_preview")
+    list_filter = ("media_type", "approved", "created_at")
+    search_fields = ("tractor__tractor_name", "link", "caption", "uploaded_by__username")
+    readonly_fields = ("media_preview",)
+
+    actions = ["approve_media", "unapprove_media"]
+
+    @admin.action(description="Approve selected media")
+    def approve_media(self, request, queryset):
+        updated = queryset.filter(approved=False).update(approved=True)
+        self.message_user(request, f"Approved {updated} media item(s).", level=messages.SUCCESS)
+
+    @admin.action(description="Unapprove selected media")
+    def unapprove_media(self, request, queryset):
+        updated = queryset.filter(approved=True).update(approved=False)
+        self.message_user(request, f"Unapproved {updated} media item(s).", level=messages.WARNING)
+
+    def media_preview(self, obj):
+        if obj.media_type == TractorMedia.MediaTypes.IMAGE:
+            if not obj.link:
+                return "(no image)"
+            url = "http://iqsconnect.org/static/" + obj.link.lstrip("/")
+            return format_html(
+                '<img src="{}" style="max-width: 400px; max-height: 300px; border-radius: 8px;" />',
+                url,
+            )
+        elif obj.media_type == TractorMedia.MediaTypes.YOUTUBE_VIDEO:
+            return format_html('<a href="{}" target="_blank">View Video</a>', obj.link)
+        return "(unknown media type)"
+
+    media_preview.short_description = "Preview"

@@ -16,7 +16,7 @@
   <section class="card" style="max-width: 900px;">
     <h2 style="margin-top:0;">Edit tractor profile</h2>
 
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
 
       <div style="display:grid; gap:0.9rem;">
@@ -36,6 +36,17 @@
           <label><strong>Website</strong></label><br>
           {{ form.website }}
           <div style="font-size:0.8rem; color:#9ca3af;">Webpage for your tractor</div>
+        </div>
+
+        <!-- Photo Upload Section -->
+        <div style="margin-top: 0.5rem;">
+          <label><strong>Upload Photo</strong></label><br>
+          <input type="file" id="photo" name="photo" accept="image/*"
+                 style="padding: 0.4rem; border: 1px solid #1f2937; border-radius: 0.5rem; background: #020617; color: #F3F6E7; font-size: 0.9rem; width: 100%;">
+          <div style="font-size:0.8rem; color:#9ca3af; margin-top: 0.3rem;">
+            <strong>Photo Guidelines:</strong> Upload pictures of your tractor showcasing the design. Pictures from events should be uploaded to the team event page for that event, or to the performance event that the pciture was taken during.<br>
+            Supported formats: PNG, JPG, JPEG, GIF, WebP.
+          </div>
         </div>
 
         <hr style="border:0; border-top:1px solid #1f2937; margin:0.25rem 0;">

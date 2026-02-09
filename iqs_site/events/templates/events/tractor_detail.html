@@ -408,6 +408,26 @@
     </div>
   </section>
 
+  {% if tractor_media %}
+    <section style="margin-top: 1.5rem;">
+      <div class="card">
+        <h3>Tractor Photos</h3>
+
+        <div class="tractor-photo-grid">
+          {% for media in tractor_media %}
+            <figure>
+              <img src="/static/{{media.link}}"
+                   alt="{% if media.caption %}{{ media.caption }}{% else %}{{ tractor.tractor_name }}{% endif %}">
+              {% if media.caption %}
+                <figcaption>{{ media.caption }}</figcaption>
+              {% endif %}
+            </figure>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  {% endif %}
+
   {% if tractor_photos %}
     <section style="margin-top: 1.5rem;">
       <div class="card">

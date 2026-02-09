@@ -255,6 +255,48 @@ class PerformanceEventMedia(models.Model):
         db_table = "performance_event_media"
 
 
+class TractorMedia(models.Model):
+    media_id = models.AutoField(primary_key=True)
+
+    class MediaTypes(models.IntegerChoices):
+        YOUTUBE_VIDEO = 1
+        IMAGE = 2
+
+    media_type = models.IntegerField(choices=MediaTypes.choices, blank=True, null=True)
+    link = models.CharField(max_length=255, blank=True, null=True)  # URL or file path
+
+    tractor = models.ForeignKey(
+        Tractor,
+        models.DO_NOTHING,
+        db_column="tractor_id",
+        related_name="media",
+        blank=True,
+        null=True,
+    )
+
+    uploaded_by = models.ForeignKey(
+        "auth.User",
+        models.DO_NOTHING,
+        db_column="uploaded_by_user_id",
+        related_name="uploaded_tractor_media",
+        blank=True,
+        null=True,
+    )
+
+    caption = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(default=datetime.utcnow)
+    approved = models.BooleanField(default=False)
+    submitted_from_ip = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = "tractor_media"
+        permissions = [
+            ("can_auto_approve_tractor_media", "Can auto-approve uploaded tractor media"),
+        ]
+
+    def __str__(self):
+        return f"Media {self.media_id} ({self.get_media_type_display()}) for {self.tractor}"
 
 
 class PullData(models.Model):
