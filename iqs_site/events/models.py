@@ -89,6 +89,16 @@ class Tractor(models.Model):
         null=True,
     )
     year=models.IntegerField()
+
+    # Primary photo for this tractor
+    primary_photo = models.ForeignKey(
+        "TractorMedia",
+        models.SET_NULL,
+        db_column="primary_photo_media_id",
+        blank=True,
+        null=True,
+        related_name="primary_for_tractors",
+    )
     # tractor_events M2M via explicit through model is handled below
 
     class Meta:

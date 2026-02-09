@@ -101,6 +101,7 @@
     <table id="tractorTable">
       <thead>
         <tr>
+          <th>Photo</th>
           <th>Name</th>
           <th>Original Team</th>
           <th>Original Year</th>
@@ -116,6 +117,18 @@
               {% else %}
                 data-team-name=""
               {% endif %}>
+            <td>
+              {% if tractor.primary_photo and tractor.primary_photo.link %}
+                <img src="/static/{{ tractor.primary_photo.link }}"
+                     loading="lazy"
+                     alt="{{ tractor.display_name }}"
+                     style="width: 60px; height: 60px; object-fit: cover; border-radius: 0.25rem;">
+              {% else %}
+                <div style="width: 60px; height: 60px; background: #1f2937; border-radius: 0.25rem; display: flex; align-items: center; justify-content: center;">
+                  <span style="font-size: 0.7rem; color: #9ca3af;">No Photo</span>
+                </div>
+              {% endif %}
+            </td>
             <td>{{ tractor.nickname_info|default:tractor.tractor_name }}</td>
 
             <td>

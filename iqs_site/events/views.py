@@ -141,7 +141,7 @@ def tractor_list(request):
     nickname_sq = TractorInfo.objects.filter(
     tractor_id=OuterRef("tractor_id"),
     info_type=TractorInfo.InfoTypes.NICKNAME,).values("info")[:1]
-    tractors = Tractor.objects.select_related("original_team").order_by("original_team","year").annotate(nickname_info=Subquery(nickname_sq))
+    tractors = Tractor.objects.select_related("original_team", "primary_photo").order_by("original_team","year").annotate(nickname_info=Subquery(nickname_sq))
     context = {
         "tractors": tractors,
         "active_page": "tractors",
@@ -877,11 +877,36 @@ def tractor_profile_edit(request, tractor_id: int):
     if not can_edit_tractor(request.user, tractor):
         raise PermissionDenied  # shows your 403 template
 
+    # Load existing photos for selection
+    existing_photos = (
+        TractorMedia.objects
+        .filter(tractor=tractor, approved=True, media_type=TractorMedia.MediaTypes.IMAGE)
+        .order_by("-created_at")
+    )
+
     if request.method == "POST":
         form = TractorProfileEditForm(request.POST)
         if form.is_valid():
             for field_name, info_type in TRACTOR_INFO_MAP.items():
                 _tractor_upsert(tractor, info_type, form.cleaned_data.get(field_name, ""))
+
+            # Handle primary photo selection
+            primary_photo_id = request.POST.get("primary_photo")
+            if primary_photo_id:
+                if primary_photo_id == "none":
+                    tractor.primary_photo = None
+                else:
+                    try:
+                        media = TractorMedia.objects.get(
+                            media_id=int(primary_photo_id),
+                            tractor=tractor,
+                            approved=True,
+                            media_type=TractorMedia.MediaTypes.IMAGE
+                        )
+                        tractor.primary_photo = media
+                    except (TractorMedia.DoesNotExist, ValueError):
+                        messages.error(request, "Invalid primary photo selection.")
+                tractor.save()
 
             # Handle photo upload if present
             photo_file = request.FILES.get("photo")
@@ -933,4 +958,5 @@ def tractor_profile_edit(request, tractor_id: int):
     return render(request, "events/tractor_profile_edit.html", {
         "tractor": tractor,
         "form": form,
+        "existing_photos": existing_photos,
     })

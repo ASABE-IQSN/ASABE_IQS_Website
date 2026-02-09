@@ -49,6 +49,35 @@
           </div>
         </div>
 
+        <!-- Primary Photo Selection -->
+        {% if existing_photos %}
+          <div style="margin-top: 1rem;">
+            <label><strong>Select Primary Photo</strong></label>
+            <div style="font-size:0.8rem; color:#9ca3af; margin-bottom: 0.5rem;">
+              This photo will be featured on the tractor list and detail pages.
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-top: 0.5rem;">
+              <!-- Option for no primary photo -->
+              <label style="cursor: pointer; border: 2px solid #1f2937; border-radius: 0.5rem; padding: 0.5rem; background: #020617; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 150px;">
+                <input type="radio" name="primary_photo" value="none" {% if not tractor.primary_photo %}checked{% endif %} style="margin-bottom: 0.5rem;">
+                <span style="font-size: 0.9rem; color: #9ca3af; text-align: center;">No Primary Photo</span>
+              </label>
+
+              <!-- Radio buttons for each photo -->
+              {% for photo in existing_photos %}
+                <label style="cursor: pointer; border: 2px solid {% if tractor.primary_photo_id == photo.media_id %}#22c55e{% else %}#1f2937{% endif %}; border-radius: 0.5rem; padding: 0.5rem; background: #020617; position: relative;">
+                  <input type="radio" name="primary_photo" value="{{ photo.media_id }}" {% if tractor.primary_photo_id == photo.media_id %}checked{% endif %} style="position: absolute; top: 0.5rem; left: 0.5rem;">
+                  <img src="/static/{{ photo.link }}" alt="{{ photo.caption|default:'Tractor photo' }}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 0.25rem; display: block; margin-top: 1.5rem;">
+                  {% if photo.caption %}
+                    <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem; text-align: center;">{{ photo.caption }}</div>
+                  {% endif %}
+                </label>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
         <hr style="border:0; border-top:1px solid #1f2937; margin:0.25rem 0;">
 
       </div>
