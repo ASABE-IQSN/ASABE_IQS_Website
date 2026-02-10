@@ -259,10 +259,25 @@ class PerformanceEventMedia(models.Model):
     link = models.CharField(max_length=255, blank=True, null=True)
     performance_event_id = models.IntegerField(blank=True, null=True)
     performance_event_type = models.IntegerField(choices=EventTypes.choices, blank=True, null=True)
+    caption = models.CharField(max_length=255, blank=True, null=True)
+    approved = models.BooleanField(default=False)
+    uploaded_by = models.ForeignKey(
+        "auth.User",
+        models.DO_NOTHING,
+        db_column="uploaded_by_user_id",
+        related_name="uploaded_performance_media",
+        blank=True,
+        null=True,
+    )
+    submitted_from_ip = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(default=datetime.utcnow)
 
     class Meta:
         managed = False
         db_table = "performance_event_media"
+        permissions = [
+            ("can_auto_approve_performance_media", "Can auto-approve uploaded performance event media"),
+        ]
 
 
 class TractorMedia(models.Model):

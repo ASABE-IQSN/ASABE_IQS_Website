@@ -518,7 +518,16 @@ def pull_detail(request, pull_id):
     )
     if not yt_vids.exists():
         yt_vids = pull.pull_media.all().filter(pull_media_type=PullMedia.types.YOUTUBE_VIDEO)
-    #print(yt_vids)
+
+    photos = PerformanceEventMedia.objects.filter(
+        performance_event_type=PerformanceEventMedia.EventTypes.PULL,
+        performance_event_id=pull.pull_id,
+        media_type=PerformanceEventMedia.MediaTypes.IMAGE,
+        approved=True,
+    ).order_by("-created_at")
+
+    can_upload = can_edit_team(request.user, pull.team) if request.user.is_authenticated else False
+
     context = {
         "yt_embed":yt_vids,
         "pull_name":pull_name,
@@ -527,7 +536,9 @@ def pull_detail(request, pull_id):
         "distances_json": json.dumps(distances),
         "speeds_json": json.dumps(speeds),
         "forces_json": json.dumps(forces),
-        "active_page": "events",  # or None if you don't want nav highlight
+        "photos": photos,
+        "can_upload": can_upload,
+        "active_page": "events",
     }
 
     return render(request, "events/pull_detail.html", context)
@@ -584,6 +595,15 @@ def durability_run_detail(request, run_id: int):
         media_type=PerformanceEventMedia.MediaTypes.YOUTUBE_VIDEO,
     )
 
+    photos = PerformanceEventMedia.objects.filter(
+        performance_event_type=PerformanceEventMedia.EventTypes.DURABILITY,
+        performance_event_id=durability_run.durability_run_id,
+        media_type=PerformanceEventMedia.MediaTypes.IMAGE,
+        approved=True,
+    ).order_by("-created_at")
+
+    can_upload = can_edit_team(request.user, durability_run.team) if request.user.is_authenticated else False
+
     context = {
         "durability_run": durability_run,
         "yt_embed": yt_vids,
@@ -597,6 +617,8 @@ def durability_run_detail(request, run_id: int):
         "pressures_json": json.dumps(pressures),
         "powers_json": json.dumps(powers),
         "table_rows": table_rows,
+        "photos": photos,
+        "can_upload": can_upload,
         "active_page": "events",
     }
 
@@ -617,9 +639,20 @@ def maneuverability_run_detail(request, run_id: int):
         media_type=PerformanceEventMedia.MediaTypes.YOUTUBE_VIDEO,
     )
 
+    photos = PerformanceEventMedia.objects.filter(
+        performance_event_type=PerformanceEventMedia.EventTypes.MANEUVERABILITY,
+        performance_event_id=maneuverability_run.maneuverability_run_id,
+        media_type=PerformanceEventMedia.MediaTypes.IMAGE,
+        approved=True,
+    ).order_by("-created_at")
+
+    can_upload = can_edit_team(request.user, maneuverability_run.team) if request.user.is_authenticated else False
+
     context = {
         "maneuverability_run": maneuverability_run,
         "yt_embed": yt_vids,
+        "photos": photos,
+        "can_upload": can_upload,
         "active_page": "events",
     }
 
@@ -977,6 +1010,99 @@ def tractor_profile_edit(request, tractor_id: int):
         "form": form,
         "existing_photos": existing_photos,
     })
+
+
+def _upload_performance_photo(request, team, event_type, event_id, redirect_view, redirect_arg):
+    """Shared handler for uploading a photo to a performance event (pull/durability/maneuverability)."""
+    if not can_edit_team(request.user, team):
+        raise PermissionDenied
+
+    photo_file = request.FILES.get("photo")
+    if not photo_file or not photo_file.name:
+        messages.error(request, "No photo file provided.")
+        return redirect(redirect_view, redirect_arg)
+
+    if not allowed_file(photo_file.name):
+        messages.error(request, "Invalid file type. Please upload an image (png, jpg, jpeg, gif, webp).")
+        return redirect(redirect_view, redirect_arg)
+
+    approved = request.user.has_perm("events.can_auto_approve_performance_media")
+
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    ip = xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")
+
+    caption = request.POST.get("photo_caption", "").strip()
+
+    name_root, ext = os.path.splitext(photo_file.name)
+    ext = ext.lower()
+    safe_root = "".join(c for c in name_root if c.isalnum() or c in ("-", "_"))
+    if not safe_root:
+        safe_root = "photo"
+
+    type_prefix = PerformanceEventMedia.EventTypes(event_type).label.lower()
+    filename = f"{type_prefix}{event_id}_{safe_root}{ext}"
+    save_path = Path(f"/var/www/quarterscale/static/photos/{filename}")
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with save_path.open("wb+") as dest:
+        for chunk in photo_file.chunks():
+            dest.write(chunk)
+
+    PerformanceEventMedia.objects.create(
+        performance_event_type=event_type,
+        performance_event_id=event_id,
+        media_type=PerformanceEventMedia.MediaTypes.IMAGE,
+        link=f"photos/{filename}",
+        caption=caption if caption else None,
+        uploaded_by=request.user,
+        submitted_from_ip=ip,
+        approved=approved,
+    )
+
+    messages.success(request, "Photo uploaded successfully!")
+    return redirect(redirect_view, redirect_arg)
+
+
+@login_required
+@require_POST
+def upload_pull_photo(request, pull_id):
+    pull = get_object_or_404(Pull.objects.select_related("team"), pk=pull_id)
+    return _upload_performance_photo(
+        request,
+        team=pull.team,
+        event_type=PerformanceEventMedia.EventTypes.PULL,
+        event_id=pull.pull_id,
+        redirect_view="events:pull_detail",
+        redirect_arg=pull.pull_id,
+    )
+
+
+@login_required
+@require_POST
+def upload_durability_photo(request, run_id):
+    run = get_object_or_404(DurabilityRun.objects.select_related("team"), pk=run_id)
+    return _upload_performance_photo(
+        request,
+        team=run.team,
+        event_type=PerformanceEventMedia.EventTypes.DURABILITY,
+        event_id=run.durability_run_id,
+        redirect_view="events:durability_run_detail",
+        redirect_arg=run.durability_run_id,
+    )
+
+
+@login_required
+@require_POST
+def upload_maneuverability_photo(request, run_id):
+    run = get_object_or_404(ManeuverabilityRun.objects.select_related("team"), pk=run_id)
+    return _upload_performance_photo(
+        request,
+        team=run.team,
+        event_type=PerformanceEventMedia.EventTypes.MANEUVERABILITY,
+        event_id=run.maneuverability_run_id,
+        redirect_view="events:maneuverability_run_detail",
+        redirect_arg=run.maneuverability_run_id,
+    )
 
 
 def all_photos(request):
