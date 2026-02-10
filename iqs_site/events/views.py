@@ -27,7 +27,7 @@ from .teaminfo_utils import INFO_MAP
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from .forms import TeamProfileEditForm
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef, Subquery, Case, When, Value, IntegerField
 
 
 from .models import DurabilityRun, DurabilityData, ManeuverabilityRun, PerformanceEventMedia
@@ -141,7 +141,14 @@ def tractor_list(request):
     nickname_sq = TractorInfo.objects.filter(
     tractor_id=OuterRef("tractor_id"),
     info_type=TractorInfo.InfoTypes.NICKNAME,).values("info")[:1]
-    tractors = Tractor.objects.select_related("original_team", "primary_photo").order_by("original_team","year").annotate(nickname_info=Subquery(nickname_sq))
+    tractors = Tractor.objects.select_related("original_team", "primary_photo").annotate(
+        nickname_info=Subquery(nickname_sq),
+        has_photo=Case(
+            When(primary_photo__isnull=False, then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        ),
+    ).order_by("has_photo", "original_team", "year")
     context = {
         "tractors": tractors,
         "active_page": "tractors",
