@@ -890,6 +890,14 @@ def tractor_profile_edit(request, tractor_id: int):
             for field_name, info_type in TRACTOR_INFO_MAP.items():
                 _tractor_upsert(tractor, info_type, form.cleaned_data.get(field_name, ""))
 
+            # Handle caption updates for existing photos
+            for photo in existing_photos:
+                caption_key = f"caption_{photo.media_id}"
+                new_caption = request.POST.get(caption_key, "").strip()
+                if new_caption != (photo.caption or ""):
+                    photo.caption = new_caption if new_caption else None
+                    photo.save()
+
             # Handle primary photo selection
             primary_photo_id = request.POST.get("primary_photo")
             if primary_photo_id:
@@ -918,6 +926,7 @@ def tractor_profile_edit(request, tractor_id: int):
                 ip = xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")
 
                 filename = photo_file.name
+                photo_caption = request.POST.get("photo_caption", "").strip()
 
                 # Validate file extension (reuses existing allowed_file function)
                 if allowed_file(filename):
@@ -942,6 +951,7 @@ def tractor_profile_edit(request, tractor_id: int):
                         tractor=tractor,
                         media_type=TractorMedia.MediaTypes.IMAGE,
                         link=rel_path,
+                        caption=photo_caption if photo_caption else None,
                         uploaded_by=request.user,
                         submitted_from_ip=ip,
                         approved=approved,

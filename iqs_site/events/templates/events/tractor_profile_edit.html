@@ -42,7 +42,12 @@
         <div style="margin-top: 0.5rem;">
           <label><strong>Upload Photo</strong></label><br>
           <input type="file" id="photo" name="photo" accept="image/*"
-                 style="padding: 0.4rem; border: 1px solid #1f2937; border-radius: 0.5rem; background: #020617; color: #F3F6E7; font-size: 0.9rem; width: 100%;">
+                 style="padding: 0.4rem; border: 1px solid #1f2937; border-radius: 0.5rem; background: #020617; color: #F3F6E7; font-size: 0.9rem; width: 100%; margin-bottom: 0.5rem;">
+
+          <label style="font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.25rem; display: block;">Caption (optional)</label>
+          <input type="text" id="photo_caption" name="photo_caption" maxlength="255" placeholder="Add a caption for this photo..."
+                 style="padding: 0.4rem 0.75rem; border: 1px solid #1f2937; border-radius: 0.5rem; background: #020617; color: #F3F6E7; font-size: 0.85rem; width: 100%;">
+
           <div style="font-size:0.8rem; color:#9ca3af; margin-top: 0.3rem;">
             <strong>Photo Guidelines:</strong> Upload pictures of your tractor showcasing the design. Pictures from events should be uploaded to the team event page for that event, or to the performance event that the pciture was taken during.<br>
             Supported formats: PNG, JPG, JPEG, GIF, WebP.
@@ -52,12 +57,12 @@
         <!-- Primary Photo Selection -->
         {% if existing_photos %}
           <div style="margin-top: 1rem;">
-            <label><strong>Select Primary Photo</strong></label>
+            <label><strong>Select Primary Photo & Edit Captions</strong></label>
             <div style="font-size:0.8rem; color:#9ca3af; margin-bottom: 0.5rem;">
-              This photo will be featured on the tractor list and detail pages.
+              Click a photo to set it as the primary photo. You can also edit captions below each image.
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 1rem; margin-top: 0.5rem;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 1rem; margin-top: 0.5rem;">
               <!-- Option for no primary photo -->
               <label style="cursor: pointer; border: 2px solid #1f2937; border-radius: 0.5rem; padding: 0.5rem; background: #020617; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 150px;">
                 <input type="radio" name="primary_photo" value="none" {% if not tractor.primary_photo %}checked{% endif %} style="margin-bottom: 0.5rem;">
@@ -66,13 +71,14 @@
 
               <!-- Radio buttons for each photo -->
               {% for photo in existing_photos %}
-                <label style="cursor: pointer; border: 2px solid {% if tractor.primary_photo_id == photo.media_id %}#22c55e{% else %}#1f2937{% endif %}; border-radius: 0.5rem; padding: 0.5rem; background: #020617; position: relative;">
-                  <input type="radio" name="primary_photo" value="{{ photo.media_id }}" {% if tractor.primary_photo_id == photo.media_id %}checked{% endif %} style="position: absolute; top: 0.5rem; left: 0.5rem;">
-                  <img src="/static/{{ photo.link }}" alt="{{ photo.caption|default:'Tractor photo' }}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 0.25rem; display: block; margin-top: 1.5rem;">
-                  {% if photo.caption %}
-                    <div style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem; text-align: center;">{{ photo.caption }}</div>
-                  {% endif %}
-                </label>
+                <div style="border: 2px solid {% if tractor.primary_photo_id == photo.media_id %}#22c55e{% else %}#1f2937{% endif %}; border-radius: 0.5rem; padding: 0.5rem; background: #020617; position: relative;">
+                  <label style="cursor: pointer; display: block;">
+                    <input type="radio" name="primary_photo" value="{{ photo.media_id }}" {% if tractor.primary_photo_id == photo.media_id %}checked{% endif %} style="position: absolute; top: 0.5rem; left: 0.5rem; z-index: 1;">
+                    <img src="/static/{{ photo.link }}" alt="{{ photo.caption|default:'Tractor photo' }}" style="width: 100%; height: 120px; object-fit: cover; border-radius: 0.25rem; display: block; margin-top: 1.5rem;">
+                  </label>
+                  <input type="text" name="caption_{{ photo.media_id }}" value="{{ photo.caption|default:'' }}" maxlength="255" placeholder="Add caption..."
+                         style="width: 100%; margin-top: 0.5rem; padding: 0.35rem 0.5rem; border: 1px solid #1f2937; border-radius: 0.25rem; background: #0b1120; color: #F3F6E7; font-size: 0.75rem;">
+                </div>
               {% endfor %}
             </div>
           </div>
