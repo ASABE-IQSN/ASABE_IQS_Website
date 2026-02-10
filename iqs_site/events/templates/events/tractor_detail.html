@@ -431,14 +431,9 @@
 
         <div class="tractor-photo-grid">
           {% for media in tractor_media %}
-            <figure data-photo-index="{{ forloop.counter0 }}" {% if media.media_id == tractor.primary_photo_id %}style="position: relative; border: 3px solid #22c55e; border-radius: 0.5rem; padding: 0.25rem;"{% endif %}>
+            <figure data-photo-index="{{ forloop.counter0 }}">
               <img src="/static/{{media.link}}"
                    alt="{% if media.caption %}{{ media.caption }}{% else %}{{ tractor.tractor_name }}{% endif %}">
-              {% if media.media_id == tractor.primary_photo_id %}
-                <div style="position: absolute; top: 0.5rem; right: 0.5rem; background: #22c55e; color: #020617; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; font-weight: bold;">
-                  PRIMARY
-                </div>
-              {% endif %}
               {% if media.caption %}
                 <figcaption>{{ media.caption }}</figcaption>
               {% endif %}
