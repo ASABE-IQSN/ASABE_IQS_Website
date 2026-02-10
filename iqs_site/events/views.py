@@ -624,7 +624,7 @@ def tractor_detail(request, tractor_id):
     # Grab the tractor, along with its original_team and all TractorEvent rows
     tractor = get_object_or_404(
         Tractor.objects
-        .select_related("original_team")
+        .select_related("original_team", "primary_photo")
         .prefetch_related(
             Prefetch(
                 "tractor_events",
@@ -960,3 +960,76 @@ def tractor_profile_edit(request, tractor_id: int):
         "form": form,
         "existing_photos": existing_photos,
     })
+
+
+def all_photos(request):
+    """
+    Compile all photos from event teams, tractors, and performance events into a single gallery.
+    """
+    all_photos_list = []
+
+    # Get all approved event team photos
+    event_team_photos = (
+        EventTeamPhoto.objects
+        .filter(approved=True)
+        .select_related("event_team__event", "event_team__team")
+        .order_by("-created_at")
+    )
+
+    for photo in event_team_photos:
+        all_photos_list.append({
+            "src": f"/media/{photo.photo_path}",
+            "caption": photo.caption or "",
+            "source_type": "Event Team",
+            "source_name": f"{photo.event_team.team.team_name} at {photo.event_team.event.event_name}" if photo.event_team and photo.event_team.team and photo.event_team.event else "Unknown",
+            "created_at": photo.created_at,
+            "url": f"/event/{photo.event_team.event_id}/team/{photo.event_team.team_id}" if photo.event_team else None,
+        })
+
+    # Get all approved tractor media (images only)
+    tractor_photos = (
+        TractorMedia.objects
+        .filter(approved=True, media_type=TractorMedia.MediaTypes.IMAGE)
+        .select_related("tractor")
+        .order_by("-created_at")
+    )
+
+    for photo in tractor_photos:
+        all_photos_list.append({
+            "src": f"/static/{photo.link}",
+            "caption": photo.caption or "",
+            "source_type": "Tractor",
+            "source_name": photo.tractor.tractor_name if photo.tractor else "Unknown Tractor",
+            "created_at": photo.created_at,
+            "url": f"/tractor/{photo.tractor.tractor_id}" if photo.tractor else None,
+        })
+
+    # Get all approved performance event media (images only)
+    performance_photos = (
+        PerformanceEventMedia.objects
+        .filter(media_type=PerformanceEventMedia.MediaTypes.IMAGE)
+        .order_by("media_id")
+    )
+
+    for photo in performance_photos:
+        event_type_name = dict(PerformanceEventMedia.EventTypes.choices).get(photo.performance_event_type, "Unknown")
+        all_photos_list.append({
+            "src": f"/static/{photo.link}",
+            "caption": photo.caption or "",
+            "source_type": "Performance Event",
+            "source_name": f"{event_type_name} Event",
+            "created_at": photo.created_at,
+            "url": None,
+        })
+
+    # Sort all photos by created_at (most recent first)
+    all_photos_list.sort(key=lambda x: x["created_at"] if x["created_at"] else timezone.datetime.min, reverse=True)
+
+    context = {
+        "photos": all_photos_list,
+        "total_count": len(all_photos_list),
+        "active_page": "photos",
+    }
+
+    return render(request, "events/photo_all.html", context)
+

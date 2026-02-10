@@ -21,4 +21,5 @@ urlpatterns = [
     path("maneuverability/runs/<int:run_id>/", views.maneuverability_run_detail, name="maneuverability_run_detail"),
     path("teams/<int:team_id>/edit/", views.team_profile_edit, name="team_profile_edit"),
     path("tractor/<int:tractor_id>/edit/", views.tractor_profile_edit, name="tractor_profile_edit"),
+    path("photo_all",views.all_photos,name="photos")
 ]

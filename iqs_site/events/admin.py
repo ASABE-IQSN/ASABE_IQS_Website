@@ -42,9 +42,10 @@ class TeamAdmin(admin.ModelAdmin):
 
 @admin.register(Tractor)
 class TractorAdmin(admin.ModelAdmin):
-    list_display = ("tractor_id", "tractor_name", "original_team")
+    list_display = ("tractor_id", "tractor_name", "original_team", "year", "primary_photo")
     search_fields = ("tractor_name",)
-    list_filter = ("original_team",)
+    list_filter = ("year", "original_team")
+    raw_id_fields = ("primary_photo",)
 
 
 class EventForm(forms.ModelForm):

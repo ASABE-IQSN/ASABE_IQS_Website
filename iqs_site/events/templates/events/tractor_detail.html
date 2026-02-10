@@ -251,6 +251,22 @@
     </span>
   </div>
 
+  <!-- Hero Image Section -->
+  {% if tractor.primary_photo and tractor.primary_photo.link %}
+    <section style="margin-bottom: 1.5rem;">
+      <div class="card" style="padding: 0; overflow: hidden;">
+        <img src="/static/{{ tractor.primary_photo.link }}"
+             alt="{{ tractor.display_name }}"
+             style="width: 100%; max-height: 400px; object-fit: cover; display: block;">
+        {% if tractor.primary_photo.caption %}
+          <p style="margin: 0; padding: 0.75rem 1.25rem; font-size: 0.9rem; color: #9ca3af; text-align: center; background: #0b1120;">
+            {{ tractor.primary_photo.caption }}
+          </p>
+        {% endif %}
+      </div>
+    </section>
+  {% endif %}
+
   <section class="hero">
     <h1>
       {% if tractor.display_name %}
@@ -415,9 +431,14 @@
 
         <div class="tractor-photo-grid">
           {% for media in tractor_media %}
-            <figure>
+            <figure data-photo-index="{{ forloop.counter0 }}" {% if media.media_id == tractor.primary_photo_id %}style="position: relative; border: 3px solid #22c55e; border-radius: 0.5rem; padding: 0.25rem;"{% endif %}>
               <img src="/static/{{media.link}}"
                    alt="{% if media.caption %}{{ media.caption }}{% else %}{{ tractor.tractor_name }}{% endif %}">
+              {% if media.media_id == tractor.primary_photo_id %}
+                <div style="position: absolute; top: 0.5rem; right: 0.5rem; background: #22c55e; color: #020617; padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-size: 0.7rem; font-weight: bold;">
+                  PRIMARY
+                </div>
+              {% endif %}
               {% if media.caption %}
                 <figcaption>{{ media.caption }}</figcaption>
               {% endif %}
@@ -433,9 +454,9 @@
       <div class="card">
         <h3>Tractor Photos from Events</h3>
 
-        <div class="tractor-photo-grid">
+        <div class="tractor-photo-grid" id="eventPhotosGrid">
           {% for photo in tractor_photos %}
-            <figure data-photo-index="{{ forloop.counter0 }}">
+            <figure data-photo-index="{{ forloop.counter0 }}" data-photo-section="event">
               <img src="/media/{{photo.photo_path}}"
                    alt="{% if photo.caption %}{{ photo.caption }}{% else %}{{ tractor.tractor_name }}{% endif %}">
               <figcaption>
@@ -456,8 +477,10 @@
         </div>
       </div>
     </section>
+  {% endif %}
 
-    <!-- Lightbox overlay -->
+  <!-- Lightbox overlay (shown if either tractor_media or tractor_photos exist) -->
+  {% if tractor_media or tractor_photos %}
     <div class="lightbox-overlay" id="photoLightbox">
       <div class="lightbox-inner">
         <div class="lightbox-image-wrapper">
@@ -491,7 +514,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  {% if tractor_photos %}
+  {% if tractor_media or tractor_photos %}
   <script>
     (function () {
       const overlay = document.getElementById('photoLightbox');
@@ -502,6 +525,8 @@
       const closeBtn = document.getElementById('lightboxClose');
       const prevBtn = document.getElementById('lightboxPrev');
       const nextBtn = document.getElementById('lightboxNext');
+
+      // Get all photo figures from both tractor media and event photos
       const figures = Array.from(document.querySelectorAll('.tractor-photo-grid figure'));
 
       const photos = figures.map((fig) => {
