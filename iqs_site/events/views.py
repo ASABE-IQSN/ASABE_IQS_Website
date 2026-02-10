@@ -148,7 +148,7 @@ def tractor_list(request):
             default=Value(1),
             output_field=IntegerField(),
         ),
-    ).order_by("has_photo", "original_team", "year")
+    ).order_by("has_photo", "original_team", "-year")
     context = {
         "tractors": tractors,
         "active_page": "tractors",
