@@ -89,6 +89,16 @@ class Tractor(models.Model):
         null=True,
     )
     year=models.IntegerField()
+
+    # Primary photo for this tractor
+    primary_photo = models.ForeignKey(
+        "TractorMedia",
+        models.SET_NULL,
+        db_column="primary_photo_media_id",
+        blank=True,
+        null=True,
+        related_name="primary_for_tractors",
+    )
     # tractor_events M2M via explicit through model is handled below
 
     class Meta:
@@ -249,12 +259,69 @@ class PerformanceEventMedia(models.Model):
     link = models.CharField(max_length=255, blank=True, null=True)
     performance_event_id = models.IntegerField(blank=True, null=True)
     performance_event_type = models.IntegerField(choices=EventTypes.choices, blank=True, null=True)
+    caption = models.CharField(max_length=255, blank=True, null=True)
+    approved = models.BooleanField(default=False)
+    uploaded_by = models.ForeignKey(
+        "auth.User",
+        models.DO_NOTHING,
+        db_column="uploaded_by_user_id",
+        related_name="uploaded_performance_media",
+        blank=True,
+        null=True,
+    )
+    submitted_from_ip = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(default=datetime.utcnow)
 
     class Meta:
         managed = False
         db_table = "performance_event_media"
+        permissions = [
+            ("can_auto_approve_performance_media", "Can auto-approve uploaded performance event media"),
+        ]
 
 
+class TractorMedia(models.Model):
+    media_id = models.AutoField(primary_key=True)
+
+    class MediaTypes(models.IntegerChoices):
+        YOUTUBE_VIDEO = 1
+        IMAGE = 2
+
+    media_type = models.IntegerField(choices=MediaTypes.choices, blank=True, null=True)
+    link = models.CharField(max_length=255, blank=True, null=True)  # URL or file path
+
+    tractor = models.ForeignKey(
+        Tractor,
+        models.DO_NOTHING,
+        db_column="tractor_id",
+        related_name="media",
+        blank=True,
+        null=True,
+    )
+
+    uploaded_by = models.ForeignKey(
+        "auth.User",
+        models.DO_NOTHING,
+        db_column="uploaded_by_user_id",
+        related_name="uploaded_tractor_media",
+        blank=True,
+        null=True,
+    )
+
+    caption = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField(default=datetime.utcnow)
+    approved = models.BooleanField(default=False)
+    submitted_from_ip = models.CharField(max_length=255, blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = "tractor_media"
+        permissions = [
+            ("can_auto_approve_tractor_media", "Can auto-approve uploaded tractor media"),
+        ]
+
+    def __str__(self):
+        return f"Media {self.media_id} ({self.get_media_type_display()}) for {self.tractor}"
 
 
 class PullData(models.Model):
@@ -341,6 +408,9 @@ class EventTeamPhoto(models.Model):
 class ScheduleItemType(models.Model):
     schedule_item_type_id=models.AutoField(primary_key=True)
     name=models.CharField(max_length=45)
+
+    def __str__(self):
+        return self.name or f"ScheduleItemType {self.schedule_item_type_id}"
 
     class Meta:
         managed=False
@@ -600,3 +670,39 @@ class TractorInfo(models.Model):
     class Meta:
         managed = False
         db_table = "tractor_info"
+
+
+class EditLog(models.Model):
+    edit_log_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(
+        'auth.User', models.SET_NULL, null=True, blank=True,
+        related_name='edit_logs'
+    )
+    timestamp = models.DateTimeField(auto_now_add=True)
+    entity_type = models.CharField(max_length=30)
+    team = models.ForeignKey(
+        Team, models.SET_NULL, null=True, blank=True,
+        db_column='team_id', to_field='team_id',
+        related_name='edit_logs', db_constraint=False,
+    )
+    tractor = models.ForeignKey(
+        Tractor, models.SET_NULL, null=True, blank=True,
+        db_column='tractor_id', to_field='tractor_id',
+        related_name='edit_logs', db_constraint=False,
+    )
+    field_name = models.CharField(max_length=100)
+    old_value = models.TextField(blank=True, null=True)
+    new_value = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'edit_log'
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['team', '-timestamp']),
+            models.Index(fields=['tractor', '-timestamp']),
+            models.Index(fields=['user', '-timestamp']),
+        ]
+
+    def __str__(self):
+        target = self.team or self.tractor
+        return f"{self.user} changed {self.field_name} on {target} at {self.timestamp}"

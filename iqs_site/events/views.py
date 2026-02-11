@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from .models import Event
 from django.conf import settings
-from .models import TeamClass, Team, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem
+from .models import TeamClass, Team, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem, TractorMedia, EditLog
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from functools import wraps
@@ -27,7 +27,7 @@ from .teaminfo_utils import INFO_MAP
 from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from .forms import TeamProfileEditForm
-from django.db.models import OuterRef, Subquery
+from django.db.models import OuterRef, Subquery, Case, When, Value, IntegerField
 
 
 from .models import DurabilityRun, DurabilityData, ManeuverabilityRun, PerformanceEventMedia
@@ -141,7 +141,14 @@ def tractor_list(request):
     nickname_sq = TractorInfo.objects.filter(
     tractor_id=OuterRef("tractor_id"),
     info_type=TractorInfo.InfoTypes.NICKNAME,).values("info")[:1]
-    tractors = Tractor.objects.select_related("original_team").order_by("original_team","year").annotate(nickname_info=Subquery(nickname_sq))
+    tractors = Tractor.objects.select_related("original_team", "primary_photo").annotate(
+        nickname_info=Subquery(nickname_sq),
+        has_photo=Case(
+            When(primary_photo__isnull=False, then=Value(0)),
+            default=Value(1),
+            output_field=IntegerField(),
+        ),
+    ).order_by("has_photo", "original_team", "-year")
     context = {
         "tractors": tractors,
         "active_page": "tractors",
@@ -511,7 +518,16 @@ def pull_detail(request, pull_id):
     )
     if not yt_vids.exists():
         yt_vids = pull.pull_media.all().filter(pull_media_type=PullMedia.types.YOUTUBE_VIDEO)
-    #print(yt_vids)
+
+    photos = PerformanceEventMedia.objects.filter(
+        performance_event_type=PerformanceEventMedia.EventTypes.PULL,
+        performance_event_id=pull.pull_id,
+        media_type=PerformanceEventMedia.MediaTypes.IMAGE,
+        approved=True,
+    ).order_by("-created_at")
+
+    can_upload = can_edit_team(request.user, pull.team) if request.user.is_authenticated else False
+
     context = {
         "yt_embed":yt_vids,
         "pull_name":pull_name,
@@ -520,7 +536,9 @@ def pull_detail(request, pull_id):
         "distances_json": json.dumps(distances),
         "speeds_json": json.dumps(speeds),
         "forces_json": json.dumps(forces),
-        "active_page": "events",  # or None if you don't want nav highlight
+        "photos": photos,
+        "can_upload": can_upload,
+        "active_page": "events",
     }
 
     return render(request, "events/pull_detail.html", context)
@@ -577,6 +595,15 @@ def durability_run_detail(request, run_id: int):
         media_type=PerformanceEventMedia.MediaTypes.YOUTUBE_VIDEO,
     )
 
+    photos = PerformanceEventMedia.objects.filter(
+        performance_event_type=PerformanceEventMedia.EventTypes.DURABILITY,
+        performance_event_id=durability_run.durability_run_id,
+        media_type=PerformanceEventMedia.MediaTypes.IMAGE,
+        approved=True,
+    ).order_by("-created_at")
+
+    can_upload = can_edit_team(request.user, durability_run.team) if request.user.is_authenticated else False
+
     context = {
         "durability_run": durability_run,
         "yt_embed": yt_vids,
@@ -590,6 +617,8 @@ def durability_run_detail(request, run_id: int):
         "pressures_json": json.dumps(pressures),
         "powers_json": json.dumps(powers),
         "table_rows": table_rows,
+        "photos": photos,
+        "can_upload": can_upload,
         "active_page": "events",
     }
 
@@ -610,9 +639,20 @@ def maneuverability_run_detail(request, run_id: int):
         media_type=PerformanceEventMedia.MediaTypes.YOUTUBE_VIDEO,
     )
 
+    photos = PerformanceEventMedia.objects.filter(
+        performance_event_type=PerformanceEventMedia.EventTypes.MANEUVERABILITY,
+        performance_event_id=maneuverability_run.maneuverability_run_id,
+        media_type=PerformanceEventMedia.MediaTypes.IMAGE,
+        approved=True,
+    ).order_by("-created_at")
+
+    can_upload = can_edit_team(request.user, maneuverability_run.team) if request.user.is_authenticated else False
+
     context = {
         "maneuverability_run": maneuverability_run,
         "yt_embed": yt_vids,
+        "photos": photos,
+        "can_upload": can_upload,
         "active_page": "events",
     }
 
@@ -624,7 +664,7 @@ def tractor_detail(request, tractor_id):
     # Grab the tractor, along with its original_team and all TractorEvent rows
     tractor = get_object_or_404(
         Tractor.objects
-        .select_related("original_team")
+        .select_related("original_team", "primary_photo")
         .prefetch_related(
             Prefetch(
                 "tractor_events",
@@ -711,7 +751,13 @@ def tractor_detail(request, tractor_id):
     for te in tractor_events:
         photos=EventTeamPhoto.objects.filter(event_team__event=te.event,event_team__team=te.team)
 
-
+    # Get tractor-specific media (images)
+    tractor_media = (
+        TractorMedia.objects
+        .filter(tractor=tractor, approved=True, media_type=TractorMedia.MediaTypes.IMAGE)
+        .select_related("uploaded_by")
+        .order_by("-created_at")
+    )
 
     context = {
         "tractor": tractor,
@@ -720,6 +766,7 @@ def tractor_detail(request, tractor_id):
         "teams": teams,
         "usages": usages,
         "tractor_photos": tractor_photos,
+        "tractor_media": tractor_media,
         "active_page": "tractors",
         "nickname":nickname,
         "website":website,
@@ -795,25 +842,43 @@ def _initial_from_teaminfo(team):
         for key, info_type in INFO_MAP.items()
     }
 
-def _upsert_teaminfo(team, info_type, value: str):
+def _resolve_field_name(info_type, info_map):
+    for name, itype in info_map.items():
+        if int(itype) == int(info_type):
+            return name
+    return str(info_type)
+
+
+def _upsert_teaminfo(team, info_type, value: str, user=None):
     value = (value or "").strip()
+    field_name = _resolve_field_name(info_type, INFO_MAP)
+
+    qs = TeamInfo.objects.filter(team=team, info_type=int(info_type)).order_by("team_info_id")
+    existing = qs.first()
+    old_value = existing.info if existing else ""
+
+    if value == old_value:
+        return
 
     # If blank => delete any existing row(s) for tidiness
     if value == "":
-        TeamInfo.objects.filter(team=team, info_type=int(info_type)).delete()
-        return
-
-    # If you have unique(team, info_type) this will be 0/1 rows; if not, we normalize:
-    qs = TeamInfo.objects.filter(team=team, info_type=int(info_type)).order_by("team_info_id")
-    existing = qs.first()
-
-    if existing:
+        qs.delete()
+    elif existing:
         # delete any accidental duplicates
         qs.exclude(team_info_id=existing.team_info_id).delete()
         existing.info = value
         existing.save(update_fields=["info"])
     else:
         TeamInfo.objects.create(team=team, info_type=int(info_type), info=value)
+
+    EditLog.objects.create(
+        user=user,
+        entity_type="team_info",
+        team=team,
+        field_name=field_name,
+        old_value=old_value or None,
+        new_value=value or None,
+    )
 
 @login_required
 def team_profile_edit(request, team_id: int):
@@ -826,7 +891,7 @@ def team_profile_edit(request, team_id: int):
         form = TeamProfileEditForm(request.POST)
         if form.is_valid():
             for field_name, info_type in INFO_MAP.items():
-                _upsert_teaminfo(team, info_type, form.cleaned_data.get(field_name, ""))
+                _upsert_teaminfo(team, info_type, form.cleaned_data.get(field_name, ""), request.user)
 
             messages.success(request, "Team profile updated.")
             return redirect("events:team_detail", team.team_id)
@@ -846,22 +911,34 @@ def _tractor_initial(tractor):
     by_type = {row.info_type: row.info for row in qs}
     return {k: by_type.get(int(t), "") for k, t in TRACTOR_INFO_MAP.items()}
 
-def _tractor_upsert(tractor, info_type, value: str):
+def _tractor_upsert(tractor, info_type, value: str, user=None):
     value = (value or "").strip()
-
-    if value == "":
-        TractorInfo.objects.filter(tractor=tractor, info_type=int(info_type)).delete()
-        return
+    field_name = _resolve_field_name(info_type, TRACTOR_INFO_MAP)
 
     qs = TractorInfo.objects.filter(tractor=tractor, info_type=int(info_type)).order_by("tractor_info_id")
     existing = qs.first()
+    old_value = existing.info if existing else ""
 
-    if existing:
+    if value == old_value:
+        return
+
+    if value == "":
+        qs.delete()
+    elif existing:
         qs.exclude(tractor_info_id=existing.tractor_info_id).delete()
         existing.info = value
         existing.save(update_fields=["info"])
     else:
         TractorInfo.objects.create(tractor=tractor, info_type=int(info_type), info=value)
+
+    EditLog.objects.create(
+        user=user,
+        entity_type="tractor_info",
+        tractor=tractor,
+        field_name=field_name,
+        old_value=old_value or None,
+        new_value=value or None,
+    )
 
 @login_required
 def tractor_profile_edit(request, tractor_id: int):
@@ -870,11 +947,116 @@ def tractor_profile_edit(request, tractor_id: int):
     if not can_edit_tractor(request.user, tractor):
         raise PermissionDenied  # shows your 403 template
 
+    # Load existing photos for selection
+    existing_photos = (
+        TractorMedia.objects
+        .filter(tractor=tractor, approved=True, media_type=TractorMedia.MediaTypes.IMAGE)
+        .order_by("-created_at")
+    )
+
     if request.method == "POST":
         form = TractorProfileEditForm(request.POST)
         if form.is_valid():
             for field_name, info_type in TRACTOR_INFO_MAP.items():
-                _tractor_upsert(tractor, info_type, form.cleaned_data.get(field_name, ""))
+                _tractor_upsert(tractor, info_type, form.cleaned_data.get(field_name, ""), request.user)
+
+            # Handle caption updates for existing photos
+            for photo in existing_photos:
+                caption_key = f"caption_{photo.media_id}"
+                new_caption = request.POST.get(caption_key, "").strip()
+                old_caption = photo.caption or ""
+                if new_caption != old_caption:
+                    photo.caption = new_caption if new_caption else None
+                    photo.save()
+                    EditLog.objects.create(
+                        user=request.user,
+                        entity_type="tractor_photo",
+                        tractor=tractor,
+                        field_name=f"caption (photo {photo.media_id})",
+                        old_value=old_caption or None,
+                        new_value=new_caption or None,
+                    )
+
+            # Handle primary photo selection
+            primary_photo_id = request.POST.get("primary_photo")
+            if primary_photo_id:
+                old_primary = str(tractor.primary_photo.media_id) if tractor.primary_photo else "none"
+                if primary_photo_id == "none":
+                    tractor.primary_photo = None
+                else:
+                    try:
+                        media = TractorMedia.objects.get(
+                            media_id=int(primary_photo_id),
+                            tractor=tractor,
+                            approved=True,
+                            media_type=TractorMedia.MediaTypes.IMAGE
+                        )
+                        tractor.primary_photo = media
+                    except (TractorMedia.DoesNotExist, ValueError):
+                        messages.error(request, "Invalid primary photo selection.")
+                new_primary = str(tractor.primary_photo.media_id) if tractor.primary_photo else "none"
+                if old_primary != new_primary:
+                    EditLog.objects.create(
+                        user=request.user,
+                        entity_type="tractor_primary_photo",
+                        tractor=tractor,
+                        field_name="primary_photo",
+                        old_value=old_primary,
+                        new_value=new_primary,
+                    )
+                tractor.save()
+
+            # Handle photo upload if present
+            photo_file = request.FILES.get("photo")
+            if photo_file and photo_file.name:
+                approved = request.user.has_perm("events.can_auto_approve_tractor_media")
+
+                # Get client IP
+                xff = request.META.get("HTTP_X_FORWARDED_FOR")
+                ip = xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")
+
+                filename = photo_file.name
+                photo_caption = request.POST.get("photo_caption", "").strip()
+
+                # Validate file extension (reuses existing allowed_file function)
+                if allowed_file(filename):
+                    # Sanitize filename
+                    name_root, ext = os.path.splitext(filename)
+                    ext = ext.lower()
+                    safe_root = "".join(c for c in name_root if c.isalnum() or c in ("-", "_"))
+                    if not safe_root:
+                        safe_root = "photo"
+
+                    filename = f"tractor{tractor_id}_{safe_root}{ext}"
+                    save_path = Path(f"/var/www/quarterscale/static/photos/{filename}")
+                    save_path.parent.mkdir(parents=True, exist_ok=True)
+
+                    with save_path.open("wb+") as dest:
+                        for chunk in photo_file.chunks():
+                            dest.write(chunk)
+
+                    # Create database record using PerformanceEventMedia pattern
+                    rel_path = f"photos/{filename}"
+                    TractorMedia.objects.create(
+                        tractor=tractor,
+                        media_type=TractorMedia.MediaTypes.IMAGE,
+                        link=rel_path,
+                        caption=photo_caption if photo_caption else None,
+                        uploaded_by=request.user,
+                        submitted_from_ip=ip,
+                        approved=approved,
+                    )
+                    EditLog.objects.create(
+                        user=request.user,
+                        entity_type="tractor_photo",
+                        tractor=tractor,
+                        field_name="photo_upload",
+                        old_value=None,
+                        new_value=rel_path,
+                    )
+                    messages.success(request, "Photo uploaded successfully!")
+                else:
+                    messages.error(request, "Invalid file type. Please upload an image (png, jpg, jpeg, gif, webp).")
 
             messages.success(request, "Tractor profile updated.")
             return redirect("events:tractor_detail", tractor.tractor_id)
@@ -884,4 +1066,171 @@ def tractor_profile_edit(request, tractor_id: int):
     return render(request, "events/tractor_profile_edit.html", {
         "tractor": tractor,
         "form": form,
+        "existing_photos": existing_photos,
     })
+
+
+def _upload_performance_photo(request, team, event_type, event_id, redirect_view, redirect_arg):
+    """Shared handler for uploading a photo to a performance event (pull/durability/maneuverability)."""
+    if not can_edit_team(request.user, team):
+        raise PermissionDenied
+
+    photo_file = request.FILES.get("photo")
+    if not photo_file or not photo_file.name:
+        messages.error(request, "No photo file provided.")
+        return redirect(redirect_view, redirect_arg)
+
+    if not allowed_file(photo_file.name):
+        messages.error(request, "Invalid file type. Please upload an image (png, jpg, jpeg, gif, webp).")
+        return redirect(redirect_view, redirect_arg)
+
+    approved = request.user.has_perm("events.can_auto_approve_performance_media")
+
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    ip = xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")
+
+    caption = request.POST.get("photo_caption", "").strip()
+
+    name_root, ext = os.path.splitext(photo_file.name)
+    ext = ext.lower()
+    safe_root = "".join(c for c in name_root if c.isalnum() or c in ("-", "_"))
+    if not safe_root:
+        safe_root = "photo"
+
+    type_prefix = PerformanceEventMedia.EventTypes(event_type).label.lower()
+    filename = f"{type_prefix}{event_id}_{safe_root}{ext}"
+    save_path = Path(f"/var/www/quarterscale/static/photos/{filename}")
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with save_path.open("wb+") as dest:
+        for chunk in photo_file.chunks():
+            dest.write(chunk)
+
+    PerformanceEventMedia.objects.create(
+        performance_event_type=event_type,
+        performance_event_id=event_id,
+        media_type=PerformanceEventMedia.MediaTypes.IMAGE,
+        link=f"photos/{filename}",
+        caption=caption if caption else None,
+        uploaded_by=request.user,
+        submitted_from_ip=ip,
+        approved=approved,
+    )
+
+    messages.success(request, "Photo uploaded successfully!")
+    return redirect(redirect_view, redirect_arg)
+
+
+@login_required
+@require_POST
+def upload_pull_photo(request, pull_id):
+    pull = get_object_or_404(Pull.objects.select_related("team"), pk=pull_id)
+    return _upload_performance_photo(
+        request,
+        team=pull.team,
+        event_type=PerformanceEventMedia.EventTypes.PULL,
+        event_id=pull.pull_id,
+        redirect_view="events:pull_detail",
+        redirect_arg=pull.pull_id,
+    )
+
+
+@login_required
+@require_POST
+def upload_durability_photo(request, run_id):
+    run = get_object_or_404(DurabilityRun.objects.select_related("team"), pk=run_id)
+    return _upload_performance_photo(
+        request,
+        team=run.team,
+        event_type=PerformanceEventMedia.EventTypes.DURABILITY,
+        event_id=run.durability_run_id,
+        redirect_view="events:durability_run_detail",
+        redirect_arg=run.durability_run_id,
+    )
+
+
+@login_required
+@require_POST
+def upload_maneuverability_photo(request, run_id):
+    run = get_object_or_404(ManeuverabilityRun.objects.select_related("team"), pk=run_id)
+    return _upload_performance_photo(
+        request,
+        team=run.team,
+        event_type=PerformanceEventMedia.EventTypes.MANEUVERABILITY,
+        event_id=run.maneuverability_run_id,
+        redirect_view="events:maneuverability_run_detail",
+        redirect_arg=run.maneuverability_run_id,
+    )
+
+
+def all_photos(request):
+    """
+    Compile all photos from event teams, tractors, and performance events into a single gallery.
+    """
+    all_photos_list = []
+
+    # Get all approved event team photos
+    event_team_photos = (
+        EventTeamPhoto.objects
+        .filter(approved=True)
+        .select_related("event_team__event", "event_team__team")
+        .order_by("-created_at")
+    )
+
+    for photo in event_team_photos:
+        all_photos_list.append({
+            "src": f"/media/{photo.photo_path}",
+            "caption": photo.caption or "",
+            "source_type": "Event Team",
+            "source_name": f"{photo.event_team.team.team_name} at {photo.event_team.event.event_name}" if photo.event_team and photo.event_team.team and photo.event_team.event else "Unknown",
+            "created_at": photo.created_at,
+            "url": f"/event/{photo.event_team.event_id}/team/{photo.event_team.team_id}" if photo.event_team else None,
+        })
+
+    # Get all approved tractor media (images only)
+    tractor_photos = (
+        TractorMedia.objects
+        .filter(approved=True, media_type=TractorMedia.MediaTypes.IMAGE)
+        .select_related("tractor")
+        .order_by("-created_at")
+    )
+
+    for photo in tractor_photos:
+        all_photos_list.append({
+            "src": f"/static/{photo.link}",
+            "caption": photo.caption or "",
+            "source_type": "Tractor",
+            "source_name": photo.tractor.tractor_name if photo.tractor else "Unknown Tractor",
+            "created_at": photo.created_at,
+            "url": f"/tractor/{photo.tractor.tractor_id}" if photo.tractor else None,
+        })
+
+    # Get all approved performance event media (images only)
+    performance_photos = (
+        PerformanceEventMedia.objects
+        .filter(media_type=PerformanceEventMedia.MediaTypes.IMAGE)
+        .order_by("media_id")
+    )
+
+    for photo in performance_photos:
+        event_type_name = dict(PerformanceEventMedia.EventTypes.choices).get(photo.performance_event_type, "Unknown")
+        all_photos_list.append({
+            "src": f"/static/{photo.link}",
+            "caption": photo.caption or "",
+            "source_type": "Performance Event",
+            "source_name": f"{event_type_name} Event",
+            "created_at": photo.created_at,
+            "url": None,
+        })
+
+    # Sort all photos by created_at (most recent first)
+    all_photos_list.sort(key=lambda x: x["created_at"] if x["created_at"] else timezone.datetime.min, reverse=True)
+
+    context = {
+        "photos": all_photos_list,
+        "total_count": len(all_photos_list),
+        "active_page": "photos",
+    }
+
+    return render(request, "events/photo_all.html", context)
+

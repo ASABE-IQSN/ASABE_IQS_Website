@@ -103,6 +103,26 @@
     </iframe>
   {% endfor %}
 
+  {% if photos %}
+  <section class="chart-card">
+    <h2>Photos</h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
+      {% for photo in photos %}
+        <div style="border: 1px solid #1f2937; border-radius: 0.5rem; overflow: hidden; background: #020617;">
+          <img src="/static/{{ photo.link }}" alt="{{ photo.caption|default:'Durability photo' }}" style="width: 100%; height: 200px; object-fit: cover; display: block;">
+          {% if photo.caption %}
+            <div style="padding: 0.5rem 0.75rem; font-size: 0.85rem; color: #9ca3af;">{{ photo.caption }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  
+
+  
+
   <section class="chart-card">
     <h2>Speed vs {{ x_label }}</h2>
     {% if has_data %}
@@ -164,6 +184,30 @@
       <p>No durability data available for this run.</p>
     {% endif %}
   </section>
+  <section class="chart-card">
+  <h2>Upload Photo</h2>
+  <form method="post" action="{% url 'events:upload_durability_photo' durability_run.durability_run_id %}" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div style="display: grid; gap: 0.75rem;">
+      <div>
+        <input type="file" name="photo" accept="image/*"
+                style="padding: 0.4rem; border: 1px solid #1f2937; border-radius: 0.5rem; background: #020617; color: #F3F6E7; font-size: 0.9rem; width: 100%;">
+      </div>
+      <div>
+        <label style="font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.25rem; display: block;">Caption (optional)</label>
+        <input type="text" name="photo_caption" maxlength="255" placeholder="Add a caption for this photo..."
+                style="padding: 0.4rem 0.75rem; border: 1px solid #1f2937; border-radius: 0.5rem; background: #020617; color: #F3F6E7; font-size: 0.85rem; width: 100%;">
+      </div>
+      <div style="font-size: 0.8rem; color: #9ca3af;">Supported formats: PNG, JPG, JPEG, GIF, WebP.</div>
+      <div>
+        <button type="submit"
+                style="padding: 0.45rem 1rem; border-radius: 999px; border: 1px solid #1f2937; background: #22c55e; color: #020617; cursor: pointer;">
+          Upload
+        </button>
+      </div>
+    </div>
+  </form>
+</section>
 {% endblock %}
 
 {% block extra_scripts %}

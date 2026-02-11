@@ -1,0 +1,16 @@
+Hello,
+
+{{ user.username }} ({{ user.email }}) has requested to join your team: {{ team.team_name }} ({{ team.team_number }}).
+
+{% if message %}
+Message from {{ user.username }}:
+"{{ message }}"
+{% endif %}
+
+Requested on: {{ requested_at|date:"F j, Y g:i A" }}
+
+To review and approve or reject this request, please visit:
+{{ manage_url }}
+
+Thanks,
+IQS Connect Team

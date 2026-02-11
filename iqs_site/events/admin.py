@@ -1,6 +1,7 @@
 from django.contrib import admin, messages
 from django.conf import settings
 from django.utils.html import format_html
+from django import forms
 from .models import (
     TeamClass,
     Team,
@@ -12,6 +13,9 @@ from .models import (
     PullData,
     EventTeam,
     EventTeamPhoto,
+    ScheduleItem,
+    ScheduleItemType,
+    TractorMedia,
 )
 from .models import (
     ScoreCategory,
@@ -19,6 +23,7 @@ from .models import (
     ScoreCategoryInstance,
     ScoreSubCategoryInstance,
     ScoreSubCategoryScore,
+    EditLog,
 )
 from django.db.models import Q
 
@@ -38,16 +43,48 @@ class TeamAdmin(admin.ModelAdmin):
 
 @admin.register(Tractor)
 class TractorAdmin(admin.ModelAdmin):
-    list_display = ("tractor_id", "tractor_name", "original_team")
+    list_display = ("tractor_id", "tractor_name", "original_team", "year", "primary_photo")
     search_fields = ("tractor_name",)
-    list_filter = ("original_team",)
+    list_filter = ("year", "original_team")
+    raw_id_fields = ("primary_photo",)
+
+
+class EventForm(forms.ModelForm):
+    event_id = forms.IntegerField(required=False, label="Event ID")
+
+    class Meta:
+        model = Event
+        fields = ["event_id", "event_name", "event_datetime", "event_active", "techin_released"]
 
 
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
+    form = EventForm
     list_display = ("event_id", "event_name", "event_datetime")
     search_fields = ("event_name",)
     list_filter = ("event_datetime",)
+
+    fields = ("event_id", "event_name", "event_datetime", "event_active", "techin_released")
+
+    def get_readonly_fields(self, request, obj=None):
+        # Make event_id readonly when editing an existing event, but editable when creating new one
+        if obj:  # Editing an existing object
+            return ("event_id",)
+        return ()  # Creating a new object
+
+
+@admin.register(ScheduleItemType)
+class ScheduleItemTypeAdmin(admin.ModelAdmin):
+    list_display = ("schedule_item_type_id", "name")
+    search_fields = ("name",)
+
+
+@admin.register(ScheduleItem)
+class ScheduleItemAdmin(admin.ModelAdmin):
+    list_display = ("schedule_item_id", "name", "datetime", "type", "team", "event")
+    list_filter = ("event", "type", "datetime")
+    search_fields = ("name", "team__team_name", "team__team_number", "event__event_name")
+    date_hierarchy = "datetime"
 
 
 @admin.register(Hook)
@@ -310,3 +347,53 @@ class PerformanceEventMediaAdmin(admin.ModelAdmin):
         "link",
     )
     ordering = ("media_id",)
+
+
+@admin.register(TractorMedia)
+class TractorMediaAdmin(admin.ModelAdmin):
+    list_display = ("media_id", "tractor", "media_type", "uploaded_by", "approved", "created_at", "media_preview")
+    list_filter = ("media_type", "approved", "created_at")
+    search_fields = ("tractor__tractor_name", "link", "caption", "uploaded_by__username")
+    readonly_fields = ("media_preview",)
+
+    actions = ["approve_media", "unapprove_media"]
+
+    @admin.action(description="Approve selected media")
+    def approve_media(self, request, queryset):
+        updated = queryset.filter(approved=False).update(approved=True)
+        self.message_user(request, f"Approved {updated} media item(s).", level=messages.SUCCESS)
+
+    @admin.action(description="Unapprove selected media")
+    def unapprove_media(self, request, queryset):
+        updated = queryset.filter(approved=True).update(approved=False)
+        self.message_user(request, f"Unapproved {updated} media item(s).", level=messages.WARNING)
+
+    def media_preview(self, obj):
+        if obj.media_type == TractorMedia.MediaTypes.IMAGE:
+            if not obj.link:
+                return "(no image)"
+            url = "http://iqsconnect.org/static/" + obj.link.lstrip("/")
+            return format_html(
+                '<img src="{}" style="max-width: 400px; max-height: 300px; border-radius: 8px;" />',
+                url,
+            )
+        elif obj.media_type == TractorMedia.MediaTypes.YOUTUBE_VIDEO:
+            return format_html('<a href="{}" target="_blank">View Video</a>', obj.link)
+        return "(unknown media type)"
+
+    media_preview.short_description = "Preview"
+
+
+@admin.register(EditLog)
+class EditLogAdmin(admin.ModelAdmin):
+    list_display = ('edit_log_id', 'timestamp', 'user', 'entity_type', 'team', 'tractor', 'field_name')
+    list_filter = ('entity_type', 'timestamp', 'user')
+    search_fields = ('user__username', 'field_name', 'old_value', 'new_value')
+    readonly_fields = ('edit_log_id', 'timestamp', 'user', 'entity_type', 'team', 'tractor', 'field_name', 'old_value', 'new_value')
+    ordering = ('-timestamp',)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
