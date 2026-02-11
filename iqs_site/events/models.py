@@ -670,3 +670,39 @@ class TractorInfo(models.Model):
     class Meta:
         managed = False
         db_table = "tractor_info"
+
+
+class EditLog(models.Model):
+    edit_log_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(
+        'auth.User', models.SET_NULL, null=True, blank=True,
+        related_name='edit_logs'
+    )
+    timestamp = models.DateTimeField(auto_now_add=True)
+    entity_type = models.CharField(max_length=30)
+    team = models.ForeignKey(
+        Team, models.SET_NULL, null=True, blank=True,
+        db_column='team_id', to_field='team_id',
+        related_name='edit_logs', db_constraint=False,
+    )
+    tractor = models.ForeignKey(
+        Tractor, models.SET_NULL, null=True, blank=True,
+        db_column='tractor_id', to_field='tractor_id',
+        related_name='edit_logs', db_constraint=False,
+    )
+    field_name = models.CharField(max_length=100)
+    old_value = models.TextField(blank=True, null=True)
+    new_value = models.TextField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'edit_log'
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['team', '-timestamp']),
+            models.Index(fields=['tractor', '-timestamp']),
+            models.Index(fields=['user', '-timestamp']),
+        ]
+
+    def __str__(self):
+        target = self.team or self.tractor
+        return f"{self.user} changed {self.field_name} on {target} at {self.timestamp}"

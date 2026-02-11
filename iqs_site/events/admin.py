@@ -23,6 +23,7 @@ from .models import (
     ScoreCategoryInstance,
     ScoreSubCategoryInstance,
     ScoreSubCategoryScore,
+    EditLog,
 )
 from django.db.models import Q
 
@@ -381,3 +382,18 @@ class TractorMediaAdmin(admin.ModelAdmin):
         return "(unknown media type)"
 
     media_preview.short_description = "Preview"
+
+
+@admin.register(EditLog)
+class EditLogAdmin(admin.ModelAdmin):
+    list_display = ('edit_log_id', 'timestamp', 'user', 'entity_type', 'team', 'tractor', 'field_name')
+    list_filter = ('entity_type', 'timestamp', 'user')
+    search_fields = ('user__username', 'field_name', 'old_value', 'new_value')
+    readonly_fields = ('edit_log_id', 'timestamp', 'user', 'entity_type', 'team', 'tractor', 'field_name', 'old_value', 'new_value')
+    ordering = ('-timestamp',)
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

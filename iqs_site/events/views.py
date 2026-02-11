@@ -9,7 +9,7 @@ import os
 from pathlib import Path
 from .models import Event
 from django.conf import settings
-from .models import TeamClass, Team, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem, TractorMedia
+from .models import TeamClass, Team, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem, TractorMedia, EditLog
 from django.views.decorators.http import require_POST
 from django.contrib import messages
 from functools import wraps
@@ -842,25 +842,43 @@ def _initial_from_teaminfo(team):
         for key, info_type in INFO_MAP.items()
     }
 
-def _upsert_teaminfo(team, info_type, value: str):
+def _resolve_field_name(info_type, info_map):
+    for name, itype in info_map.items():
+        if int(itype) == int(info_type):
+            return name
+    return str(info_type)
+
+
+def _upsert_teaminfo(team, info_type, value: str, user=None):
     value = (value or "").strip()
+    field_name = _resolve_field_name(info_type, INFO_MAP)
+
+    qs = TeamInfo.objects.filter(team=team, info_type=int(info_type)).order_by("team_info_id")
+    existing = qs.first()
+    old_value = existing.info if existing else ""
+
+    if value == old_value:
+        return
 
     # If blank => delete any existing row(s) for tidiness
     if value == "":
-        TeamInfo.objects.filter(team=team, info_type=int(info_type)).delete()
-        return
-
-    # If you have unique(team, info_type) this will be 0/1 rows; if not, we normalize:
-    qs = TeamInfo.objects.filter(team=team, info_type=int(info_type)).order_by("team_info_id")
-    existing = qs.first()
-
-    if existing:
+        qs.delete()
+    elif existing:
         # delete any accidental duplicates
         qs.exclude(team_info_id=existing.team_info_id).delete()
         existing.info = value
         existing.save(update_fields=["info"])
     else:
         TeamInfo.objects.create(team=team, info_type=int(info_type), info=value)
+
+    EditLog.objects.create(
+        user=user,
+        entity_type="team_info",
+        team=team,
+        field_name=field_name,
+        old_value=old_value or None,
+        new_value=value or None,
+    )
 
 @login_required
 def team_profile_edit(request, team_id: int):
@@ -873,7 +891,7 @@ def team_profile_edit(request, team_id: int):
         form = TeamProfileEditForm(request.POST)
         if form.is_valid():
             for field_name, info_type in INFO_MAP.items():
-                _upsert_teaminfo(team, info_type, form.cleaned_data.get(field_name, ""))
+                _upsert_teaminfo(team, info_type, form.cleaned_data.get(field_name, ""), request.user)
 
             messages.success(request, "Team profile updated.")
             return redirect("events:team_detail", team.team_id)
@@ -893,22 +911,34 @@ def _tractor_initial(tractor):
     by_type = {row.info_type: row.info for row in qs}
     return {k: by_type.get(int(t), "") for k, t in TRACTOR_INFO_MAP.items()}
 
-def _tractor_upsert(tractor, info_type, value: str):
+def _tractor_upsert(tractor, info_type, value: str, user=None):
     value = (value or "").strip()
-
-    if value == "":
-        TractorInfo.objects.filter(tractor=tractor, info_type=int(info_type)).delete()
-        return
+    field_name = _resolve_field_name(info_type, TRACTOR_INFO_MAP)
 
     qs = TractorInfo.objects.filter(tractor=tractor, info_type=int(info_type)).order_by("tractor_info_id")
     existing = qs.first()
+    old_value = existing.info if existing else ""
 
-    if existing:
+    if value == old_value:
+        return
+
+    if value == "":
+        qs.delete()
+    elif existing:
         qs.exclude(tractor_info_id=existing.tractor_info_id).delete()
         existing.info = value
         existing.save(update_fields=["info"])
     else:
         TractorInfo.objects.create(tractor=tractor, info_type=int(info_type), info=value)
+
+    EditLog.objects.create(
+        user=user,
+        entity_type="tractor_info",
+        tractor=tractor,
+        field_name=field_name,
+        old_value=old_value or None,
+        new_value=value or None,
+    )
 
 @login_required
 def tractor_profile_edit(request, tractor_id: int):
@@ -928,19 +958,29 @@ def tractor_profile_edit(request, tractor_id: int):
         form = TractorProfileEditForm(request.POST)
         if form.is_valid():
             for field_name, info_type in TRACTOR_INFO_MAP.items():
-                _tractor_upsert(tractor, info_type, form.cleaned_data.get(field_name, ""))
+                _tractor_upsert(tractor, info_type, form.cleaned_data.get(field_name, ""), request.user)
 
             # Handle caption updates for existing photos
             for photo in existing_photos:
                 caption_key = f"caption_{photo.media_id}"
                 new_caption = request.POST.get(caption_key, "").strip()
-                if new_caption != (photo.caption or ""):
+                old_caption = photo.caption or ""
+                if new_caption != old_caption:
                     photo.caption = new_caption if new_caption else None
                     photo.save()
+                    EditLog.objects.create(
+                        user=request.user,
+                        entity_type="tractor_photo",
+                        tractor=tractor,
+                        field_name=f"caption (photo {photo.media_id})",
+                        old_value=old_caption or None,
+                        new_value=new_caption or None,
+                    )
 
             # Handle primary photo selection
             primary_photo_id = request.POST.get("primary_photo")
             if primary_photo_id:
+                old_primary = str(tractor.primary_photo.media_id) if tractor.primary_photo else "none"
                 if primary_photo_id == "none":
                     tractor.primary_photo = None
                 else:
@@ -954,6 +994,16 @@ def tractor_profile_edit(request, tractor_id: int):
                         tractor.primary_photo = media
                     except (TractorMedia.DoesNotExist, ValueError):
                         messages.error(request, "Invalid primary photo selection.")
+                new_primary = str(tractor.primary_photo.media_id) if tractor.primary_photo else "none"
+                if old_primary != new_primary:
+                    EditLog.objects.create(
+                        user=request.user,
+                        entity_type="tractor_primary_photo",
+                        tractor=tractor,
+                        field_name="primary_photo",
+                        old_value=old_primary,
+                        new_value=new_primary,
+                    )
                 tractor.save()
 
             # Handle photo upload if present
@@ -995,6 +1045,14 @@ def tractor_profile_edit(request, tractor_id: int):
                         uploaded_by=request.user,
                         submitted_from_ip=ip,
                         approved=approved,
+                    )
+                    EditLog.objects.create(
+                        user=request.user,
+                        entity_type="tractor_photo",
+                        tractor=tractor,
+                        field_name="photo_upload",
+                        old_value=None,
+                        new_value=rel_path,
                     )
                     messages.success(request, "Photo uploaded successfully!")
                 else:
