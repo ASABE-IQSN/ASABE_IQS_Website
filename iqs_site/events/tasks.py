@@ -1,6 +1,6 @@
 import csv
 import logging
-import os
+import shutil
 import tempfile
 import uuid
 from datetime import timedelta
@@ -17,7 +17,8 @@ from .models import PullData, PullExportJob
 
 logger = logging.getLogger(__name__)
 
-EXPORT_STATIC_DIR = Path("/var/www/quarterscale/static/exports/pull_exports")
+STATIC_ROOT_PATH = Path(getattr(settings, "STATIC_ROOT", "/var/www/quarterscale/static/"))
+EXPORT_STATIC_DIR = STATIC_ROOT_PATH / "exports" / "pull_exports"
 PUBLIC_BASE_URL = "https://iqsconnect.org"
 
 
@@ -76,7 +77,9 @@ def generate_pull_export_zip(self, job_id: int) -> dict:
                     zip_file.write(csv_path, arcname=csv_path.name)
 
             final_zip_path = EXPORT_STATIC_DIR / zip_filename
-            os.replace(zip_temp_path, final_zip_path)
+            # Use move instead of replace to handle cross-device moves (/tmp -> mounted static dir).
+            shutil.move(str(zip_temp_path), str(final_zip_path))
+            logger.info("Pull export job %s wrote zip to %s", job.pull_export_job_id, final_zip_path)
 
         finished_at = timezone.now()
         zip_rel_path = f"exports/pull_exports/{zip_filename}"
@@ -168,7 +171,7 @@ def cleanup_expired_pull_export_zips(self) -> dict:
     updated_jobs = 0
 
     for job in stale_jobs:
-        file_path = Path("/var/www/quarterscale/static") / job.zip_rel_path.lstrip("/")
+        file_path = STATIC_ROOT_PATH / job.zip_rel_path.lstrip("/")
         if file_path.exists():
             try:
                 file_path.unlink()
