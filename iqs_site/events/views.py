@@ -184,6 +184,17 @@ def team_detail_page(request, team_id):
         .order_by("-event_team_photo_id")
     )
 
+    # Hero photo: first official photo from the most recent event
+    hero_photo = (
+        EventTeamPhoto.objects
+        .select_related("event_team__event")
+        .filter(event_team__team=team, approved=True, official=True)
+        .order_by("-event_team__event__event_datetime", "event_team_photo_id")
+        .first()
+    )
+    if not hero_photo and team_photos:
+        hero_photo = team_photos[0]
+
     instagram=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.INSTAGRAM).first()
     facebook=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.FACEBOOK).first()
     linkedin=TeamInfo.objects.filter(team=team,info_type=TeamInfo.InfoTypes.LINKEDIN).first()
@@ -205,6 +216,7 @@ def team_detail_page(request, team_id):
         "team": team,
         "event_teams": event_teams,
         "team_photos": team_photos,
+        "hero_photo": hero_photo,
         "chart_labels": labels,
         "chart_scores": scores,
         "chart_labels_json": json.dumps(labels),
@@ -300,6 +312,13 @@ def team_event_detail(request, event_id, team_id):
     else:
         event_photos = []
 
+    # Hero photo: first official photo, fallback to first photo
+    hero_photo = None
+    if event_photos:
+        hero_photo = next((p for p in event_photos if p.official), None)
+        if not hero_photo:
+            hero_photo = event_photos[0] if event_photos else None
+
     context = {
         "team": team,
         "event": event,
@@ -313,6 +332,7 @@ def team_event_detail(request, event_id, team_id):
         "chart_labels_json": json.dumps(chart_labels),
         "chart_distances_json": json.dumps(chart_distances),
         "event_photos": event_photos,
+        "hero_photo": hero_photo,
         "active_page": "events",
         "schedule_items":schedule_items
     }

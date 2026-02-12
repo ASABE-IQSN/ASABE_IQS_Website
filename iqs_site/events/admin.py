@@ -116,8 +116,8 @@ class EventTeamAdmin(admin.ModelAdmin):
 
 @admin.register(EventTeamPhoto)
 class EventTeamPhotoAdmin(admin.ModelAdmin):
-    list_display = ("event_team_photo_id", "event_team", "approved", "created_at", "photo_preview")
-    list_filter = ("approved", "created_at")
+    list_display = ("event_team_photo_id", "event_team", "approved", "official", "created_at", "photo_preview")
+    list_filter = ("approved", "official", "created_at")
     search_fields = ("photo_path",)
 
     readonly_fields = ("photo_preview",)
@@ -127,6 +127,7 @@ class EventTeamPhotoAdmin(admin.ModelAdmin):
         "photo_path",
         "caption",
         "approved",
+        "official",
         "submitted_from_ip",
         "created_at",
         "photo_preview",

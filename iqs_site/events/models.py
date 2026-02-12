@@ -390,6 +390,7 @@ class EventTeamPhoto(models.Model):
     # path relative to /static, e.g. "team_photos/iowa_state_2026_1.jpg"
     photo_path = models.CharField(max_length=255)
     caption = models.CharField(max_length=255, blank=True, null=True)
+    official = models.BooleanField(default=False)
 
     created_at = models.DateTimeField(default=datetime.utcnow)
     approved = models.BooleanField()

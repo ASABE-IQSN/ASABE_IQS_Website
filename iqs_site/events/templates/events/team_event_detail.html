@@ -316,8 +316,8 @@
   <!-- Hero area -->
   <section class="hero">
     <div class="hero-image">
-      {% if event_photos %}
-        <img src="/media/{{event_photos.0.photo_path}}"
+      {% if hero_photo %}
+        <img src="/media/{{hero_photo.photo_path}}"
              alt="{{ team.team_name }}">
       {% else %}
         No image

@@ -307,8 +307,8 @@
   <!-- Hero -->
   <section class="hero">
     <div class="hero-image">
-      {% if team_photos %}
-        <img src="/media/{{team_photos.0.photo_path}}"
+      {% if hero_photo %}
+        <img src="/media/{{hero_photo.photo_path}}"
              alt="{{ team.team_name }}">
       {% else %}
         No image
