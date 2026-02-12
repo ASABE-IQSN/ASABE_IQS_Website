@@ -1,0 +1,345 @@
+{% extends "base.html" %}
+
+{% block title %}Pull Export{% endblock %}
+
+{% block extra_styles %}
+  .export-layout {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1rem 1.2rem;
+  }
+
+  .card h2 {
+    margin: 0 0 0.75rem;
+  }
+
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(180px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .filters label {
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: #9ca3af;
+  }
+
+  .filters input {
+    background: #020617;
+    color: #f3f6e7;
+    border: 1px solid #1f2937;
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.6rem;
+  }
+
+  .actions {
+    margin-top: 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+    align-items: center;
+  }
+
+  button,
+  .btn-link {
+    background: #6687fc;
+    border: 1px solid #6687fc;
+    color: #020617;
+    border-radius: 999px;
+    padding: 0.45rem 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .btn-secondary {
+    background: transparent;
+    border-color: #334155;
+    color: #f3f6e7;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.6rem;
+  }
+
+  th,
+  td {
+    padding: 0.5rem;
+    border-bottom: 1px solid #1f2937;
+    text-align: left;
+    font-size: 0.88rem;
+  }
+
+  th {
+    color: #9ca3af;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .status-chip {
+    display: inline-block;
+    border: 1px solid #334155;
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .messages {
+    margin-bottom: 0.8rem;
+  }
+
+  .messages .success,
+  .messages .error {
+    border-radius: 0.6rem;
+    padding: 0.55rem 0.7rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .messages .success {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+  }
+
+  .messages .error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+  }
+
+  @media (max-width: 980px) {
+    .filters {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .filters {
+      grid-template-columns: 1fr;
+    }
+  }
+{% endblock %}
+
+{% block content %}
+  <section class="export-layout">
+    {% if messages %}
+      <div class="messages">
+        {% for message in messages %}
+          <div class="{{ message.tags }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <form class="card" method="get">
+      <h2>Find Pulls</h2>
+      <div class="filters">
+        <label>
+          Event Name
+          <input type="text" name="event_name" value="{{ filters.event_name }}" placeholder="for example 2026 finals">
+        </label>
+        <label>
+          Team
+          <input type="text" name="team" value="{{ filters.team }}" placeholder="team name or number">
+        </label>
+        <label>
+          Hook
+          <input type="text" name="hook" value="{{ filters.hook }}" placeholder="hook name">
+        </label>
+        <label>
+          Tractor
+          <input type="text" name="tractor" value="{{ filters.tractor }}" placeholder="tractor name">
+        </label>
+      </div>
+      <div class="actions">
+        <button type="submit">Apply Filters</button>
+        <a class="btn-link btn-secondary" href="{% url 'events:pull_export' %}">Clear</a>
+      </div>
+    </form>
+
+    <form class="card" method="post">
+      {% csrf_token %}
+      <h2>Export Pull Data</h2>
+
+      <input type="hidden" name="event_name" value="{{ filters.event_name }}">
+      <input type="hidden" name="team" value="{{ filters.team }}">
+      <input type="hidden" name="hook" value="{{ filters.hook }}">
+      <input type="hidden" name="tractor" value="{{ filters.tractor }}">
+
+      <p>
+        Matching pulls: <strong>{{ pulls|length }}</strong>
+      </p>
+
+      <div class="actions">
+        <label>
+          <input type="checkbox" id="export_all_filtered" name="export_all_filtered" value="1">
+          Export all filtered pulls
+        </label>
+        <button type="button" class="btn-link btn-secondary" id="select-visible-btn">Select all visible</button>
+        <button type="submit">Export selected</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Select</th>
+            <th>Pull ID</th>
+            <th>Event</th>
+            <th>Team</th>
+            <th>Hook</th>
+            <th>Tractor</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pull in pulls %}
+            <tr>
+              <td><input class="pull-checkbox" type="checkbox" name="selected_pulls" value="{{ pull.pull_id }}"></td>
+              <td>{{ pull.pull_id }}</td>
+              <td>{{ pull.event.event_name|default:"—" }}</td>
+              <td>{{ pull.team.team_name }} ({{ pull.team.team_number }})</td>
+              <td>{{ pull.hook.hook_name|default:"—" }}</td>
+              <td>{{ pull.tractor.tractor_name|default:"—" }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6">No pulls matched this filter set.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </form>
+
+    <section class="card">
+      <h2>Recent Export Jobs</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Job</th>
+            <th>Status</th>
+            <th>Progress</th>
+            <th>Created</th>
+            <th>Download</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for job in jobs %}
+            <tr>
+              <td>#{{ job.pull_export_job_id }}</td>
+              <td><span class="status-chip" id="job-status-{{ job.pull_export_job_id }}">{{ job.status }}</span></td>
+              <td id="job-progress-{{ job.pull_export_job_id }}">{{ job.processed_pulls|default:0 }} / {{ job.total_pulls|default:0 }}</td>
+              <td>{{ job.created_at }}</td>
+              <td id="job-download-{{ job.pull_export_job_id }}">
+                {% if job.download_url %}
+                  <a href="{{ job.download_url }}" target="_blank" rel="noopener noreferrer">Download ZIP</a>
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td id="job-error-{{ job.pull_export_job_id }}">{{ job.error_message|default:"" }}</td>
+            </tr>
+          {% empty %}
+            <tr>
+              <td colspan="6">No export jobs yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script>
+    const exportAllCheckbox = document.getElementById('export_all_filtered');
+    const pullCheckboxes = document.querySelectorAll('.pull-checkbox');
+    const selectVisibleButton = document.getElementById('select-visible-btn');
+
+    function setCheckboxState(enabled) {
+      pullCheckboxes.forEach((box) => {
+        box.disabled = !enabled;
+      });
+    }
+
+    if (exportAllCheckbox) {
+      exportAllCheckbox.addEventListener('change', () => {
+        const enabled = !exportAllCheckbox.checked;
+        setCheckboxState(enabled);
+      });
+    }
+
+    if (selectVisibleButton) {
+      selectVisibleButton.addEventListener('click', () => {
+        pullCheckboxes.forEach((box) => {
+          if (!box.disabled) {
+            box.checked = true;
+          }
+        });
+      });
+    }
+
+    const activeStatusUrl = "{{ active_job_status_url|default:'' }}";
+    let pollTimer = null;
+
+    function updateJobRow(data) {
+      const statusEl = document.getElementById(`job-status-${data.job_id}`);
+      const progressEl = document.getElementById(`job-progress-${data.job_id}`);
+      const downloadEl = document.getElementById(`job-download-${data.job_id}`);
+      const errorEl = document.getElementById(`job-error-${data.job_id}`);
+
+      if (statusEl) {
+        statusEl.textContent = data.status;
+      }
+      if (progressEl) {
+        progressEl.textContent = `${data.processed_pulls} / ${data.total_pulls} (${data.percent}%)`;
+      }
+      if (downloadEl && data.download_url) {
+        downloadEl.innerHTML = `<a href="${data.download_url}" target="_blank" rel="noopener noreferrer">Download ZIP</a>`;
+      }
+      if (errorEl) {
+        errorEl.textContent = data.error_message || '';
+      }
+    }
+
+    function startPolling() {
+      if (!activeStatusUrl) {
+        return;
+      }
+
+      async function tick() {
+        try {
+          const response = await fetch(activeStatusUrl, { credentials: 'same-origin' });
+          if (!response.ok) {
+            return;
+          }
+          const data = await response.json();
+          updateJobRow(data);
+
+          if (["succeeded", "failed", "expired"].includes(data.status)) {
+            if (pollTimer) {
+              clearInterval(pollTimer);
+              pollTimer = null;
+            }
+          }
+        } catch (err) {
+          // Keep polling on transient failures.
+        }
+      }
+
+      tick();
+      pollTimer = setInterval(tick, 3000);
+    }
+
+    startPolling();
+  </script>
+{% endblock %}

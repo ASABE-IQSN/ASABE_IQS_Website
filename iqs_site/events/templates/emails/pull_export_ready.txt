@@ -1,0 +1,7 @@
+Your pull export is ready.
+
+Job ID: {{ job.pull_export_job_id }}
+Download: {{ download_url }}
+Expires: {{ expires_at }}
+
+This link remains available for 7 days.

@@ -337,6 +337,7 @@ class PullData(models.Model):
     chain_force = models.FloatField(blank=True, null=True)
     speed = models.FloatField(blank=True, null=True)
     distance = models.FloatField(blank=True, null=True)
+    pull_time = models.FloatField(blank=True, null=True)
 
     class Meta:
         managed = False
@@ -344,6 +345,81 @@ class PullData(models.Model):
 
     def __str__(self):
         return f"PullData {self.data_id} for Pull {self.pull_id}"
+
+
+class PullExportJob(models.Model):
+    class Statuses(models.TextChoices):
+        QUEUED = "queued", "Queued"
+        RUNNING = "running", "Running"
+        SUCCEEDED = "succeeded", "Succeeded"
+        FAILED = "failed", "Failed"
+        EXPIRED = "expired", "Expired"
+
+    pull_export_job_id = models.AutoField(primary_key=True)
+    user = models.ForeignKey(
+        "auth.User",
+        models.DO_NOTHING,
+        db_column="user_id",
+        related_name="pull_export_jobs",
+    )
+    status = models.CharField(max_length=20, choices=Statuses.choices)
+    filters_json = models.TextField(blank=True, null=True)
+    total_pulls = models.IntegerField(blank=True, null=True)
+    processed_pulls = models.IntegerField(blank=True, null=True)
+    zip_rel_path = models.CharField(max_length=255, blank=True, null=True)
+    download_url = models.CharField(max_length=500, blank=True, null=True)
+    error_message = models.TextField(blank=True, null=True)
+    task_id = models.CharField(max_length=255, blank=True, null=True)
+    created_at = models.DateTimeField()
+    started_at = models.DateTimeField(blank=True, null=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
+    expires_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = "pull_export_jobs"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["status", "created_at"]),
+            models.Index(fields=["expires_at"]),
+        ]
+
+    def __str__(self):
+        return f"PullExportJob #{self.pull_export_job_id} ({self.status})"
+
+
+class PullExportJobItem(models.Model):
+    pull_export_job_item_id = models.AutoField(primary_key=True)
+    pull_export_job = models.ForeignKey(
+        PullExportJob,
+        models.DO_NOTHING,
+        db_column="pull_export_job_id",
+        related_name="items",
+    )
+    pull = models.ForeignKey(
+        Pull,
+        models.DO_NOTHING,
+        db_column="pull_id",
+        related_name="export_job_items",
+    )
+
+    class Meta:
+        managed = False
+        db_table = "pull_export_job_items"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["pull_export_job", "pull"],
+                name="uniq_pull_export_job_item",
+            )
+        ]
+        indexes = [
+            models.Index(fields=["pull_export_job"]),
+            models.Index(fields=["pull"]),
+        ]
+
+    def __str__(self):
+        return f"PullExportJobItem #{self.pull_export_job_item_id}"
 
 
 class EventTeam(models.Model):

@@ -1,0 +1,7 @@
+Your pull export could not be completed.
+
+Job ID: {{ job.pull_export_job_id }}
+Status: {{ job.status }}
+Error: {{ error_message }}
+
+Please try again from the pull export page.

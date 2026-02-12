@@ -7,13 +7,14 @@ from collections import defaultdict
 import json
 import os
 from pathlib import Path
+from urllib.parse import urlencode
 from .models import Event
 from django.conf import settings
-from .models import TeamClass, Team, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, Tractor, TractorEvent, ScheduleItem, TractorMedia, EditLog
-from django.views.decorators.http import require_POST
+from .models import TeamClass, Team, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, PullExportJob, PullExportJobItem, Tractor, TractorEvent, ScheduleItem, TractorMedia, EditLog
+from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
 from functools import wraps
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from iqs_site.utilities import log_view
 from django.core.cache import cache
 from django.views.decorators.cache import cache_page
@@ -28,6 +29,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import Http404
 from .forms import TeamProfileEditForm
 from django.db.models import OuterRef, Subquery, Case, When, Value, IntegerField
+from django.urls import reverse
 
 
 from .models import DurabilityRun, DurabilityData, ManeuverabilityRun, PerformanceEventMedia
@@ -35,8 +37,63 @@ from .models import Tractor, TractorInfo
 from .forms import TractorProfileEditForm
 from .permissions import can_edit_tractor
 from .tractorinfo_utils import TRACTOR_INFO_MAP
+from .tasks import generate_pull_export_zip
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+
+
+def _extract_pull_export_filters(data):
+    return {
+        "event_name": (data.get("event_name") or "").strip(),
+        "team": (data.get("team") or "").strip(),
+        "hook": (data.get("hook") or "").strip(),
+        "tractor": (data.get("tractor") or "").strip(),
+    }
+
+
+def _build_pull_export_queryset(filters):
+    pulls = (
+        Pull.objects
+        .select_related("event", "team", "hook", "tractor")
+        .all()
+    )
+
+    if filters["event_name"]:
+        pulls = pulls.filter(event__event_name__icontains=filters["event_name"])
+
+    if filters["team"]:
+        team_q = filters["team"]
+        pulls = pulls.filter(
+            Q(team__team_name__icontains=team_q) |
+            Q(team__team_number__iexact=team_q)
+        )
+
+    if filters["hook"]:
+        pulls = pulls.filter(hook__hook_name__icontains=filters["hook"])
+
+    if filters["tractor"]:
+        pulls = pulls.filter(tractor__tractor_name__icontains=filters["tractor"])
+
+    return pulls.order_by("-event__event_datetime", "team__team_name", "pull_id")
+
+
+def _pull_export_jobs_for_user(user):
+    return (
+        PullExportJob.objects
+        .filter(user=user)
+        .order_by("-created_at")
+    )
+
+
+def _build_pull_export_redirect(filters, job_id=None):
+    params = {k: v for k, v in filters.items() if v}
+    if job_id is not None:
+        params["job"] = str(job_id)
+
+    if not params:
+        return reverse("events:pull_export")
+
+    return f"{reverse('events:pull_export')}?{urlencode(params)}"
 
 @log_view
 #@cache_page(300)  # 300 seconds = 5 minutes
@@ -678,6 +735,133 @@ def maneuverability_run_detail(request, run_id: int):
 
     return render(request, "events/maneuverability_run_detail.html", context)
 
+@login_required
+def pull_export(request):
+    if request.method == "POST":
+        filters = _extract_pull_export_filters(request.POST)
+        filtered_qs = _build_pull_export_queryset(filters)
+        export_all = request.POST.get("export_all_filtered") == "1"
+
+        if export_all:
+            selected_pull_ids = list(filtered_qs.values_list("pull_id", flat=True))
+        else:
+            selected_pull_ids = []
+            for raw_id in request.POST.getlist("selected_pulls"):
+                try:
+                    selected_pull_ids.append(int(raw_id))
+                except (TypeError, ValueError):
+                    continue
+
+            if selected_pull_ids:
+                valid_ids = set(
+                    filtered_qs
+                    .filter(pull_id__in=selected_pull_ids)
+                    .values_list("pull_id", flat=True)
+                )
+                selected_pull_ids = [pid for pid in selected_pull_ids if pid in valid_ids]
+
+        if not selected_pull_ids:
+            messages.error(request, "Select at least one pull or use Export all filtered pulls.")
+            return redirect(_build_pull_export_redirect(filters))
+
+        now = timezone.now()
+        job = PullExportJob.objects.create(
+            user=request.user,
+            status=PullExportJob.Statuses.QUEUED,
+            filters_json=json.dumps(filters),
+            total_pulls=len(selected_pull_ids),
+            processed_pulls=0,
+            created_at=now,
+        )
+
+        PullExportJobItem.objects.bulk_create(
+            [
+                PullExportJobItem(
+                    pull_export_job=job,
+                    pull_id=pull_id,
+                )
+                for pull_id in selected_pull_ids
+            ],
+            batch_size=1000,
+        )
+
+        async_result = generate_pull_export_zip.delay(job.pull_export_job_id)
+        job.task_id = async_result.id
+        job.save(update_fields=["task_id"])
+
+        messages.success(
+            request,
+            f"Export job #{job.pull_export_job_id} queued for {len(selected_pull_ids)} pull(s).",
+        )
+        return redirect(_build_pull_export_redirect(filters, job.pull_export_job_id))
+
+    filters = _extract_pull_export_filters(request.GET)
+    pulls = _build_pull_export_queryset(filters)
+    jobs = _pull_export_jobs_for_user(request.user)[:25]
+
+    active_job = None
+    active_job_status_url = None
+    active_job_id_raw = request.GET.get("job")
+    if active_job_id_raw:
+        try:
+            active_job_id = int(active_job_id_raw)
+        except (TypeError, ValueError):
+            active_job_id = None
+
+        if active_job_id is not None:
+            active_job = PullExportJob.objects.filter(
+                pull_export_job_id=active_job_id,
+                user=request.user,
+            ).first()
+
+        if active_job:
+            active_job_status_url = reverse(
+                "events:pull_export_job_status",
+                args=[active_job.pull_export_job_id],
+            )
+
+    context = {
+        "filters": filters,
+        "pulls": pulls,
+        "jobs": jobs,
+        "active_job": active_job,
+        "active_job_status_url": active_job_status_url,
+        "active_page": "events",
+    }
+    return render(request, "events/pull_export.html", context)
+
+
+@login_required
+@require_GET
+def pull_export_job_status(request, job_id: int):
+    job = get_object_or_404(
+        PullExportJob,
+        pull_export_job_id=job_id,
+        user=request.user,
+    )
+
+    total = job.total_pulls or 0
+    processed = job.processed_pulls or 0
+    if total > 0:
+        percent = int((processed / total) * 100)
+    else:
+        percent = 100 if job.status in {
+            PullExportJob.Statuses.SUCCEEDED,
+            PullExportJob.Statuses.EXPIRED,
+        } else 0
+
+    payload = {
+        "job_id": job.pull_export_job_id,
+        "status": job.status,
+        "total_pulls": total,
+        "processed_pulls": processed,
+        "percent": max(0, min(100, percent)),
+        "download_url": job.download_url,
+        "expires_at": job.expires_at.isoformat() if job.expires_at else None,
+        "error_message": job.error_message,
+    }
+    return JsonResponse(payload)
+
 @log_view
 @cache_page(300)
 def tractor_detail(request, tractor_id):
@@ -1253,4 +1437,3 @@ def all_photos(request):
     }
 
     return render(request, "events/photo_all.html", context)
-
