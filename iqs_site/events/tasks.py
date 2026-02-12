@@ -40,8 +40,12 @@ def generate_pull_export_zip(self, job_id: int) -> dict:
     final_zip_path = None
 
     try:
-        pull_ids = list(job.items.order_by("pull_id").values_list("pull_id", flat=True))
-        total = len(pull_ids)
+        export_items = list(
+            job.items
+            .select_related("pull__team", "pull__hook", "pull__event")
+            .order_by("pull_id")
+        )
+        total = len(export_items)
         if job.total_pulls != total:
             job.total_pulls = total
             job.save(update_fields=["total_pulls"])
@@ -50,8 +54,13 @@ def generate_pull_export_zip(self, job_id: int) -> dict:
             tmp_dir_path = Path(tmp_dir)
             csv_paths = []
 
-            for idx, pull_id in enumerate(pull_ids, start=1):
-                csv_name = f"pull_{pull_id}.csv"
+            for idx, item in enumerate(export_items, start=1):
+                pull = item.pull
+                pull_id = pull.pull_id
+                team_name = pull.team.team_name if pull.team else "team"
+                hook_name = pull.hook.hook_name if pull.hook and pull.hook.hook_name else "hook"
+                event_name = pull.event.event_name if pull.event and pull.event.event_name else "event"
+                csv_name = f"{event_name}_{hook_name}_{team_name}_pull_{pull_id}.csv".replace(" ","_")
                 csv_path = tmp_dir_path / csv_name
 
                 rows = PullData.objects.filter(pull_id=pull_id).order_by("pull_time", "data_id")
