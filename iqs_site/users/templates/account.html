@@ -3,6 +3,8 @@
 {% block content %}
   <h1>My Account</h1>
 
+  <p><a href="{% url 'password_change' %}">Change Password</a></p>
+
   <h2>Teams I'm a Member Of</h2>
   {% if teams_member %}
     <ul>
