@@ -783,3 +783,18 @@ class EditLog(models.Model):
     def __str__(self):
         target = self.team or self.tractor
         return f"{self.user} changed {self.field_name} on {target} at {self.timestamp}"
+
+class Report(models.Model):
+    report_id=models.AutoField(primary_key=True)
+    report_type=models.IntegerField()
+    event_team = models.ForeignKey(
+        EventTeam,
+        models.DO_NOTHING,
+        db_column="event_team_id",
+        related_name="reports",
+    )
+    report_link=models.CharField(max_length=255)
+
+    class Meta:
+        db_table = 'reports'
+        

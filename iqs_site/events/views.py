@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 from .models import Event
 from django.conf import settings
-from .models import TeamClass, Team, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, PullExportJob, PullExportJobItem, Tractor, TractorEvent, ScheduleItem, TractorMedia, EditLog
+from .models import TeamClass, Team, Report, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, PullExportJob, PullExportJobItem, Tractor, TractorEvent, ScheduleItem, TractorMedia, EditLog
 from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
 from functools import wraps
@@ -347,6 +347,12 @@ def team_event_detail(request, event_id, team_id):
         .select_related("type")
         .filter(event=event,team=team)
         .order_by("datetime"))
+    
+    reports=(
+        Report.objects.
+        filter(event_team=event_team).
+        order_by("report_type")
+    )
 
     # Chart data: labels = hook name / id, distances = final_distance (0 if None)
     chart_labels = []
@@ -391,7 +397,8 @@ def team_event_detail(request, event_id, team_id):
         "event_photos": event_photos,
         "hero_photo": hero_photo,
         "active_page": "events",
-        "schedule_items":schedule_items
+        "schedule_items":schedule_items,
+        "reports":reports
     }
     return render(request, "events/team_event_detail.html", context)
 

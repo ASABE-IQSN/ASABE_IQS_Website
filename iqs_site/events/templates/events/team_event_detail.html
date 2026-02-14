@@ -6,6 +6,10 @@
 {% block extra_head %}
   <!-- Chart.js for the pull distance chart -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  {% if reports %}
+  <!-- pdf.js for report thumbnails -->
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs" type="module"></script>
+  {% endif %}
 {% endblock %}
 
 {% block extra_styles %}
@@ -299,6 +303,80 @@
     .lightbox-arrow.right {
       right: 0.5rem;
     }
+    .report-grid {
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+    }
+  }
+
+  /* Report thumbnail grid */
+  .report-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .report-thumb {
+    background: #020617;
+    border: 1px solid #1f2937;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  .report-thumb:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+  }
+
+  .report-thumb .report-canvas {
+    width: 100%;
+    display: block;
+    background: #fff;
+  }
+
+  .report-label {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.78rem;
+    color: #9ca3af;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* PDF modal */
+  .pdf-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.95);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 50;
+  }
+
+  .pdf-modal-overlay.open {
+    display: flex;
+  }
+
+  .pdf-modal-inner {
+    position: relative;
+    width: 90vw;
+    height: 90vh;
+  }
+
+  .pdf-modal-inner iframe {
+    width: 100%;
+    height: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid #1f2937;
+  }
+
+  .pdf-modal-inner .lightbox-close {
+    top: -0.5rem;
+    right: -0.5rem;
+    z-index: 51;
   }
 {% endblock %}
 
@@ -457,6 +535,27 @@
       <p class="empty">No pulls recorded for this team in this event.</p>
     {% endif %}
   </section>
+  {% if reports %}
+  <section style="margin-top: 1.5rem;">
+    <h2>Reports</h2>
+    <div class="report-grid">
+      {% for report in reports %}
+        <div class="report-thumb" data-pdf-url="/static/{{ report.report_link }}">
+          <canvas class="report-canvas"></canvas>
+          <div class="report-label">{{ report.report_link|cut:"reports/"|truncatechars:30 }}</div>
+        </div>
+      {% endfor %}
+    </div>
+
+    <!-- PDF modal overlay -->
+    <div class="pdf-modal-overlay" id="pdfModal">
+      <div class="pdf-modal-inner">
+        <button class="lightbox-close" type="button" id="pdfModalClose" aria-label="Close">&times;</button>
+        <iframe id="pdfModalFrame" src="" frameborder="0"></iframe>
+      </div>
+    </div>
+  </section>
+  {% endif %}
   <section style="margin-top: 1.5rem;">
     <h2>Durability Runs</h2>
 
@@ -649,6 +748,71 @@
             beginAtZero: true
           }
         }
+      }
+    });
+  </script>
+  {% endif %}
+
+  {% if reports %}
+  <script type="module">
+    import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+
+    // Render first page of each PDF as thumbnail
+    document.querySelectorAll('.report-thumb').forEach(async (thumb) => {
+      const url = thumb.dataset.pdfUrl;
+      const canvas = thumb.querySelector('.report-canvas');
+      try {
+        const pdf = await pdfjsLib.getDocument(url).promise;
+        const page = await pdf.getPage(1);
+        const viewport = page.getViewport({ scale: 1 });
+        const thumbWidth = 240;
+        const scale = thumbWidth / viewport.width;
+        const scaledViewport = page.getViewport({ scale });
+
+        canvas.width = scaledViewport.width;
+        canvas.height = scaledViewport.height;
+        await page.render({
+          canvasContext: canvas.getContext('2d'),
+          viewport: scaledViewport
+        }).promise;
+      } catch (e) {
+        canvas.style.display = 'none';
+        const fallback = document.createElement('div');
+        fallback.style.cssText = 'padding:2rem;text-align:center;color:#6b7280;font-size:0.85rem;';
+        fallback.textContent = 'PDF preview unavailable';
+        thumb.insertBefore(fallback, thumb.firstChild);
+      }
+    });
+
+    // PDF modal open/close
+    const modal = document.getElementById('pdfModal');
+    const modalFrame = document.getElementById('pdfModalFrame');
+    const modalClose = document.getElementById('pdfModalClose');
+
+    document.querySelectorAll('.report-thumb').forEach((thumb) => {
+      thumb.addEventListener('click', () => {
+        modalFrame.src = thumb.dataset.pdfUrl;
+        modal.classList.add('open');
+      });
+    });
+
+    modalClose.addEventListener('click', () => {
+      modal.classList.remove('open');
+      modalFrame.src = '';
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('open');
+        modalFrame.src = '';
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && modal.classList.contains('open')) {
+        modal.classList.remove('open');
+        modalFrame.src = '';
       }
     });
   </script>
