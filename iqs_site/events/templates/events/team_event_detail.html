@@ -540,7 +540,7 @@
     <h2>Reports</h2>
     <div class="report-grid">
       {% for report in reports %}
-        <div class="report-thumb" data-pdf-url="/static/{{ report.report_link }}">
+        <div class="report-thumb" data-pdf-url="/event/report/{{ report.report_id }}">
           <canvas class="report-canvas"></canvas>
           <div class="report-label">{{ report.report_link|cut:"reports/"|truncatechars:30 }}</div>
         </div>
