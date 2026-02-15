@@ -1542,9 +1542,12 @@ def team_event_edit(request, event_id: int, team_id: int):
                 with save_path.open("wb+") as dest:
                     for chunk in report_file.chunks():
                         dest.write(chunk)
+                report_type = int(request.POST.get("report_type", 1))
+                if report_type not in (1, 2, 3):
+                    report_type = 1
                 Report.objects.create(
                     event_team=event_team,
-                    report_type=1,
+                    report_type=report_type,
                     report_link=filename,
                 )
                 messages.success(request, "Report uploaded successfully!")

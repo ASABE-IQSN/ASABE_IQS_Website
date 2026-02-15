@@ -35,10 +35,17 @@
         <!-- Report Upload Section -->
         <div>
           <label><strong>Upload Report (PDF)</strong></label><br>
+          <select name="report_type" required
+                  style="padding: 0.4rem 0.75rem; border: 1px solid #1f2937; border-radius: 0.5rem; background: #020617; color: #F3F6E7; font-size: 0.9rem; width: 100%; margin-bottom: 0.5rem;">
+            <option value="" disabled selected>-- Select report type --</option>
+            <option value="1">Design Report</option>
+            <option value="2">Cost Report</option>
+            <option value="3">Design Log</option>
+          </select>
           <input type="file" name="report" accept=".pdf"
                  style="padding: 0.4rem; border: 1px solid #1f2937; border-radius: 0.5rem; background: #020617; color: #F3F6E7; font-size: 0.9rem; width: 100%; margin-bottom: 0.5rem;">
           <div style="font-size:0.8rem; color:#9ca3af; margin-top: 0.3rem;">
-            Upload a team report for this event. Supported format: PDF.
+            Select the report type and upload a PDF.
           </div>
         </div>
 
