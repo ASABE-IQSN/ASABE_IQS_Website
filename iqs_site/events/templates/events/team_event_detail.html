@@ -333,9 +333,15 @@
   }
 
   .report-thumb .report-canvas {
+    display: none;
+  }
+
+  .report-thumb .report-preview {
     width: 100%;
+    height: 240px;
     display: block;
     background: #fff;
+    object-fit: contain;
   }
 
   .report-label {
@@ -550,7 +556,7 @@
       {% for report in reports %}
         <div class="report-thumb" data-pdf-url="/report/{{ report.report_id }}">
           <canvas class="report-canvas"></canvas>
-          <div class="report-label">{{ report.report_link|cut:"reports/"|truncatechars:30 }}</div>
+          <div class="report-label">{% if report.report_type == 1 %}Design Report{% elif report.report_type == 2 %}Cost Report{% elif report.report_type == 3 %}Design Log{% else %}Report{% endif %}</div>
         </div>
       {% endfor %}
     </div>
@@ -749,7 +755,7 @@
     import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs';
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
 
-    // Render first page of each PDF as thumbnail
+    // Render first page of each PDF as thumbnail image
     document.querySelectorAll('.report-thumb').forEach(async (thumb) => {
       const url = thumb.dataset.pdfUrl;
       const canvas = thumb.querySelector('.report-canvas');
@@ -757,7 +763,7 @@
         const pdf = await pdfjsLib.getDocument(url).promise;
         const page = await pdf.getPage(1);
         const viewport = page.getViewport({ scale: 1 });
-        const thumbWidth = 240;
+        const thumbWidth = 480;
         const scale = thumbWidth / viewport.width;
         const scaledViewport = page.getViewport({ scale });
 
@@ -767,8 +773,15 @@
           canvasContext: canvas.getContext('2d'),
           viewport: scaledViewport
         }).promise;
+
+        // Convert canvas to img for proper aspect-ratio handling
+        const img = document.createElement('img');
+        img.src = canvas.toDataURL();
+        img.className = 'report-preview';
+        img.alt = 'Report preview';
+        canvas.replaceWith(img);
       } catch (e) {
-        canvas.style.display = 'none';
+        canvas.remove();
         const fallback = document.createElement('div');
         fallback.style.cssText = 'padding:2rem;text-align:center;color:#6b7280;font-size:0.85rem;';
         fallback.textContent = 'PDF preview unavailable';
