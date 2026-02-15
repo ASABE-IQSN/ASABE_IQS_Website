@@ -1,5 +1,5 @@
 from django.http import HttpResponseForbidden
-
+from users.models import UserProfile
 from django.conf import settings
 
 def can_edit_team(user, team):
@@ -10,6 +10,9 @@ def can_edit_team(user, team):
         return False
     
     if user.groups.filter(name="Admin").exists():
+        return True
+
+    if user.profile.role==UserProfile.Role.ALUMNI and user.profile.team==team:
         return True
 
     if user.is_superuser:
