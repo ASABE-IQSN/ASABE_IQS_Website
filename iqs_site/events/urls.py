@@ -27,5 +27,6 @@ urlpatterns = [
     path("durability/runs/<int:run_id>/upload-photo/", views.upload_durability_photo, name="upload_durability_photo"),
     path("maneuverability/runs/<int:run_id>/upload-photo/", views.upload_maneuverability_photo, name="upload_maneuverability_photo"),
     path("photo_all",views.all_photos,name="photos"),
-    path("report/<int:report_id>",views.report_download,name="report")
+    path("report/<int:report_id>",views.report_download,name="report"),
+    path("team-event/<int:event_id>/<int:team_id>/edit/", views.team_event_edit, name="team_event_edit"),
 ]

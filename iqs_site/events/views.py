@@ -398,7 +398,8 @@ def team_event_detail(request, event_id, team_id):
         "hero_photo": hero_photo,
         "active_page": "events",
         "schedule_items":schedule_items,
-        "reports":reports
+        "reports":reports,
+        "can_edit": request.user.is_authenticated and can_edit_team(request.user, team),
     }
     return render(request, "events/team_event_detail.html", context)
 
@@ -1455,3 +1456,108 @@ def report_download(request, report_id):
     response["X-Accel-Redirect"] = f"/_reports/{report.report_link}"
     response["Content-Disposition"] = f'inline; filename="{report.report_link}"'
     return response
+
+
+ALLOWED_REPORT_EXTENSIONS = {"pdf"}
+
+
+def _allowed_report(filename: str) -> bool:
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_REPORT_EXTENSIONS
+
+
+@login_required
+def team_event_edit(request, event_id: int, team_id: int):
+    event = get_object_or_404(Event, pk=event_id)
+    team = get_object_or_404(Team, pk=team_id)
+
+    if not can_edit_team(request.user, team):
+        raise PermissionDenied
+
+    event_team = EventTeam.objects.filter(event=event, team=team).first()
+    if event_team is None:
+        raise Http404("This team is not registered for this event.")
+
+    existing_photos = (
+        EventTeamPhoto.objects
+        .filter(event_team=event_team, approved=True)
+        .order_by("event_team_photo_id")
+    )
+    existing_reports = (
+        Report.objects
+        .filter(event_team=event_team)
+        .order_by("report_type")
+    )
+
+    if request.method == "POST":
+        xff = request.META.get("HTTP_X_FORWARDED_FOR")
+        ip = xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")
+        approved = request.user.has_perm("events.can_auto_approve_team_photos")
+
+        # --- Photo caption updates ---
+        for photo in existing_photos:
+            caption_key = f"caption_{photo.event_team_photo_id}"
+            new_caption = request.POST.get(caption_key, "").strip()
+            old_caption = photo.caption or ""
+            if new_caption != old_caption:
+                photo.caption = new_caption if new_caption else None
+                photo.save(update_fields=["caption"])
+
+        # --- Photo upload ---
+        photo_file = request.FILES.get("photo")
+        if photo_file and photo_file.name:
+            if allowed_file(photo_file.name):
+                name_root, ext = os.path.splitext(photo_file.name)
+                ext = ext.lower()
+                safe_root = "".join(c for c in name_root if c.isalnum() or c in ("-", "_"))
+                if not safe_root:
+                    safe_root = "photo"
+                filename = f"event{event_id}_team{team_id}_{safe_root}{ext}"
+                save_path = Path(f"/var/www/quarterscale/static/photos/{filename}")
+                save_path.parent.mkdir(parents=True, exist_ok=True)
+                with save_path.open("wb+") as dest:
+                    for chunk in photo_file.chunks():
+                        dest.write(chunk)
+                EventTeamPhoto.objects.create(
+                    event_team=event_team,
+                    photo_path=f"photos/{filename}",
+                    submitted_from_ip=ip,
+                    approved=approved,
+                )
+                messages.success(request, "Photo uploaded successfully!")
+            else:
+                messages.error(request, "Invalid file type. Please upload an image (png, jpg, jpeg, gif, webp).")
+
+        # --- Report upload ---
+        report_file = request.FILES.get("report")
+        if report_file and report_file.name:
+            if _allowed_report(report_file.name):
+                name_root, ext = os.path.splitext(report_file.name)
+                ext = ext.lower()
+                safe_root = "".join(c for c in name_root if c.isalnum() or c in ("-", "_"))
+                if not safe_root:
+                    safe_root = "report"
+                filename = f"event{event_id}_team{team_id}_{safe_root}{ext}"
+                save_path = Path(f"/var/www/quarterscale/reports/{filename}")
+                save_path.parent.mkdir(parents=True, exist_ok=True)
+                with save_path.open("wb+") as dest:
+                    for chunk in report_file.chunks():
+                        dest.write(chunk)
+                Report.objects.create(
+                    event_team=event_team,
+                    report_type=1,
+                    report_link=filename,
+                )
+                messages.success(request, "Report uploaded successfully!")
+            else:
+                messages.error(request, "Invalid file type. Please upload a PDF.")
+
+        return redirect("events:team_event_detail", event_id=event_id, team_id=team_id)
+
+    return render(request, "events/team_event_edit.html", {
+        "team": team,
+        "event": event,
+        "event_team": event_team,
+        "existing_photos": existing_photos,
+        "existing_reports": existing_reports,
+        "active_page": "events",
+    })

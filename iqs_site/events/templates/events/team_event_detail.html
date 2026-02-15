@@ -17,6 +17,8 @@
     font-size: 0.8rem;
     color: #9ca3af;
     margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
   }
 
   .breadcrumbs a {
@@ -389,6 +391,12 @@
     <a href="{% url 'events:event_detail' event.event_id %}">{{ event.event_name }}</a>
     <span>›</span>
     <span>{{ team.team_name }}</span>
+    
+      <a href="{% url 'events:team_event_edit' event.event_id team.team_id %}"
+         style="margin-left: auto; padding: 0.3rem 0.75rem; border-radius: 999px; border: 1px solid #1f2937; background: #111827; color: #F3F6E7; font-size: 0.8rem; text-decoration: none;">
+        Edit
+      </a>
+   
   </div>
 
   <!-- Hero area -->
@@ -693,23 +701,6 @@
         <p class="empty">No photos uploaded for this team at this event yet.</p>
       {% endif %}
 
-      <!-- Upload form (stubbed; you'll back this with a Django view) -->
-      <form action="{% url 'events:upload_team_photo' event.event_id team.team_id %}"
-            method="post"
-            enctype="multipart/form-data"
-            style="margin-top: 0.5rem; font-size: 0.9rem;">
-        {% csrf_token %}
-        <label for="photo" style="display: block; margin-bottom: 0.25rem;">
-          Upload a new team photo for this event:
-        </label>
-        <input type="file" id="photo" name="photo" accept="image/*"
-               style="margin-bottom: 0.5rem;">
-        <br>
-        <button type="submit"
-                style="padding: 0.35rem 0.9rem; border-radius: 999px; border: 1px solid #1f2937; background: #0f172a; color: #F3F6E7; cursor: pointer;">
-          Upload
-        </button>
-      </form>
     </section>
   {% endif %}
 
