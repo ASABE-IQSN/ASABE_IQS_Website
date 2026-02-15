@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.contrib.auth.models import Group
-from .models import GroupProfile, TeamEmail, TeamEnrollmentRequest
+from .models import GroupProfile, TeamEmail, TeamEnrollmentRequest, UserProfile
 
 
 class GroupProfileInline(admin.StackedInline):
@@ -38,3 +38,11 @@ class TeamEnrollmentRequestAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "user__email", "team__team_name")
     readonly_fields = ("requested_at", "reviewed_at")
     raw_id_fields = ("user", "team", "reviewed_by")
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ("user", "role", "team", "company_name")
+    list_filter = ("role",)
+    search_fields = ("user__username", "user__email", "team__team_name", "company_name")
+    raw_id_fields = ("user", "team")

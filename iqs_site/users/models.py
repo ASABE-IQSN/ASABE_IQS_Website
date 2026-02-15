@@ -134,3 +134,38 @@ class TeamEnrollmentRequest(models.Model):
 
     def __str__(self):
         return f"{self.user.username} → {self.team.team_name} ({self.status})"
+
+
+class UserProfile(models.Model):
+    class Role(models.IntegerChoices):
+        STUDENT = 1, 'Student'
+        ADVISOR = 2, 'Advisor'
+        SPONSOR = 3, 'Sponsor'
+        ALUMNI = 4, 'Alumni'
+        SPECTATOR = 5, 'Spectator'
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='profile',
+    )
+    role = models.IntegerField(choices=Role.choices)
+
+    # Student fields
+    team = models.ForeignKey(
+        Team, on_delete=models.SET_NULL, null=True, blank=True,
+        db_column='team_id_profile',
+        related_name='member_profiles', db_constraint=False,
+    )
+    graduation_year = models.PositiveIntegerField(null=True, blank=True)
+
+    # Sponsor fields
+    company_name = models.CharField(max_length=255, blank=True, default='')
+    sponsorship_level = models.CharField(max_length=100, blank=True, default='')
+
+    # Alumni fields
+    alumni_graduation_year = models.PositiveIntegerField(null=True, blank=True)
+    years_participated = models.PositiveIntegerField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_role_display()}"

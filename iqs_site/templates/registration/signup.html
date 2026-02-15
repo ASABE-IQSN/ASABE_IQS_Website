@@ -5,7 +5,64 @@
 
   <form method="post">
     {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Sign up</button>
+
+    <p>{{ form.username.label_tag }} {{ form.username }}
+       {% for error in form.username.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+    <p>{{ form.email.label_tag }} {{ form.email }}
+       {% for error in form.email.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+    <p>{{ form.password1.label_tag }} {{ form.password1 }}
+       {% for error in form.password1.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+    <p>{{ form.password2.label_tag }} {{ form.password2 }}
+       {% for error in form.password2.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+
+    <p>{{ form.role.label_tag }} {{ form.role }}
+       {% for error in form.role.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+
+    <div class="role-fields" data-role="1" style="display:none;">
+      <p>{{ form.team.label_tag }} {{ form.team }}
+         {% for error in form.team.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+      <p>{{ form.graduation_year.label_tag }} {{ form.graduation_year }}
+         {% for error in form.graduation_year.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+    </div>
+
+    <div class="role-fields" data-role="2" style="display:none;">
+      <p>{{ form.team.label_tag }} {{ form.team }}
+         {% for error in form.team.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+    </div>
+
+    <div class="role-fields" data-role="3" style="display:none;">
+      <p>{{ form.company_name.label_tag }} {{ form.company_name }}
+         {% for error in form.company_name.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+      <p>{{ form.sponsorship_level.label_tag }} {{ form.sponsorship_level }}
+         {% for error in form.sponsorship_level.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+    </div>
+
+    <div class="role-fields" data-role="4" style="display:none;">
+      <p>{{ form.team.label_tag }} {{ form.team }}
+         {% for error in form.team.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+      <p>{{ form.alumni_graduation_year.label_tag }} {{ form.alumni_graduation_year }}
+         {% for error in form.alumni_graduation_year.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+      <p>{{ form.years_participated.label_tag }} {{ form.years_participated }}
+         {% for error in form.years_participated.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+    </div>
+    Note: Depending on your role on a team,you may require approval by a team admin to become a member of the team.
+    <p/><button type="submit">Sign up</button>
   </form>
+
+  <script>
+    (function() {
+      var roleSelect = document.getElementById('id_role');
+      var allSections = document.querySelectorAll('.role-fields');
+
+      function updateVisibility() {
+        var selected = roleSelect.value;
+        allSections.forEach(function(section) {
+          section.style.display = section.dataset.role === selected ? '' : 'none';
+        });
+      }
+
+      roleSelect.addEventListener('change', updateVisibility);
+      updateVisibility();
+    })();
+  </script>
 {% endblock %}
