@@ -128,6 +128,7 @@ def event_list(request):
         .all()
         .prefetch_related("event_teams__team")  # adjust related_name as needed
         .order_by("-event_datetime")
+        .filter(enabled=True)
     )
 
     # first 2 classes – matches your original “first 2 team classes” behavior

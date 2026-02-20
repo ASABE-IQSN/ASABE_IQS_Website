@@ -26,6 +26,7 @@ class Event(models.Model):
     event_datetime = models.DateTimeField(blank=True, null=True)
     event_active = models.BooleanField(blank=False,null=False)
     techin_released = models.BooleanField(blank=False,null=False)
+    enabled=models.BooleanField()
     # Convenience many-to-many – all tractors in this event
     tractors = models.ManyToManyField(
         "Tractor",
