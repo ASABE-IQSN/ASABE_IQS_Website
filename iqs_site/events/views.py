@@ -1447,16 +1447,7 @@ def all_photos(request):
 
     return render(request, "events/photo_all.html", context)
     
-def report_download(request, report_id):
-    report = Report.objects.get(pk=report_id)
-    print("Report Request")
-    # if not report.released and not request.user.is_staff:
-    #     raise Http404()
 
-    response = HttpResponse(content_type="application/pdf")
-    response["X-Accel-Redirect"] = f"/_reports/{report.report_link}"
-    response["Content-Disposition"] = f'inline; filename="{report.report_link}"'
-    return response
 
 
 ALLOWED_REPORT_EXTENSIONS = {"pdf"}

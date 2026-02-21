@@ -101,6 +101,7 @@ INSTALLED_APPS = [
     "users",
     "stats",
     "api",
+    "reports",
     "django_celery_beat",
 ]
 
@@ -350,6 +351,8 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 
 APIURL=os.environ["APIURL"]
+
+INTERNAL_REPORT_TOKEN = os.environ.get("INTERNAL_REPORT_TOKEN", "")
 
 # ── Django REST Framework ─────────────────────────────────────────────
 REST_FRAMEWORK = {

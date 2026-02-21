@@ -46,6 +46,7 @@ urlpatterns = [
     path(root_prefix+"techin/",include("techin.urls",namespace="techin")),
     path(root_prefix+"accounts/", include("django.contrib.auth.urls")),
     path(root_prefix+"user/", include("users.urls",namespace="user")),
+    path(root_prefix+"reports/",include("reports.urls",namespace="reports")),
     path("stats/", include("stats.urls", namespace="stats")),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}),
 

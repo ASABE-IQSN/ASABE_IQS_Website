@@ -10,3 +10,9 @@ django-timezone-field==6.1.0
 gspread==6.2.1
 djangorestframework==3.16.*
 djangorestframework-simplejwt==5.5.*
+requests==2.32.*
+datasketch==1.6.*
+pypdf==5.*
+python-docx==1.*
+pdfminer.six==20231228
+pdfplumber==0.11.*
