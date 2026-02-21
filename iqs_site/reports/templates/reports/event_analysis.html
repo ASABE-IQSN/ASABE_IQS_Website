@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Event Analysis — {{ event.event_name }}{% endblock %}
+
+{% block extra_styles %}
+  .breadcrumb {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+  }
+
+  .toolbar select {
+    background: #020617;
+    color: #f3f6e7;
+    border: 1px solid #1f2937;
+    border-radius: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.88rem;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+  }
+
+  table {
+    border-collapse: collapse;
+    white-space: nowrap;
+  }
+
+  th, td {
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid #1f2937;
+    border-right: 1px solid #1f2937;
+    font-size: 0.82rem;
+    text-align: center;
+  }
+
+  th {
+    color: #9ca3af;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    background: #0b1120;
+  }
+
+  td:first-child, th:first-child {
+    text-align: center;
+    font-weight: 600;
+    color: #9ca3af;
+    background: #0b1120;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    min-width: 3.5rem;
+    border-right: 2px solid #1f2937;
+  }
+
+  th:first-child {
+    z-index: 2;
+  }
+
+  .th-team a {
+    color: #f3f6e7;
+    text-decoration: none;
+  }
+  .th-team a:hover {
+    text-decoration: underline;
+    color: #6687fc;
+  }
+
+  .sim-cell {
+    min-width: 4rem;
+    font-variant-numeric: tabular-nums;
+    transition: background 0.1s;
+  }
+
+  .no-page {
+    color: #374151;
+  }
+
+  .empty-msg {
+    color: #9ca3af;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+  }
+
+  .legend {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: #9ca3af;
+    margin-top: 0.75rem;
+  }
+
+  .legend-bar {
+    height: 10px;
+    width: 120px;
+    border-radius: 3px;
+    background: linear-gradient(to right, rgba(239,68,68,0.05), rgba(239,68,68,1));
+    border: 1px solid #1f2937;
+  }
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'reports:analysis_dashboard' %}">← Analysis Dashboard</a>
+  </div>
+
+  <h1 style="margin:0 0 0.2rem;">Event Analysis</h1>
+  <p style="color:#9ca3af;margin:0 0 1rem;font-size:0.9rem;">{{ event.event_name }}</p>
+
+  <form class="toolbar" method="get">
+    <label style="color:#9ca3af;font-size:0.85rem;">Report type</label>
+    <select name="report_type" onchange="this.form.submit()">
+      {% for rt, label in report_type_choices %}
+        <option value="{{ rt }}" {% if rt == report_type %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <noscript><button type="submit">Go</button></noscript>
+  </form>
+
+  {% if no_reports %}
+    <p class="empty-msg">No {{ report_type_label|lower }} reports found for this event, or none have been processed yet.</p>
+  {% elif not rows %}
+    <p class="empty-msg">Reports were found but contain no processed pages. Run an analysis from the dashboard first.</p>
+  {% else %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Page</th>
+            {% for report in reports %}
+              <th class="th-team" title="{{ report.event_team.team.team_name }}">
+                <a href="{% url 'reports:report_matches' report.report_id %}">
+                  {{ report.event_team.team.team_abbreviation|default:report.event_team.team.team_name }}
+                </a>
+              </th>
+            {% endfor %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td>{{ row.page_number }}</td>
+              {% for cell in row.cells %}
+                {% if cell is None %}
+                  <td class="no-page">—</td>
+                {% elif cell.sim_pct == 0 %}
+                  <td class="sim-cell" data-sim="0">—</td>
+                {% else %}
+                  <td class="sim-cell" data-sim="{{ cell.sim_pct }}">{{ cell.sim_pct }}%</td>
+                {% endif %}
+              {% endfor %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="legend">
+      <span>Low</span>
+      <div class="legend-bar"></div>
+      <span>High similarity</span>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  document.querySelectorAll('.sim-cell[data-sim]').forEach(td => {
+    const v = parseInt(td.dataset.sim, 10);
+    if (v > 0) {
+      // Scale: 15% → faint, 80%+ → saturated red
+      const alpha = Math.min((v / 80) * 0.9 + 0.05, 1.0);
+      td.style.background = `rgba(239,68,68,${alpha.toFixed(2)})`;
+      if (v >= 50) td.style.color = '#fff';
+    }
+  });
+</script>
+{% endblock %}

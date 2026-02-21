@@ -2,10 +2,11 @@ import json
 
 from django.conf import settings
 from django.contrib import messages
+from django.db.models import Max
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from events.models import Report
+from events.models import Event, Report
 
 from .models import AnalysisJob, ChunkMatch, PageMatch, ReportPage
 
@@ -164,6 +165,99 @@ def report_matches(request, report_id):
         "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
         "match_groups": match_groups,
         "no_pages": False,
+    })
+
+
+# ── Event analysis matrix ─────────────────────────────────────────────────────
+
+def event_analysis(request, event_id):
+    _require_staff(request)
+
+    event = get_object_or_404(Event, pk=event_id)
+
+    try:
+        report_type = int(request.GET.get("report_type", 1))
+    except (TypeError, ValueError):
+        report_type = 1
+
+    reports = list(
+        Report.objects
+        .filter(event_team__event_id=event_id, report_type=report_type)
+        .select_related("event_team__team")
+        .order_by("event_team__team__team_name")
+    )
+
+    available_types = (
+        Report.objects
+        .filter(event_team__event_id=event_id)
+        .values_list("report_type", flat=True)
+        .distinct()
+        .order_by("report_type")
+    )
+    report_type_choices = [
+        (rt, REPORT_TYPE_LABELS.get(rt, f"Type {rt}"))
+        for rt in available_types
+    ]
+
+    if not reports:
+        return render(request, "reports/event_analysis.html", {
+            "event": event,
+            "report_type": report_type,
+            "report_type_label": REPORT_TYPE_LABELS.get(report_type, f"Type {report_type}"),
+            "report_type_choices": report_type_choices,
+            "reports": [],
+            "rows": [],
+            "no_reports": True,
+        })
+
+    report_ids = [r.report_id for r in reports]
+
+    # page_id → (report_id, page_number)
+    page_info = {
+        p["page_id"]: (p["report_id"], p["page_number"])
+        for p in ReportPage.objects
+            .filter(report_id__in=report_ids)
+            .values("page_id", "report_id", "page_number")
+    }
+    page_ids = list(page_info.keys())
+
+    # Max similarity per page, checking both directions of PageMatch.
+    page_max_sim = {}
+    if page_ids:
+        for row in PageMatch.objects.filter(page_a_id__in=page_ids).values("page_a_id").annotate(ms=Max("similarity")):
+            pid = row["page_a_id"]
+            page_max_sim[pid] = max(page_max_sim.get(pid, 0.0), row["ms"])
+        for row in PageMatch.objects.filter(page_b_id__in=page_ids).values("page_b_id").annotate(ms=Max("similarity")):
+            pid = row["page_b_id"]
+            page_max_sim[pid] = max(page_max_sim.get(pid, 0.0), row["ms"])
+
+    # report_id → {page_number: max_sim (float or None if no matches)}
+    report_page_sims = {r.report_id: {} for r in reports}
+    for pid, (rid, pnum) in page_info.items():
+        report_page_sims[rid][pnum] = page_max_sim.get(pid)  # None = processed but no match found
+
+    all_page_numbers = sorted({pnum for ps in report_page_sims.values() for pnum in ps})
+
+    rows = []
+    for pnum in all_page_numbers:
+        cells = []
+        for r in reports:
+            ps = report_page_sims[r.report_id]
+            if pnum not in ps:
+                cells.append(None)  # this report doesn't have this page
+            else:
+                sim = ps[pnum] or 0.0
+                cells.append({"sim": sim, "sim_pct": round(sim * 100)})
+        rows.append({"page_number": pnum, "cells": cells})
+
+    return render(request, "reports/event_analysis.html", {
+        "event": event,
+        "report_type": report_type,
+        "report_type_label": REPORT_TYPE_LABELS.get(report_type, f"Type {report_type}"),
+        "report_type_choices": report_type_choices,
+        "reports": reports,
+        "rows": rows,
+        "no_reports": False,
     })
 
 
