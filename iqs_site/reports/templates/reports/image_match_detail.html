@@ -3,7 +3,14 @@
 
 {% block title %}Image Comparison — {{ team_a }} vs {{ team_b }}{% endblock %}
 
+{% block extra_head %}
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs" type="module"></script>
+{% endblock %}
+
 {% block extra_styles %}
+  /* Break out of the 1000px .wrap constraint */
+  .wrap { max-width: min(98vw, 1600px); }
+
   .breadcrumb {
     font-size: 0.85rem;
     color: #9ca3af;
@@ -54,6 +61,46 @@
     max-height: 500px;
     object-fit: contain;
     display: block;
+  }
+
+  .section-divider {
+    border: none;
+    border-top: 1px solid #1f2937;
+    margin: 1rem 0 0.75rem;
+  }
+
+  .page-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #6b7280;
+    margin: 0 0 0.5rem;
+  }
+
+  .pdf-wrap {
+    position: relative;
+    background: #1e293b;
+    border: 1px solid #1f2937;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    line-height: 0;
+  }
+
+  .pdf-wrap canvas {
+    width: 100%;
+    display: block;
+  }
+
+  .pdf-status {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    color: #9ca3af;
+    pointer-events: none;
+    min-height: 200px;
   }
 
   .verdict {
@@ -137,6 +184,12 @@
              alt="Image from {{ team_a }}, page {{ im.image_a.page_number }}"
              loading="lazy">
       </div>
+      <hr class="section-divider">
+      <p class="page-label">Full page {{ im.image_a.page_number }}</p>
+      <div class="pdf-wrap" id="wrap-left">
+        <canvas id="canvas-left"></canvas>
+        <div class="pdf-status" id="status-left">Loading&hellip;</div>
+      </div>
     </div>
 
     <div class="img-card">
@@ -154,6 +207,60 @@
              alt="Image from {{ team_b }}, page {{ im.image_b.page_number }}"
              loading="lazy">
       </div>
+      <hr class="section-divider">
+      <p class="page-label">Full page {{ im.image_b.page_number }}</p>
+      <div class="pdf-wrap" id="wrap-right">
+        <canvas id="canvas-right"></canvas>
+        <div class="pdf-status" id="status-right">Loading&hellip;</div>
+      </div>
     </div>
   </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script type="module">
+  import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+
+  const leftPdfUrl   = "{% url 'reports:report_download' im.image_a.report.report_id %}";
+  const rightPdfUrl  = "{% url 'reports:report_download' im.image_b.report.report_id %}";
+  const leftPageNum  = {{ im.image_a.page_number }};
+  const rightPageNum = {{ im.image_b.page_number }};
+
+  async function renderPage(pdfUrl, pageNum, canvasEl, wrapEl, statusEl) {
+    try {
+      const pdf  = await pdfjsLib.getDocument(pdfUrl).promise;
+      const page = await pdf.getPage(pageNum);
+
+      const naturalVp  = page.getViewport({ scale: 1 });
+      const containerW = wrapEl.clientWidth || 480;
+      const scale      = containerW / naturalVp.width;
+      const viewport   = page.getViewport({ scale });
+
+      canvasEl.width  = viewport.width;
+      canvasEl.height = viewport.height;
+
+      await page.render({ canvasContext: canvasEl.getContext('2d'), viewport }).promise;
+      statusEl.style.display = 'none';
+    } catch (err) {
+      statusEl.textContent = 'Could not load PDF.';
+      console.error(err);
+    }
+  }
+
+  renderPage(
+    leftPdfUrl,  leftPageNum,
+    document.getElementById('canvas-left'),
+    document.getElementById('wrap-left'),
+    document.getElementById('status-left'),
+  );
+
+  renderPage(
+    rightPdfUrl, rightPageNum,
+    document.getElementById('canvas-right'),
+    document.getElementById('wrap-right'),
+    document.getElementById('status-right'),
+  );
+</script>
 {% endblock %}
