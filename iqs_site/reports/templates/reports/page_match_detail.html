@@ -7,6 +7,9 @@
 {% endblock %}
 
 {% block extra_styles %}
+  /* Break out of the 1000px .wrap constraint for this page */
+  .wrap { max-width: min(98vw, 1800px); }
+
   .breadcrumb {
     font-size: 0.85rem;
     color: #9ca3af;
