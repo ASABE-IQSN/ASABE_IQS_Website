@@ -136,7 +136,17 @@ def _extract_pages(pdf_bytes: bytes) -> list[dict]:
     pages = []
     with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
         for page_num, page in enumerate(pdf.pages, start=1):
-            words = page.extract_words(use_text_flow=True)
+            try:
+                words = page.extract_words(use_text_flow=True)
+            except Exception:
+                logger.warning(
+                    "extract_words failed on page %d (likely malformed font); falling back to OCR",
+                    page_num, exc_info=True,
+                )
+                chunk_dicts = _ocr_page(pdf_bytes, page_num)
+                if chunk_dicts:
+                    pages.append({"page_number": page_num, "chunks": chunk_dicts})
+                continue
             if not words:
                 logger.debug("Report page %d has no extractable text; attempting OCR", page_num)
                 chunk_dicts = _ocr_page(pdf_bytes, page_num)
