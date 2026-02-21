@@ -79,6 +79,15 @@
     color: #6687fc;
   }
 
+  .th-stats {
+    font-size: 0.68rem;
+    color: #6b7280;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    margin-top: 0.2rem;
+  }
+
   .sim-cell {
     min-width: 4rem;
     font-variant-numeric: tabular-nums;
@@ -141,11 +150,12 @@
         <thead>
           <tr>
             <th>Page</th>
-            {% for report in reports %}
-              <th class="th-team" title="{{ report.event_team.team.team_name }}">
-                <a href="{% url 'reports:report_matches' report.report_id %}">
-                  {{ report.event_team.team.team_abbreviation|default:report.event_team.team.team_name }}
+            {% for rd in report_data %}
+              <th class="th-team" title="{{ rd.report.event_team.team.team_name }}">
+                <a href="{% url 'reports:report_matches' rd.report.report_id %}">
+                  {{ rd.report.event_team.team.team_abbreviation|default:rd.report.event_team.team.team_name }}
                 </a>
+                <div class="th-stats">{{ rd.page_count }}p · {{ rd.chunk_count }}ch</div>
               </th>
             {% endfor %}
           </tr>

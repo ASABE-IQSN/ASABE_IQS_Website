@@ -2,7 +2,7 @@ import json
 
 from django.conf import settings
 from django.contrib import messages
-from django.db.models import Max
+from django.db.models import Count, Max
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -212,6 +212,23 @@ def event_analysis(request, event_id):
 
     report_ids = [r.report_id for r in reports]
 
+    # page/chunk counts per report for the scan-health summary
+    stats_by_report = {
+        s["report_id"]: s
+        for s in ReportPage.objects
+            .filter(report_id__in=report_ids)
+            .values("report_id")
+            .annotate(page_count=Count("page_id"), chunk_count=Count("chunks"))
+    }
+    report_data = [
+        {
+            "report": r,
+            "page_count": stats_by_report.get(r.report_id, {}).get("page_count", 0),
+            "chunk_count": stats_by_report.get(r.report_id, {}).get("chunk_count", 0),
+        }
+        for r in reports
+    ]
+
     # page_id → (report_id, page_number)
     page_info = {
         p["page_id"]: (p["report_id"], p["page_number"])
@@ -256,6 +273,7 @@ def event_analysis(request, event_id):
         "report_type_label": REPORT_TYPE_LABELS.get(report_type, f"Type {report_type}"),
         "report_type_choices": report_type_choices,
         "reports": reports,
+        "report_data": report_data,
         "rows": rows,
         "no_reports": False,
     })

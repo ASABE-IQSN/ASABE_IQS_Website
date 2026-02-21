@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # ── Tuning constants ──────────────────────────────────────────────────────────
 SHINGLE_SIZE_WORDS = 5
 NUM_PERMUTATIONS = 128
-PAGE_SIMILARITY_THRESHOLD = 0.15   # min Jaccard to record a PageMatch
+PAGE_SIMILARITY_THRESHOLD = 0.05   # min Jaccard to record a PageMatch
 CHUNK_SIMILARITY_THRESHOLD = 0.30  # min word-set Jaccard to record a ChunkMatch
 PARAGRAPH_GAP_PTS = 10             # vertical gap (pts) that starts a new chunk
 PUBLIC_BASE_URL = "https://iqsconnect.org"

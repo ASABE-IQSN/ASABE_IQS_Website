@@ -79,10 +79,13 @@
 
 {% block content %}
   <div class="breadcrumb">
-    <a href="{% url 'reports:analysis_dashboard' %}">← Analysis Dashboard</a>
+    <a href="{% url 'reports:event_analysis' report.event_team.event.event_id %}?report_type={{ report.report_type }}">← Event Analysis</a>
   </div>
 
-  <h1 style="margin:0 0 0.25rem;">Similarity Report</h1>
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.25rem;">
+    <h1 style="margin:0;">Similarity Report</h1>
+    <a class="btn-sm" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
+  </div>
   <p style="color:#9ca3af;margin:0 0 1.25rem;font-size:0.9rem;">
     <strong style="color:#f3f6e7;">{{ report.event_team.team.team_name }}</strong>
     &mdash; {{ report_type_label }}
