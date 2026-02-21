@@ -155,7 +155,16 @@ class AnalysisJob(models.Model):
         SUCCEEDED = "SUCCEEDED", "Succeeded"
         FAILED = "FAILED", "Failed"
 
+    class JobTypes(models.TextChoices):
+        EXTRACTION = "EXTRACTION", "Extraction"
+        FULL = "FULL", "Full Analysis"
+
     job_id = models.AutoField(primary_key=True)
+    job_type = models.CharField(
+        max_length=16,
+        choices=JobTypes.choices,
+        default=JobTypes.FULL,
+    )
     report_type = models.IntegerField(
         null=True, blank=True,
         help_text="Limit analysis to this report_type. Leave blank to compare all types.",

@@ -54,6 +54,26 @@
     font-size: 0.9rem;
   }
 
+  button.btn-secondary {
+    background: transparent;
+    border-color: #6687fc;
+    color: #6687fc;
+  }
+
+  .job-type-chip {
+    display: inline-block;
+    border: 1px solid #334155;
+    border-radius: 999px;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #9ca3af;
+  }
+
+  .job-type-chip.EXTRACTION { border-color: #a78bfa; color: #a78bfa; }
+  .job-type-chip.FULL       { border-color: #6687fc; color: #6687fc; }
+
   table {
     width: 100%;
     border-collapse: collapse;
@@ -115,7 +135,7 @@
 
   <form class="card" method="post">
     {% csrf_token %}
-    <h2>Run New Analysis</h2>
+    <h2>Run New Job</h2>
     <div class="form-row">
       <label>
         Report type
@@ -126,8 +146,17 @@
           {% endfor %}
         </select>
       </label>
-      <button type="submit">Queue analysis</button>
+      <button type="submit" name="job_type" value="extraction" class="btn-secondary">
+        Queue extraction
+      </button>
+      <button type="submit" name="job_type" value="full">
+        Queue full analysis
+      </button>
     </div>
+    <p style="margin:0.6rem 0 0;font-size:0.78rem;color:#9ca3af;">
+      <strong style="color:#a78bfa;">Extraction</strong> downloads and parses every PDF in parallel (one worker per report).
+      <strong style="color:#6687fc;">Full analysis</strong> also runs similarity comparison across all reports.
+    </p>
   </form>
 
   <section class="card">
@@ -136,7 +165,8 @@
       <thead>
         <tr>
           <th>Job</th>
-          <th>Report type</th>
+          <th>Type</th>
+          <th>Report filter</th>
           <th>Status</th>
           <th>Reports</th>
           <th>Pages</th>
@@ -148,6 +178,11 @@
         {% for job in jobs %}
           <tr>
             <td>#{{ job.job_id }}</td>
+            <td>
+              <span class="job-type-chip {{ job.job_type }}" id="job-type-{{ job.job_id }}">
+                {{ job.get_job_type_display }}
+              </span>
+            </td>
             <td>{{ job.report_type|default:"All" }}</td>
             <td>
               <span class="status-chip {{ job.status }}" id="status-{{ job.job_id }}">

@@ -6,8 +6,9 @@ import re
 
 import pdfplumber
 import requests
-from celery import shared_task
+from celery import chord, group, shared_task
 from django.conf import settings
+from django.db.models import F
 from django.utils import timezone
 
 from events.models import Report
@@ -23,6 +24,7 @@ CHUNK_SIMILARITY_THRESHOLD = 0.30  # min word-set Jaccard to record a ChunkMatch
 PARAGRAPH_GAP_PTS = 10             # vertical gap (pts) that starts a new chunk
 OCR_DPI = 200                      # DPI for rendering pages before OCR
 MIN_IMAGE_SIZE = 50                # px — skip icons/decorations smaller than this
+MIN_COLOR_STDDEV = 8               # per-channel stddev threshold; below this = uniform/blank image
 IMAGE_HAMMING_THRESHOLD = 10       # max pHash Hamming distance to record as a match
 PUBLIC_BASE_URL = "https://iqsconnect.org"
 # ─────────────────────────────────────────────────────────────────────────────
@@ -196,7 +198,7 @@ def _extract_images(pdf_bytes: bytes) -> list[dict]:
     """
     try:
         import imagehash
-        from PIL import Image
+        from PIL import Image, ImageStat
         from pypdf import PdfReader
     except ImportError:
         logger.warning("Image extraction libraries not available (pypdf, Pillow, imagehash); skipping")
@@ -223,6 +225,14 @@ def _extract_images(pdf_bytes: bytes) -> list[dict]:
                     continue
                 # Convert to RGB so pHash works regardless of source mode (CMYK, P, etc.)
                 pil_img = pil_img.convert("RGB")
+                # Skip images with very low color variation (solid fills, black boxes, etc.)
+                stat = ImageStat.Stat(pil_img)
+                if max(stat.stddev) < MIN_COLOR_STDDEV:
+                    logger.debug(
+                        "Skipping low-variation image %d on page %d (max stddev=%.1f)",
+                        img_idx, page_num, max(stat.stddev),
+                    )
+                    continue
                 ph = str(imagehash.phash(pil_img))
                 results.append({
                     "page_number": page_num,
@@ -238,7 +248,172 @@ def _extract_images(pdf_bytes: bytes) -> list[dict]:
     return results
 
 
+# ── Per-report extraction helper ──────────────────────────────────────────────
+
+def _process_single_report(report, pdf_bytes) -> tuple[int, int]:
+    """
+    Extract and persist pages/chunks/images for one already-downloaded report.
+
+    Deletes any stale ReportPage / ReportImage rows for this report, then
+    writes fresh data.  Extraction errors are logged and cause (0, 0) to be
+    returned so callers can skip adding the report to processed_report_ids.
+
+    Returns (n_pages, n_images).
+    """
+    try:
+        page_data = _extract_pages(pdf_bytes)
+    except Exception:
+        logger.warning("Failed to extract pages from report %s", report.report_id, exc_info=True)
+        return 0, 0
+
+    if not page_data:
+        logger.warning("Report %s produced no pages", report.report_id)
+        return 0, 0
+
+    try:
+        image_data = _extract_images(pdf_bytes)
+    except Exception:
+        logger.warning("Failed to extract images from report %s", report.report_id, exc_info=True)
+        image_data = []
+
+    # Atomically replace stale extraction data.
+    ReportPage.objects.filter(report=report).delete()   # cascades to ReportChunk
+    ReportImage.objects.filter(report=report).delete()
+
+    for pdata in page_data:
+        rpage = ReportPage.objects.create(
+            report=report,
+            page_number=pdata["page_number"],
+        )
+        ReportChunk.objects.bulk_create([
+            ReportChunk(
+                page=rpage,
+                chunk_index=c["chunk_index"],
+                text=c["text"],
+                bbox_x0=c["bbox_x0"],
+                bbox_y0=c["bbox_y0"],
+                bbox_x1=c["bbox_x1"],
+                bbox_y1=c["bbox_y1"],
+            )
+            for c in pdata["chunks"]
+        ])
+
+    if image_data:
+        ReportImage.objects.bulk_create([
+            ReportImage(
+                report=report,
+                page_number=img["page_number"],
+                image_index=img["image_index"],
+                phash=img["phash"],
+                width=img["width"],
+                height=img["height"],
+            )
+            for img in image_data
+        ])
+
+    logger.info(
+        "Report %s: extracted %d pages, %d images",
+        report.report_id, len(page_data), len(image_data),
+    )
+    return len(page_data), len(image_data)
+
+
 # ── Celery task ───────────────────────────────────────────────────────────────
+
+@shared_task
+def extract_single_report(job_id: int, report_id: int) -> None:
+    """
+    Download and extract one report PDF.  Designed to run inside a Celery
+    chord group so multiple workers process reports in parallel.
+
+    Always returns without raising so the chord callback fires even when a
+    single report fails.  Updates the parent AnalysisJob counters atomically
+    via F() so concurrent workers don't clobber each other.
+    """
+    n_pages = n_images = 0
+    try:
+        report = Report.objects.get(pk=report_id)
+
+        ext = os.path.splitext(report.report_link)[1].lower()
+        if ext != ".pdf":
+            logger.info("Skipping report %s (extension %r)", report_id, ext)
+        else:
+            token = getattr(settings, "INTERNAL_REPORT_TOKEN", "")
+            headers = {"X-Internal-Token": token} if token else {}
+            url = f"{PUBLIC_BASE_URL}/reports/{report_id}"
+            resp = requests.get(url, headers=headers, timeout=60)
+            resp.raise_for_status()
+            n_pages, n_images = _process_single_report(report, resp.content)
+    except Exception:
+        logger.warning("extract_single_report failed for report %s", report_id, exc_info=True)
+
+    AnalysisJob.objects.filter(pk=job_id).update(
+        reports_processed=F("reports_processed") + 1,
+        pages_processed=F("pages_processed") + n_pages,
+        images_processed=F("images_processed") + n_images,
+    )
+
+
+@shared_task
+def finalize_extraction(job_id: int) -> None:
+    """Chord callback: mark the extraction job as SUCCEEDED."""
+    AnalysisJob.objects.filter(pk=job_id).update(
+        status=AnalysisJob.Statuses.SUCCEEDED,
+        completed_at=timezone.now(),
+    )
+    logger.info("Extraction job %s completed", job_id)
+
+
+@shared_task
+def run_extraction(job_id: int) -> None:
+    """
+    Coordinator task for extraction-only jobs.
+
+    Marks the job RUNNING, discovers reports, then dispatches one
+    extract_single_report sub-task per report using a Celery chord.
+    finalize_extraction fires as the chord callback once all sub-tasks finish.
+
+    Requires a Redis (or other) result backend so Celery can track the chord.
+    """
+    job = AnalysisJob.objects.get(pk=job_id)
+    job.status = AnalysisJob.Statuses.RUNNING
+    job.started_at = timezone.now()
+    job.error_message = None
+    job.save(update_fields=["status", "started_at", "error_message"])
+
+    try:
+        qs = Report.objects.all()
+        if job.report_type is not None:
+            qs = qs.filter(report_type=job.report_type)
+
+        report_ids = [
+            r.report_id for r in qs
+            if os.path.splitext(r.report_link)[1].lower() == ".pdf"
+        ]
+
+        job.reports_found = len(report_ids)
+        job.save(update_fields=["reports_found"])
+        logger.info("Extraction job %s: found %d reports", job_id, len(report_ids))
+
+        if not report_ids:
+            job.status = AnalysisJob.Statuses.SUCCEEDED
+            job.completed_at = timezone.now()
+            job.save(update_fields=["status", "completed_at"])
+            return
+
+        chord(
+            group(extract_single_report.s(job_id, rid) for rid in report_ids),
+            finalize_extraction.si(job_id),
+        ).delay()
+
+    except Exception as exc:
+        logger.exception("run_extraction %s failed during setup", job_id)
+        job.status = AnalysisJob.Statuses.FAILED
+        job.completed_at = timezone.now()
+        job.error_message = str(exc)[:4000]
+        job.save(update_fields=["status", "completed_at", "error_message"])
+        raise
+
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=3)
 def run_plagiarism_analysis(self, job_id: int) -> dict:
@@ -286,64 +461,15 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
                 logger.warning("Failed to download report %s from %s", report.report_id, url, exc_info=True)
                 continue
 
-            try:
-                page_data = _extract_pages(resp.content)
-            except Exception:
-                logger.warning("Failed to extract pages from report %s", report.report_id, exc_info=True)
+            n_pages, n_images = _process_single_report(report, resp.content)
+            if n_pages == 0:
                 continue
-
-            if not page_data:
-                logger.warning("Report %s produced no pages", report.report_id)
-                continue
-
-            # Extract images (best-effort; failure doesn't abort text pipeline).
-            try:
-                image_data = _extract_images(resp.content)
-            except Exception:
-                logger.warning("Failed to extract images from report %s", report.report_id, exc_info=True)
-                image_data = []
-
-            # Clear stale extraction for this report so re-runs are fresh.
-            ReportPage.objects.filter(report=report).delete()
-            ReportImage.objects.filter(report=report).delete()
-
-            for pdata in page_data:
-                rpage = ReportPage.objects.create(
-                    report=report,
-                    page_number=pdata["page_number"],
-                )
-                ReportChunk.objects.bulk_create([
-                    ReportChunk(
-                        page=rpage,
-                        chunk_index=c["chunk_index"],
-                        text=c["text"],
-                        bbox_x0=c["bbox_x0"],
-                        bbox_y0=c["bbox_y0"],
-                        bbox_x1=c["bbox_x1"],
-                        bbox_y1=c["bbox_y1"],
-                    )
-                    for c in pdata["chunks"]
-                ])
-
-            if image_data:
-                ReportImage.objects.bulk_create([
-                    ReportImage(
-                        report=report,
-                        page_number=img["page_number"],
-                        image_index=img["image_index"],
-                        phash=img["phash"],
-                        width=img["width"],
-                        height=img["height"],
-                    )
-                    for img in image_data
-                ])
 
             processed_report_ids.append(report.report_id)
             job.reports_processed += 1
-            job.pages_processed += len(page_data)
-            job.images_processed += len(image_data)
+            job.pages_processed += n_pages
+            job.images_processed += n_images
             job.save(update_fields=["reports_processed", "pages_processed", "images_processed"])
-            logger.info("Report %s: extracted %d pages, %d images", report.report_id, len(page_data), len(image_data))
 
         # ── Phase 2: page-level MinHash comparison ────────────────────────────
         # Load all pages for the processed reports.

@@ -53,10 +53,25 @@ def analysis_dashboard(request):
     if request.method == "POST":
         raw = request.POST.get("report_type", "").strip()
         report_type = int(raw) if raw.isdigit() else None
-        job = AnalysisJob.objects.create(report_type=report_type)
-        from .tasks import run_plagiarism_analysis
-        run_plagiarism_analysis.delay(job.pk)
-        messages.success(request, f"Analysis job #{job.pk} queued.")
+        job_type = request.POST.get("job_type", "full")
+
+        if job_type == "extraction":
+            job = AnalysisJob.objects.create(
+                report_type=report_type,
+                job_type=AnalysisJob.JobTypes.EXTRACTION,
+            )
+            from .tasks import run_extraction
+            run_extraction.delay(job.pk)
+            messages.success(request, f"Extraction job #{job.pk} queued.")
+        else:
+            job = AnalysisJob.objects.create(
+                report_type=report_type,
+                job_type=AnalysisJob.JobTypes.FULL,
+            )
+            from .tasks import run_plagiarism_analysis
+            run_plagiarism_analysis.delay(job.pk)
+            messages.success(request, f"Full analysis job #{job.pk} queued.")
+
         return redirect("reports:analysis_dashboard")
 
     jobs = AnalysisJob.objects.order_by("-created_at")[:10]
@@ -85,6 +100,7 @@ def analysis_job_status(request, job_id):
     job = get_object_or_404(AnalysisJob, pk=job_id)
     return JsonResponse({
         "job_id": job.job_id,
+        "job_type": job.job_type,
         "status": job.status,
         "reports_found": job.reports_found,
         "reports_processed": job.reports_processed,
