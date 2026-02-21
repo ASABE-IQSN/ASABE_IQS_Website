@@ -110,6 +110,12 @@
   .status-chip.SUCCEEDED { border-color: #22c55e; color: #22c55e; }
   .status-chip.FAILED   { border-color: #ef4444; color: #ef4444; }
 
+  .breadcrumb {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+
   .messages { margin-bottom: 0.8rem; }
   .messages .success {
     border-radius: 0.6rem;
@@ -121,7 +127,10 @@
 
 {% block content %}
 <div class="dashboard-layout">
-  <h1 style="margin:0 0 0.25rem;">Plagiarism Analysis</h1>
+  <div class="breadcrumb">
+    <a href="{% url 'reports:reports_overview' %}">← Report Analysis</a>
+  </div>
+  <h1 style="margin:0 0 0.25rem;">Analysis Dashboard</h1>
   <p style="color:#9ca3af;margin:0 0 0.5rem;font-size:0.9rem;">
     Staff only. Runs across all reports ever uploaded, optionally filtered by report type.
   </p>

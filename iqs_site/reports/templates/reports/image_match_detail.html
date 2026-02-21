@@ -74,6 +74,25 @@
     font-weight: 700;
     margin-right: 0.5rem;
   }
+
+  .btn-report {
+    display: inline-block;
+    background: transparent;
+    border: 1px solid #334155;
+    color: #9ca3af;
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-weight: 500;
+    text-decoration: none;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    margin-top: 0.5rem;
+  }
+
+  .btn-report:hover {
+    border-color: #6687fc;
+    color: #6687fc;
+  }
 {% endblock %}
 
 {% block content %}
@@ -110,7 +129,10 @@
         &mdash; {{ im.image_a.width }}&times;{{ im.image_a.height }}px
         &mdash; {{ im.image_a.report.event_team.event.event_name }}
       </div>
-      <div class="img-wrap">
+      <a class="btn-report"
+         href="{% url 'reports:report_download' im.image_a.report.report_id %}#page={{ im.image_a.page_number }}"
+         target="_blank">View report, pg. {{ im.image_a.page_number }} &rarr;</a>
+      <div class="img-wrap" style="margin-top:0.75rem;">
         <img src="{% url 'reports:image_serve' im.image_a.image_id %}"
              alt="Image from {{ team_a }}, page {{ im.image_a.page_number }}"
              loading="lazy">
@@ -124,7 +146,10 @@
         &mdash; {{ im.image_b.width }}&times;{{ im.image_b.height }}px
         &mdash; {{ im.image_b.report.event_team.event.event_name }}
       </div>
-      <div class="img-wrap">
+      <a class="btn-report"
+         href="{% url 'reports:report_download' im.image_b.report.report_id %}#page={{ im.image_b.page_number }}"
+         target="_blank">View report, pg. {{ im.image_b.page_number }} &rarr;</a>
+      <div class="img-wrap" style="margin-top:0.75rem;">
         <img src="{% url 'reports:image_serve' im.image_b.image_id %}"
              alt="Image from {{ team_b }}, page {{ im.image_b.page_number }}"
              loading="lazy">

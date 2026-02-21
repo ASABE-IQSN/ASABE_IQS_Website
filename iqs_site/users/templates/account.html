@@ -1,7 +1,72 @@
 {% extends "base.html" %}
 
+{% block extra_styles %}
+  .staff-card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .staff-card h2 {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+    font-weight: 600;
+  }
+
+  .staff-links {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .staff-link {
+    background: transparent;
+    border: 1px solid #334155;
+    color: #9ca3af;
+    border-radius: 999px;
+    padding: 0.3rem 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .staff-link:hover {
+    border-color: #6687fc;
+    color: #6687fc;
+  }
+
+  .staff-link.primary {
+    background: #6687fc;
+    border-color: #6687fc;
+    color: #020617;
+    font-weight: 600;
+  }
+
+  .staff-link.primary:hover {
+    background: #7c9dfd;
+    border-color: #7c9dfd;
+  }
+{% endblock %}
+
 {% block content %}
   <h1>My Account</h1>
+
+  {% if user.is_staff %}
+    <div class="staff-card">
+      <h2>Staff Tools</h2>
+      <div class="staff-links">
+        <a class="staff-link primary" href="{% url 'reports:reports_overview' %}">Report Analysis</a>
+        <a class="staff-link" href="{% url 'reports:report_coverage' %}">Coverage</a>
+        <a class="staff-link" href="{% url 'reports:analysis_dashboard' %}">Analysis Dashboard</a>
+      </div>
+    </div>
+  {% endif %}
 
   <p><a href="{% url 'password_change' %}">Change Password</a></p>
 

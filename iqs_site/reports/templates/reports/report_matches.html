@@ -68,6 +68,24 @@
     font-weight: 600;
     text-decoration: none;
     font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .btn-sm-ghost {
+    background: transparent;
+    border: 1px solid #334155;
+    color: #9ca3af;
+    border-radius: 999px;
+    padding: 0.25rem 0.7rem;
+    font-weight: 500;
+    text-decoration: none;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .btn-sm-ghost:hover {
+    border-color: #6687fc;
+    color: #6687fc;
   }
 
   .breadcrumb {
@@ -84,10 +102,10 @@
 
   <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.25rem;">
     <h1 style="margin:0;">Similarity Report</h1>
-    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-      <a class="btn-sm" href="{% url 'reports:report_extracted' report.report_id %}">Extracted Content &rarr;</a>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+      <a class="btn-sm-ghost" href="{% url 'reports:report_extracted' report.report_id %}">Extracted Content &rarr;</a>
       <a class="btn-sm" href="{% url 'reports:report_image_matches' report.report_id %}">Image Matches &rarr;</a>
-      <a class="btn-sm" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
+      <a class="btn-sm-ghost" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
     </div>
   </div>
   <p style="color:#9ca3af;margin:0 0 1.25rem;font-size:0.9rem;">
@@ -110,8 +128,11 @@
               &mdash; {{ group.report_type_label }} &mdash; {{ group.event_name }}
             </span>
           </span>
-          <span class="max-sim">
-            up to {% widthratio group.max_sim 1 100 %}% similar
+          <span style="display:flex;align-items:center;gap:0.75rem;flex-shrink:0;">
+            <span class="max-sim">up to {% widthratio group.max_sim 1 100 %}% similar</span>
+            <a class="btn-sm-ghost"
+               href="{% url 'reports:report_download' group.other_report.report_id %}"
+               target="_blank">View Report &rarr;</a>
           </span>
         </div>
         <table>

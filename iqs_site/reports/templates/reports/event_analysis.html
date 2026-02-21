@@ -89,9 +89,28 @@
   }
 
   .sim-cell {
-    min-width: 4rem;
+    min-width: 7rem;
+    padding: 0;
     font-variant-numeric: tabular-nums;
+  }
+
+  .cell-halves {
+    display: flex;
+    height: 100%;
+  }
+
+  .half {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.45rem 0.3rem;
+    font-size: 0.78rem;
     transition: background 0.1s;
+  }
+
+  .text-half {
+    border-right: 1px solid #1f2937;
   }
 
   .no-page {
@@ -115,16 +134,23 @@
 
   .legend-bar {
     height: 10px;
-    width: 120px;
+    width: 80px;
     border-radius: 3px;
-    background: linear-gradient(to right, rgba(239,68,68,0.05), rgba(239,68,68,1));
     border: 1px solid #1f2937;
+  }
+
+  .legend-bar.text-bar {
+    background: linear-gradient(to right, rgba(239,68,68,0.05), rgba(239,68,68,1));
+  }
+
+  .legend-bar.img-bar {
+    background: linear-gradient(to right, rgba(102,135,252,0.05), rgba(102,135,252,1));
   }
 {% endblock %}
 
 {% block content %}
   <div class="breadcrumb">
-    <a href="{% url 'reports:analysis_dashboard' %}">← Analysis Dashboard</a>
+    <a href="{% url 'reports:reports_overview' %}">← Report Analysis</a>
   </div>
 
   <h1 style="margin:0 0 0.2rem;">Event Analysis</h1>
@@ -167,10 +193,19 @@
               {% for cell in row.cells %}
                 {% if cell is None %}
                   <td class="no-page">—</td>
-                {% elif cell.sim_pct == 0 %}
-                  <td class="sim-cell" data-sim="0">—</td>
                 {% else %}
-                  <td class="sim-cell" data-sim="{{ cell.sim_pct }}">{{ cell.sim_pct }}%</td>
+                  <td class="sim-cell">
+                    <div class="cell-halves">
+                      <span class="half text-half"
+                            data-sim="{{ cell.sim_pct }}">
+                        {% if cell.sim_pct %}{{ cell.sim_pct }}%{% else %}—{% endif %}
+                      </span>
+                      <span class="half img-half"
+                            {% if cell.img_sim_pct %}data-img-sim="{{ cell.img_sim_pct }}"{% endif %}>
+                        {% if cell.img_sim_pct %}{{ cell.img_sim_pct }}%{% else %}—{% endif %}
+                      </span>
+                    </div>
+                  </td>
                 {% endif %}
               {% endfor %}
             </tr>
@@ -180,22 +215,32 @@
     </div>
 
     <div class="legend">
-      <span>Low</span>
-      <div class="legend-bar"></div>
-      <span>High similarity</span>
+      <div class="legend-bar text-bar"></div>
+      <span>Text similarity</span>
+      <div class="legend-bar img-bar" style="margin-left:0.75rem;"></div>
+      <span>Image similarity</span>
+      <span style="margin-left:0.5rem;color:#4b5563;">(low → high)</span>
     </div>
   {% endif %}
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-  document.querySelectorAll('.sim-cell[data-sim]').forEach(td => {
-    const v = parseInt(td.dataset.sim, 10);
+  document.querySelectorAll('.text-half[data-sim]').forEach(el => {
+    const v = parseInt(el.dataset.sim, 10);
     if (v > 0) {
-      // Scale: 15% → faint, 80%+ → saturated red
       const alpha = Math.min((v / 80) * 0.9 + 0.05, 1.0);
-      td.style.background = `rgba(239,68,68,${alpha.toFixed(2)})`;
-      if (v >= 50) td.style.color = '#fff';
+      el.style.background = `rgba(239,68,68,${alpha.toFixed(2)})`;
+      if (v >= 50) el.style.color = '#fff';
+    }
+  });
+
+  document.querySelectorAll('.img-half[data-img-sim]').forEach(el => {
+    const v = parseInt(el.dataset.imgSim, 10);
+    if (v > 0) {
+      const alpha = Math.min((v / 80) * 0.9 + 0.05, 1.0);
+      el.style.background = `rgba(102,135,252,${alpha.toFixed(2)})`;
+      if (v >= 50) el.style.color = '#020617';
     }
   });
 </script>

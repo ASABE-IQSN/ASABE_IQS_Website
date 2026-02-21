@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Report Analysis{% endblock %}
+
+{% block extra_styles %}
+  .tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .tool-card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1.1rem 1.2rem;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    transition: border-color 0.15s;
+  }
+
+  .tool-card:hover {
+    border-color: #6687fc;
+  }
+
+  .tool-card .tool-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #f3f6e7;
+  }
+
+  .tool-card .tool-desc {
+    font-size: 0.8rem;
+    color: #6b7280;
+    line-height: 1.45;
+  }
+
+  .tool-card .tool-icon {
+    font-size: 1.3rem;
+    margin-bottom: 0.1rem;
+  }
+
+  .events-section h2 {
+    font-size: 1rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 0 0 0.75rem;
+    font-weight: 600;
+  }
+
+  .event-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+  }
+
+  .event-row {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .event-name {
+    flex: 1;
+    min-width: 10rem;
+  }
+
+  .event-name strong {
+    display: block;
+    font-size: 0.92rem;
+    color: #f3f6e7;
+  }
+
+  .event-name .event-date {
+    font-size: 0.78rem;
+    color: #6b7280;
+    margin-top: 0.1rem;
+  }
+
+  .event-stats {
+    font-size: 0.78rem;
+    color: #6b7280;
+    white-space: nowrap;
+  }
+
+  .event-stats .processed {
+    color: #34d399;
+  }
+
+  .event-links {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .btn-event {
+    background: transparent;
+    border: 1px solid #334155;
+    color: #9ca3af;
+    border-radius: 999px;
+    padding: 0.2rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .btn-event:hover {
+    border-color: #6687fc;
+    color: #6687fc;
+  }
+
+  .btn-event.primary {
+    background: #6687fc;
+    border-color: #6687fc;
+    color: #020617;
+    font-weight: 600;
+  }
+
+  .btn-event.primary:hover {
+    background: #7c9dfd;
+    border-color: #7c9dfd;
+    color: #020617;
+  }
+
+  .no-reports {
+    color: #374151;
+    font-size: 0.78rem;
+  }
+{% endblock %}
+
+{% block content %}
+  <h1 style="margin:0 0 0.2rem;">Report Analysis</h1>
+  <p style="color:#9ca3af;margin:0 0 1.5rem;font-size:0.9rem;">Staff tools for plagiarism detection across submitted reports.</p>
+
+  <div class="tool-grid">
+    <a class="tool-card" href="{% url 'reports:report_coverage' %}">
+      <div class="tool-icon">&#9632;</div>
+      <div class="tool-title">Report Coverage</div>
+      <div class="tool-desc">See which teams have submitted reports for each event across all years.</div>
+    </a>
+    <a class="tool-card" href="{% url 'reports:analysis_dashboard' %}">
+      <div class="tool-icon">&#9881;</div>
+      <div class="tool-title">Analysis Dashboard</div>
+      <div class="tool-desc">Run extraction and similarity jobs, and monitor their progress.</div>
+    </a>
+  </div>
+
+  <div class="events-section">
+    <h2>Events</h2>
+
+    {% if not event_rows %}
+      <p style="color:#9ca3af;font-size:0.9rem;">No events found.</p>
+    {% else %}
+      <div class="event-list">
+        {% for row in event_rows %}
+          <div class="event-row">
+            <div class="event-name">
+              <strong>{{ row.event.event_name }}</strong>
+              {% if row.event.event_datetime %}
+                <div class="event-date">{{ row.event.event_datetime|date:"M j, Y" }}</div>
+              {% endif %}
+            </div>
+
+            <div class="event-stats">
+              {% if row.total_reports %}
+                <span class="processed">{{ row.processed_reports }}</span> / {{ row.total_reports }} reports analysed
+              {% else %}
+                <span class="no-reports">No reports</span>
+              {% endif %}
+            </div>
+
+            <div class="event-links">
+              {% if row.report_type_choices %}
+                {% for rt, label in row.report_type_choices %}
+                  <a class="btn-event {% if forloop.first %}primary{% endif %}"
+                     href="{% url 'reports:event_analysis' row.event.event_id %}?report_type={{ rt }}">
+                    {{ label }}
+                  </a>
+                {% endfor %}
+              {% else %}
+                <span style="font-size:0.78rem;color:#374151;">No reports yet</span>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

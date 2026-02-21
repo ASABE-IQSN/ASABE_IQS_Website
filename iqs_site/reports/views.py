@@ -1,9 +1,10 @@
 import io
 import json
 
+from django.core.cache import cache
 from django.conf import settings
 from django.contrib import messages
-from django.db.models import Count, Max, Q
+from django.db.models import Count, Max, Min, Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -43,6 +44,56 @@ def report_download(request, report_id):
     response["X-Accel-Redirect"] = f"/_reports/{report.report_link}"
     response["Content-Disposition"] = f'inline; filename="{report.report_link}"'
     return response
+
+
+# ── Reports overview ──────────────────────────────────────────────────────────
+
+def reports_overview(request):
+    _require_staff(request)
+
+    events = list(Event.objects.order_by("-event_datetime"))
+
+    # Per-event report counts and analysis status.
+    event_ids = [e.event_id for e in events]
+
+    # Total reports per event, grouped by report type.
+    report_counts = {}  # event_id → {report_type: total}
+    for row in (
+        Report.objects
+        .filter(event_team__event_id__in=event_ids)
+        .values("event_team__event_id", "report_type")
+        .annotate(n=Count("report_id"))
+    ):
+        eid = row["event_team__event_id"]
+        report_counts.setdefault(eid, {})[row["report_type"]] = row["n"]
+
+    # Reports that have been processed (have at least one page extracted).
+    processed_counts = {}  # event_id → count of distinct processed report_ids
+    for row in (
+        ReportPage.objects
+        .filter(report__event_team__event_id__in=event_ids)
+        .values("report__event_team__event_id")
+        .annotate(n=Count("report_id", distinct=True))
+    ):
+        processed_counts[row["report__event_team__event_id"]] = row["n"]
+
+    event_rows = []
+    for e in events:
+        total = sum(report_counts.get(e.event_id, {}).values())
+        processed = processed_counts.get(e.event_id, 0)
+        event_rows.append({
+            "event": e,
+            "total_reports": total,
+            "processed_reports": processed,
+            "report_type_choices": [
+                (rt, REPORT_TYPE_LABELS.get(rt, f"Type {rt}"))
+                for rt in sorted(report_counts.get(e.event_id, {}).keys())
+            ],
+        })
+
+    return render(request, "reports/overview.html", {
+        "event_rows": event_rows,
+    })
 
 
 # ── Analysis dashboard ────────────────────────────────────────────────────────
@@ -303,6 +354,31 @@ def event_analysis(request, event_id):
 
     all_page_numbers = sorted({pnum for ps in report_page_sims.values() for pnum in ps})
 
+    # Image similarity per page: min Hamming distance among all images on that page.
+    # pHash is 64-bit, so similarity = (1 - hamming/64) * 100.
+    image_info = {
+        img["image_id"]: (img["report_id"], img["page_number"])
+        for img in ReportImage.objects
+            .filter(report_id__in=report_ids)
+            .values("image_id", "report_id", "page_number")
+    }
+    image_ids = list(image_info.keys())
+    image_min_hamming = {}  # image_id → lowest Hamming distance found
+    if image_ids:
+        for row in ImageMatch.objects.filter(image_a_id__in=image_ids).values("image_a_id").annotate(mh=Min("hamming_distance")):
+            iid = row["image_a_id"]
+            image_min_hamming[iid] = min(image_min_hamming.get(iid, 64), row["mh"])
+        for row in ImageMatch.objects.filter(image_b_id__in=image_ids).values("image_b_id").annotate(mh=Min("hamming_distance")):
+            iid = row["image_b_id"]
+            image_min_hamming[iid] = min(image_min_hamming.get(iid, 64), row["mh"])
+    # report_id → {page_number: best image similarity pct on that page}
+    report_page_img_sims = {r.report_id: {} for r in reports}
+    for iid, (rid, pnum) in image_info.items():
+        if iid in image_min_hamming:
+            img_sim_pct = round((1 - image_min_hamming[iid] / 64) * 100)
+            existing = report_page_img_sims[rid].get(pnum, 0)
+            report_page_img_sims[rid][pnum] = max(existing, img_sim_pct)
+
     rows = []
     for pnum in all_page_numbers:
         cells = []
@@ -312,7 +388,10 @@ def event_analysis(request, event_id):
                 cells.append(None)  # this report doesn't have this page
             else:
                 sim = ps[pnum] or 0.0
-                cells.append({"sim": sim, "sim_pct": round(sim * 100)})
+                cells.append({
+                    "sim_pct": round(sim * 100),
+                    "img_sim_pct": report_page_img_sims[r.report_id].get(pnum),  # None = no img matches
+                })
         rows.append({"page_number": pnum, "cells": cells})
 
     return render(request, "reports/event_analysis.html", {
@@ -468,33 +547,50 @@ def report_image_matches(request, report_id):
 
 # ── Image serve ───────────────────────────────────────────────────────────────
 
+_PDF_CACHE_TTL   = 3600   # seconds — how long to keep a raw PDF in Redis
+_JPEG_CACHE_TTL  = 3600   # seconds — how long to keep a rendered JPEG in Redis
+
+
 def image_serve(request, image_id):
     _require_staff(request)
 
     rim = get_object_or_404(ReportImage, pk=image_id)
 
-    # Download the source PDF using the internal-token mechanism.
-    token = getattr(settings, "INTERNAL_REPORT_TOKEN", "")
-    headers = {"X-Internal-Token": token} if token else {}
-    url = f"https://iqsconnect.org/reports/{rim.report_id}"
-    try:
-        resp = http_requests.get(url, headers=headers, timeout=30)
-        resp.raise_for_status()
-    except Exception:
-        raise Http404("Could not fetch source PDF")
+    # Level 1: return the rendered JPEG straight from cache if available.
+    jpeg_key = f"img_jpeg:{image_id}"
+    jpeg_bytes = cache.get(jpeg_key)
+    if jpeg_bytes is not None:
+        return HttpResponse(jpeg_bytes, content_type="image/jpeg")
+
+    # Level 2: get the raw PDF bytes from cache, or fetch and cache them.
+    pdf_key = f"report_pdf:{rim.report_id}"
+    pdf_bytes = cache.get(pdf_key)
+    if pdf_bytes is None:
+        token = getattr(settings, "INTERNAL_REPORT_TOKEN", "")
+        headers = {"X-Internal-Token": token} if token else {}
+        url = f"https://iqsconnect.org/reports/{rim.report_id}"
+        try:
+            resp = http_requests.get(url, headers=headers, timeout=30)
+            resp.raise_for_status()
+        except Exception:
+            raise Http404("Could not fetch source PDF")
+        pdf_bytes = resp.content
+        cache.set(pdf_key, pdf_bytes, timeout=_PDF_CACHE_TTL)
 
     try:
         from pypdf import PdfReader
         from PIL import Image
 
-        reader = PdfReader(io.BytesIO(resp.content))
+        reader = PdfReader(io.BytesIO(pdf_bytes))
         page = reader.pages[rim.page_number - 1]
         img_obj = list(page.images)[rim.image_index]
         pil_img = Image.open(io.BytesIO(img_obj.data)).convert("RGB")
 
         buf = io.BytesIO()
         pil_img.save(buf, format="JPEG", quality=85)
-        return HttpResponse(buf.getvalue(), content_type="image/jpeg")
+        jpeg_bytes = buf.getvalue()
+        cache.set(jpeg_key, jpeg_bytes, timeout=_JPEG_CACHE_TTL)
+        return HttpResponse(jpeg_bytes, content_type="image/jpeg")
     except Exception:
         raise Http404("Could not extract image from PDF")
 
