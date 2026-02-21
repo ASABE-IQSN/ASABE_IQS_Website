@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Plagiarism Analysis{% endblock %}
+
+{% block extra_styles %}
+  .dashboard-layout {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1rem 1.2rem;
+  }
+
+  .card h2 {
+    margin: 0 0 0.75rem;
+  }
+
+  .form-row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .form-row label {
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+    color: #9ca3af;
+  }
+
+  .form-row select {
+    background: #020617;
+    color: #f3f6e7;
+    border: 1px solid #1f2937;
+    border-radius: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    min-width: 180px;
+  }
+
+  button, .btn-link {
+    background: #6687fc;
+    border: 1px solid #6687fc;
+    color: #020617;
+    border-radius: 999px;
+    padding: 0.45rem 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.6rem;
+  }
+
+  th, td {
+    padding: 0.5rem;
+    border-bottom: 1px solid #1f2937;
+    text-align: left;
+    font-size: 0.88rem;
+  }
+
+  th {
+    color: #9ca3af;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .status-chip {
+    display: inline-block;
+    border: 1px solid #334155;
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .status-chip.RUNNING  { border-color: #0ea5e9; color: #0ea5e9; }
+  .status-chip.QUEUED   { border-color: #9ca3af; color: #9ca3af; }
+  .status-chip.SUCCEEDED { border-color: #22c55e; color: #22c55e; }
+  .status-chip.FAILED   { border-color: #ef4444; color: #ef4444; }
+
+  .messages { margin-bottom: 0.8rem; }
+  .messages .success {
+    border-radius: 0.6rem;
+    padding: 0.55rem 0.7rem;
+    background: rgba(16,185,129,0.15);
+    border: 1px solid rgba(16,185,129,0.35);
+  }
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-layout">
+  <h1 style="margin:0 0 0.25rem;">Plagiarism Analysis</h1>
+  <p style="color:#9ca3af;margin:0 0 0.5rem;font-size:0.9rem;">
+    Staff only. Runs across all reports ever uploaded, optionally filtered by report type.
+  </p>
+
+  {% if messages %}
+    <div class="messages">
+      {% for message in messages %}
+        <div class="{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <form class="card" method="post">
+    {% csrf_token %}
+    <h2>Run New Analysis</h2>
+    <div class="form-row">
+      <label>
+        Report type
+        <select name="report_type">
+          <option value="">All types</option>
+          {% for rt, label in report_type_choices %}
+            <option value="{{ rt }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <button type="submit">Queue analysis</button>
+    </div>
+  </form>
+
+  <section class="card">
+    <h2>Recent Jobs</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Job</th>
+          <th>Report type</th>
+          <th>Status</th>
+          <th>Reports</th>
+          <th>Pages</th>
+          <th>Started</th>
+          <th>Error</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+          <tr>
+            <td>#{{ job.job_id }}</td>
+            <td>{{ job.report_type|default:"All" }}</td>
+            <td>
+              <span class="status-chip {{ job.status }}" id="status-{{ job.job_id }}">
+                {{ job.status }}
+              </span>
+            </td>
+            <td id="reports-{{ job.job_id }}">
+              {{ job.reports_processed }} / {{ job.reports_found }}
+            </td>
+            <td id="pages-{{ job.job_id }}">{{ job.pages_processed }}</td>
+            <td>{{ job.created_at|date:"M j, Y H:i" }}</td>
+            <td id="error-{{ job.job_id }}" style="color:#ef4444;font-size:0.8rem;">
+              {{ job.error_message|default:"" }}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="7" class="empty">No jobs yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const activeJobIds = {{ active_job_ids_json }};
+  const statusBase = "{% url 'reports:analysis_job_status' job_id=0 %}".replace('/0/', '/');
+
+  function updateRow(data) {
+    const statusEl  = document.getElementById(`status-${data.job_id}`);
+    const reportsEl = document.getElementById(`reports-${data.job_id}`);
+    const pagesEl   = document.getElementById(`pages-${data.job_id}`);
+    const errorEl   = document.getElementById(`error-${data.job_id}`);
+
+    if (statusEl) {
+      statusEl.textContent = data.status;
+      statusEl.className = `status-chip ${data.status}`;
+    }
+    if (reportsEl) reportsEl.textContent = `${data.reports_processed} / ${data.reports_found}`;
+    if (pagesEl)   pagesEl.textContent   = data.pages_processed;
+    if (errorEl)   errorEl.textContent   = data.error_message || '';
+  }
+
+  activeJobIds.forEach(jobId => {
+    const url = statusBase + jobId + '/';
+    const timer = setInterval(async () => {
+      try {
+        const resp = await fetch(url, { credentials: 'same-origin' });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        updateRow(data);
+        if (['SUCCEEDED', 'FAILED'].includes(data.status)) {
+          clearInterval(timer);
+        }
+      } catch (_) {}
+    }, 3000);
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block title %}Page Comparison — {{ team_a }} pg.{{ pm.page_a.page_number }} ↔ {{ team_b }} pg.{{ pm.page_b.page_number }}{% endblock %}
+
+{% block extra_head %}
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs" type="module"></script>
+{% endblock %}
+
+{% block extra_styles %}
+  .breadcrumb {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+
+  .compare-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .compare-header h1 { margin: 0; font-size: 1.1rem; }
+
+  .sim-badge {
+    background: rgba(102,135,252,0.15);
+    border: 1px solid rgba(102,135,252,0.4);
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.8rem;
+    color: #6687fc;
+  }
+
+  .legend {
+    display: flex;
+    gap: 1.25rem;
+    font-size: 0.78rem;
+    color: #9ca3af;
+    margin-bottom: 0.9rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 0.3rem;
+    vertical-align: middle;
+  }
+
+  /* Two-column PDF comparison */
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    align-items: start;
+  }
+
+  @media (max-width: 800px) {
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+
+  .col-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+    margin: 0 0 0.4rem;
+  }
+
+  /* The PDF canvas + overlay container */
+  .pdf-wrap {
+    position: relative;
+    background: #1e293b;
+    border: 1px solid #1f2937;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    line-height: 0; /* removes gap below canvas */
+  }
+
+  .pdf-wrap canvas {
+    width: 100%;
+    display: block;
+  }
+
+  /* Loading / error states */
+  .pdf-status {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    color: #9ca3af;
+    pointer-events: none;
+  }
+
+  /* Chunk overlay boxes */
+  .chunk-overlay {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 2px;
+    box-sizing: border-box;
+    transition: background 0.1s, border-color 0.1s;
+  }
+
+  .chunk-overlay.matched {
+    pointer-events: auto;
+    cursor: crosshair;
+  }
+
+  .chunk-overlay.hl-a {
+    background: rgba(251,191,36,0.15);
+    border: 1.5px solid rgba(251,191,36,0.45);
+  }
+
+  .chunk-overlay.hl-b {
+    background: rgba(34,197,94,0.15);
+    border: 1.5px solid rgba(34,197,94,0.45);
+  }
+
+  .chunk-overlay.hl-a.active {
+    background: rgba(251,191,36,0.38);
+    border-color: rgba(251,191,36,0.85);
+  }
+
+  .chunk-overlay.hl-b.active {
+    background: rgba(34,197,94,0.38);
+    border-color: rgba(34,197,94,0.85);
+  }
+
+  /* Chunk match table */
+  .card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1rem 1.2rem;
+  }
+
+  .card h2 { margin: 0 0 0.75rem; font-size: 1rem; }
+
+  table { width: 100%; border-collapse: collapse; }
+
+  th, td {
+    padding: 0.5rem;
+    border-bottom: 1px solid #1f2937;
+    text-align: left;
+    font-size: 0.82rem;
+  }
+
+  th {
+    color: #9ca3af;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .snippet {
+    color: #9ca3af;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 280px;
+    display: block;
+  }
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'reports:report_matches' pm.page_a.report.report_id %}">← {{ team_a }} matches</a>
+  </div>
+
+  <div class="compare-header">
+    <h1>
+      <span style="color:#fbbf24;">{{ team_a }}</span>&nbsp;pg.&nbsp;{{ pm.page_a.page_number }}
+      &nbsp;&harr;&nbsp;
+      <span style="color:#22c55e;">{{ team_b }}</span>&nbsp;pg.&nbsp;{{ pm.page_b.page_number }}
+    </h1>
+    <span class="sim-badge">{% widthratio pm.similarity 1 100 %}% page similarity</span>
+  </div>
+
+  <div class="legend">
+    <span><span class="legend-dot" style="background:rgba(251,191,36,0.5);"></span>{{ team_a }} match</span>
+    <span><span class="legend-dot" style="background:rgba(34,197,94,0.5);"></span>{{ team_b }} match</span>
+    <span>Hover a highlighted region to cross-highlight its match.</span>
+  </div>
+
+  <div class="compare-grid">
+    <div>
+      <p class="col-label">
+        <strong style="color:#fbbf24;">{{ team_a }}</strong>
+        &nbsp;&mdash;&nbsp;{{ pm.page_a.report.event_team.event.event_name }}, page&nbsp;{{ pm.page_a.page_number }}
+      </p>
+      <div class="pdf-wrap" id="wrap-left">
+        <canvas id="canvas-left"></canvas>
+        <div class="pdf-status" id="status-left">Loading…</div>
+      </div>
+    </div>
+
+    <div>
+      <p class="col-label">
+        <strong style="color:#22c55e;">{{ team_b }}</strong>
+        &nbsp;&mdash;&nbsp;{{ pm.page_b.report.event_team.event.event_name }}, page&nbsp;{{ pm.page_b.page_number }}
+      </p>
+      <div class="pdf-wrap" id="wrap-right">
+        <canvas id="canvas-right"></canvas>
+        <div class="pdf-status" id="status-right">Loading…</div>
+      </div>
+    </div>
+  </div>
+
+  {% if chunk_matches %}
+    <div class="card">
+      <h2>Matching Chunk Pairs ({{ chunk_matches|length }})</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Sim.</th>
+            <th>{{ team_a }}</th>
+            <th>{{ team_b }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cm in chunk_matches %}
+            <tr>
+              <td style="white-space:nowrap;">{% widthratio cm.similarity 1 100 %}%</td>
+              <td><span class="snippet">{{ cm.chunk_a.text|truncatechars:120 }}</span></td>
+              <td><span class="snippet">{{ cm.chunk_b.text|truncatechars:120 }}</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script type="module">
+  import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+
+  const chunkLinks      = {{ chunk_links_json }};
+  const leftChunkData   = {{ left_chunk_data_json }};
+  const rightChunkData  = {{ right_chunk_data_json }};
+
+  const leftPdfUrl  = "{% url 'reports:report_download' pm.page_a.report.report_id %}";
+  const rightPdfUrl = "{% url 'reports:report_download' pm.page_b.report.report_id %}";
+  const leftPageNum  = {{ pm.page_a.page_number }};
+  const rightPageNum = {{ pm.page_b.page_number }};
+
+  function clearActive() {
+    document.querySelectorAll('.chunk-overlay.active').forEach(el => el.classList.remove('active'));
+  }
+
+  function addHover(el) {
+    const id = el.id;
+    if (!id || !chunkLinks[id]) return;
+    el.addEventListener('mouseenter', () => {
+      clearActive();
+      el.classList.add('active');
+      chunkLinks[id].forEach(linkedId => {
+        const linked = document.getElementById(linkedId);
+        if (linked) linked.classList.add('active');
+      });
+    });
+    el.addEventListener('mouseleave', clearActive);
+  }
+
+  async function renderPage(pdfUrl, pageNum, canvasEl, wrapEl, statusEl, chunkData, hlClass) {
+    try {
+      const pdf  = await pdfjsLib.getDocument(pdfUrl).promise;
+      const page = await pdf.getPage(pageNum);
+
+      // Scale to the container's rendered width.
+      const naturalVp = page.getViewport({ scale: 1 });
+      const containerW = wrapEl.clientWidth || 480;
+      const scale      = containerW / naturalVp.width;
+      const viewport   = page.getViewport({ scale });
+
+      canvasEl.width  = viewport.width;
+      canvasEl.height = viewport.height;
+
+      await page.render({ canvasContext: canvasEl.getContext('2d'), viewport }).promise;
+
+      statusEl.style.display = 'none';
+
+      // Add overlay divs for each chunk with bbox data.
+      for (const chunk of chunkData) {
+        const div = document.createElement('div');
+        div.id = chunk.id;
+        div.className = 'chunk-overlay' +
+          (chunk.matched ? ` matched ${hlClass}` : '');
+
+        div.style.left   = (chunk.x0 * scale) + 'px';
+        div.style.top    = (chunk.y0 * scale) + 'px';
+        div.style.width  = ((chunk.x1 - chunk.x0) * scale) + 'px';
+        div.style.height = ((chunk.y1 - chunk.y0) * scale) + 'px';
+
+        wrapEl.appendChild(div);
+        if (chunk.matched) addHover(div);
+      }
+    } catch (err) {
+      statusEl.textContent = 'Could not load PDF.';
+      console.error(err);
+    }
+  }
+
+  renderPage(
+    leftPdfUrl,  leftPageNum,
+    document.getElementById('canvas-left'),
+    document.getElementById('wrap-left'),
+    document.getElementById('status-left'),
+    leftChunkData, 'hl-a'
+  );
+
+  renderPage(
+    rightPdfUrl, rightPageNum,
+    document.getElementById('canvas-right'),
+    document.getElementById('wrap-right'),
+    document.getElementById('status-right'),
+    rightChunkData, 'hl-b'
+  );
+</script>
+{% endblock %}

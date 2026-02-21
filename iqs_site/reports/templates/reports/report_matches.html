@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Similarity — {{ report_type_label }}{% endblock %}
+
+{% block extra_styles %}
+  .card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-heading {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+  }
+
+  .card-heading .max-sim {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    flex-shrink: 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    padding: 0.5rem;
+    border-bottom: 1px solid #1f2937;
+    text-align: left;
+    font-size: 0.88rem;
+  }
+
+  th {
+    color: #9ca3af;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .sim-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .sim-bar {
+    display: inline-block;
+    height: 6px;
+    border-radius: 3px;
+    background: #6687fc;
+  }
+
+  .btn-sm {
+    background: #6687fc;
+    border: 1px solid #6687fc;
+    color: #020617;
+    border-radius: 999px;
+    padding: 0.25rem 0.7rem;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.8rem;
+  }
+
+  .breadcrumb {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'reports:analysis_dashboard' %}">← Analysis Dashboard</a>
+  </div>
+
+  <h1 style="margin:0 0 0.25rem;">Similarity Report</h1>
+  <p style="color:#9ca3af;margin:0 0 1.25rem;font-size:0.9rem;">
+    <strong style="color:#f3f6e7;">{{ report.event_team.team.team_name }}</strong>
+    &mdash; {{ report_type_label }}
+    ({{ report.event_team.event.event_name }})
+  </p>
+
+  {% if no_pages %}
+    <p class="empty">This report has not been processed yet. Run an analysis from the dashboard first.</p>
+  {% elif not match_groups %}
+    <p class="empty">No similar pages found for this report.</p>
+  {% else %}
+    {% for group in match_groups %}
+      <div class="card">
+        <div class="card-heading">
+          <span>
+            <strong>{{ group.team_name }}</strong>
+            <span style="color:#9ca3af;font-size:0.85rem;">
+              &mdash; {{ group.report_type_label }} &mdash; {{ group.event_name }}
+            </span>
+          </span>
+          <span class="max-sim">
+            up to {% widthratio group.max_sim 1 100 %}% similar
+          </span>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>This report, pg.</th>
+              <th>Other report, pg.</th>
+              <th>Similarity</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pair in group.page_pairs %}
+              <tr>
+                <td>{{ pair.this_page.page_number }}</td>
+                <td>{{ pair.other_page.page_number }}</td>
+                <td>
+                  <div class="sim-bar-wrap">
+                    <span class="sim-bar" style="width:{% widthratio pair.similarity 1 80 %}px;"></span>
+                    {% widthratio pair.similarity 1 100 %}%
+                  </div>
+                </td>
+                <td>
+                  <a class="btn-sm" href="{% url 'reports:page_match_detail' pair.page_match_id %}">
+                    Compare &rarr;
+                  </a>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endblock %}
