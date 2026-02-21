@@ -13,6 +13,7 @@ urlpatterns = [
     path("image-matches/<int:report_id>/", views.report_image_matches, name="report_image_matches"),
     path("image-match/<int:image_match_id>/", views.image_match_detail, name="image_match_detail"),
     path("image/<int:image_id>/", views.image_serve, name="image_serve"),
+    path("extracted/<int:report_id>/", views.report_extracted, name="report_extracted"),
     path("page-match/<int:page_match_id>/", views.page_match_detail, name="page_match_detail"),
     path("<int:report_id>", views.report_download, name="report_download"),
 ]

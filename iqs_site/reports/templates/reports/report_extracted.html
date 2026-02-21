@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+
+{% block title %}Extracted Content — {{ team_name }} {{ report_type_label }}{% endblock %}
+
+{% block extra_head %}
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs" type="module"></script>
+{% endblock %}
+
+{% block extra_styles %}
+  .wrap { max-width: min(98vw, 1200px); }
+
+  .breadcrumb {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+  }
+
+  .page-header h1 { margin: 0; font-size: 1.1rem; }
+
+  .badge {
+    background: rgba(102,135,252,0.15);
+    border: 1px solid rgba(102,135,252,0.4);
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.8rem;
+    color: #6687fc;
+  }
+
+  /* ── PDF Viewer ─────────────────────────────────────────── */
+
+  #pdf-viewer {
+    margin-bottom: 1.5rem;
+  }
+
+  .pdf-page-wrap {
+    position: relative;
+    background: #1e293b;
+    border: 1px solid #1f2937;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    line-height: 0;
+    margin-bottom: 0.6rem;
+    transition: box-shadow 0.3s;
+  }
+
+  .pdf-page-wrap.page-flash {
+    animation: page-flash 1.4s ease-out;
+  }
+
+  @keyframes page-flash {
+    0%   { box-shadow: 0 0 0 3px rgba(102,135,252,0.85); }
+    100% { box-shadow: 0 0 0 3px rgba(102,135,252,0); }
+  }
+
+  .pdf-page-wrap canvas {
+    width: 100%;
+    display: block;
+  }
+
+  .page-number-label {
+    position: absolute;
+    top: 0.35rem;
+    left: 0.5rem;
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.45);
+    background: rgba(0,0,0,0.35);
+    padding: 0.1rem 0.45rem;
+    border-radius: 3px;
+    pointer-events: none;
+    line-height: 1.4;
+  }
+
+  #pdf-loading {
+    color: #9ca3af;
+    font-size: 0.85rem;
+    margin-bottom: 1rem;
+  }
+
+  /* ── Chunk overlays ─────────────────────────────────────── */
+
+  .chunk-overlay {
+    position: absolute;
+    pointer-events: auto;
+    cursor: pointer;
+    border-radius: 2px;
+    box-sizing: border-box;
+    background: rgba(102,135,252,0.1);
+    border: 1.5px solid rgba(102,135,252,0.3);
+    transition: background 0.1s, border-color 0.1s;
+  }
+
+  .chunk-overlay:hover,
+  .chunk-overlay.active {
+    background: rgba(102,135,252,0.32);
+    border-color: rgba(102,135,252,0.85);
+  }
+
+  /* ── Cards ──────────────────────────────────────────────── */
+
+  .card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .card-title {
+    margin: 0 0 0.9rem;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .count-chip {
+    font-size: 0.72rem;
+    font-weight: normal;
+    color: #9ca3af;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid #1f2937;
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+  }
+
+  /* ── Chunk list ─────────────────────────────────────────── */
+
+  .chunk-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: 560px;
+    overflow-y: auto;
+    padding-right: 0.2rem;
+  }
+
+  .chunk-item {
+    padding: 0.55rem 0.75rem;
+    border: 1px solid #1f2937;
+    border-radius: 0.4rem;
+    font-size: 0.82rem;
+    line-height: 1.45;
+    transition: background 0.1s, border-color 0.1s;
+  }
+
+  .chunk-item.clickable {
+    cursor: pointer;
+  }
+
+  .chunk-item.clickable:hover {
+    background: rgba(102,135,252,0.08);
+    border-color: rgba(102,135,252,0.3);
+  }
+
+  .chunk-item.active {
+    background: rgba(102,135,252,0.18);
+    border-color: rgba(102,135,252,0.65);
+    color: #f3f6e7;
+  }
+
+  .chunk-meta {
+    font-size: 0.7rem;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.25rem;
+  }
+
+  .chunk-text {
+    margin: 0;
+    color: #d1d5db;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* ── Images grid ────────────────────────────────────────── */
+
+  .images-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .image-card {
+    cursor: pointer;
+    border: 2px solid #1f2937;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    background: #0b1120;
+    transition: border-color 0.15s;
+  }
+
+  .image-card:hover {
+    border-color: rgba(102,135,252,0.4);
+  }
+
+  .image-card.selected {
+    border-color: #6687fc;
+  }
+
+  .image-card img {
+    width: 100%;
+    height: 130px;
+    object-fit: contain;
+    background: #1e293b;
+    display: block;
+  }
+
+  .image-card-footer {
+    padding: 0.35rem 0.5rem;
+    font-size: 0.7rem;
+    color: #9ca3af;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .empty-note {
+    color: #9ca3af;
+    font-size: 0.85rem;
+    font-style: italic;
+  }
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'reports:report_matches' report.report_id %}">← {{ team_name }} matches</a>
+  </div>
+
+  <div class="page-header">
+    <h1>{{ team_name }} — {{ report_type_label }}</h1>
+    <span class="badge">{{ event_name }}</span>
+    {% if pages %}
+      <span class="badge">{{ pages|length }} page{{ pages|length|pluralize }}</span>
+    {% endif %}
+    {% if images %}
+      <span class="badge">{{ images|length }} image{{ images|length|pluralize }}</span>
+    {% endif %}
+  </div>
+
+  {% if not pages %}
+    <p class="empty-note">No extracted content found for this report. Run an analysis job first.</p>
+  {% else %}
+
+    <div id="pdf-loading">Loading PDF…</div>
+    <div id="pdf-viewer"></div>
+
+    <!-- Text Chunks -->
+    <div class="card">
+      <h2 class="card-title">
+        Text Chunks
+        <span class="count-chip">
+          {% with total=0 %}
+            {% for page in pages %}{% for chunk in page.chunks.all %}{% endfor %}{% endfor %}
+          {% endwith %}
+          {{ pages|length }} page{{ pages|length|pluralize }}
+        </span>
+      </h2>
+
+      <div class="chunk-list" id="chunk-list">
+        {% for page in pages %}
+          {% for chunk in page.chunks.all %}
+            <div class="chunk-item{% if chunk.bbox_x0 is not None %} clickable{% endif %}"
+                 data-chunk-id="chunk-{{ chunk.chunk_id }}">
+              <div class="chunk-meta">pg.&nbsp;{{ page.page_number }}&nbsp; chunk&nbsp;{{ chunk.chunk_index }}</div>
+              <p class="chunk-text">{{ chunk.text }}</p>
+            </div>
+          {% empty %}
+            <p class="empty-note">No chunks on page {{ page.page_number }}.</p>
+          {% endfor %}
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Extracted Images -->
+    {% if images %}
+      <div class="card">
+        <h2 class="card-title">
+          Extracted Images
+          <span class="count-chip">{{ images|length }}</span>
+        </h2>
+        <div class="images-grid">
+          {% for img in images %}
+            <div class="image-card"
+                 data-page="{{ img.page_number }}"
+                 data-image-id="{{ img.image_id }}">
+              <img src="{% url 'reports:image_serve' img.image_id %}"
+                   alt="Page {{ img.page_number }}, image {{ img.image_index }}"
+                   loading="lazy">
+              <div class="image-card-footer">
+                <span>pg.&nbsp;{{ img.page_number }}, #{{ img.image_index }}</span>
+                <span>{{ img.width }}&times;{{ img.height }}</span>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
+  {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script type="module">
+  import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs';
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
+
+  const pdfUrl      = "{% url 'reports:report_download' report.report_id %}";
+  const chunkData   = {{ chunk_data_json|safe }};
+
+  // ── Helpers ──────────────────────────────────────────────────────────────
+
+  function clearActive() {
+    document.querySelectorAll('.chunk-overlay.active').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.chunk-item.active').forEach(el => el.classList.remove('active'));
+  }
+
+  function activateChunk(chunkId, scrollToPdf) {
+    clearActive();
+
+    const overlay = document.getElementById(chunkId);
+    if (overlay) {
+      overlay.classList.add('active');
+      if (scrollToPdf) {
+        overlay.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    const listItem = document.querySelector(`.chunk-item[data-chunk-id="${chunkId}"]`);
+    if (listItem) {
+      listItem.classList.add('active');
+      if (!scrollToPdf) {
+        listItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+  }
+
+  // ── PDF rendering ─────────────────────────────────────────────────────────
+
+  // Build lookup: page_number → [chunk, …]
+  const chunksByPage = {};
+  for (const chunk of chunkData) {
+    (chunksByPage[chunk.page_number] ??= []).push(chunk);
+  }
+
+  async function renderAllPages() {
+    const viewer     = document.getElementById('pdf-viewer');
+    const loadingEl  = document.getElementById('pdf-loading');
+    const containerW = viewer.clientWidth || 800;
+
+    const pdf      = await pdfjsLib.getDocument(pdfUrl).promise;
+    const numPages = pdf.numPages;
+
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+
+      const naturalVp = page.getViewport({ scale: 1 });
+      const scale     = containerW / naturalVp.width;
+      const viewport  = page.getViewport({ scale });
+
+      // Outer wrap
+      const wrap = document.createElement('div');
+      wrap.id        = `page-wrap-${pageNum}`;
+      wrap.className = 'pdf-page-wrap';
+
+      // Canvas
+      const canvas    = document.createElement('canvas');
+      canvas.width    = viewport.width;
+      canvas.height   = viewport.height;
+      wrap.appendChild(canvas);
+
+      // Page label
+      const label      = document.createElement('div');
+      label.className  = 'page-number-label';
+      label.textContent = `Page ${pageNum}`;
+      wrap.appendChild(label);
+
+      viewer.appendChild(wrap);
+
+      // Render page content
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+
+      // Add chunk overlays for this page
+      for (const chunk of (chunksByPage[pageNum] ?? [])) {
+        const div       = document.createElement('div');
+        div.id          = chunk.id;
+        div.className   = 'chunk-overlay';
+        div.style.left   = (chunk.x0 * scale) + 'px';
+        div.style.top    = (chunk.y0 * scale) + 'px';
+        div.style.width  = ((chunk.x1 - chunk.x0) * scale) + 'px';
+        div.style.height = ((chunk.y1 - chunk.y0) * scale) + 'px';
+        wrap.appendChild(div);
+
+        div.addEventListener('click', () => activateChunk(chunk.id, false));
+      }
+    }
+
+    loadingEl.style.display = 'none';
+  }
+
+  renderAllPages().catch(err => {
+    const loadingEl = document.getElementById('pdf-loading');
+    if (loadingEl) loadingEl.textContent = 'Could not load PDF.';
+    console.error(err);
+  });
+
+  // ── Chunk list click ──────────────────────────────────────────────────────
+
+  document.querySelectorAll('.chunk-item.clickable[data-chunk-id]').forEach(item => {
+    item.addEventListener('click', () => {
+      activateChunk(item.dataset.chunkId, true);
+    });
+  });
+
+  // ── Image card click ──────────────────────────────────────────────────────
+
+  document.querySelectorAll('.image-card[data-page]').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.image-card.selected').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+
+      const pageNum = parseInt(card.dataset.page, 10);
+      const wrap    = document.getElementById(`page-wrap-${pageNum}`);
+      if (wrap) {
+        wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        wrap.classList.remove('page-flash');
+        // Force reflow so re-adding the class triggers the animation again.
+        void wrap.offsetWidth;
+        wrap.classList.add('page-flash');
+        wrap.addEventListener('animationend', () => wrap.classList.remove('page-flash'), { once: true });
+      }
+    });
+  });
+</script>
+{% endblock %}

@@ -85,6 +85,7 @@
   <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.25rem;">
     <h1 style="margin:0;">Similarity Report</h1>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+      <a class="btn-sm" href="{% url 'reports:report_extracted' report.report_id %}">Extracted Content &rarr;</a>
       <a class="btn-sm" href="{% url 'reports:report_image_matches' report.report_id %}">Image Matches &rarr;</a>
       <a class="btn-sm" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
     </div>

@@ -500,6 +500,56 @@ def image_match_detail(request, image_match_id):
     })
 
 
+# ── Report extracted content ──────────────────────────────────────────────────
+
+def report_extracted(request, report_id):
+    _require_staff(request)
+
+    report = get_object_or_404(
+        Report.objects.select_related("event_team__team", "event_team__event"),
+        pk=report_id,
+    )
+
+    pages = list(
+        ReportPage.objects
+        .filter(report=report)
+        .prefetch_related("chunks")
+        .order_by("page_number")
+    )
+
+    images = list(
+        ReportImage.objects
+        .filter(report=report)
+        .order_by("page_number", "image_index")
+    )
+
+    chunk_data = []
+    for page in pages:
+        for chunk in page.chunks.all():
+            if chunk.bbox_x0 is not None:
+                chunk_data.append({
+                    "id": f"chunk-{chunk.chunk_id}",
+                    "page_number": page.page_number,
+                    "x0": chunk.bbox_x0,
+                    "y0": chunk.bbox_y0,
+                    "x1": chunk.bbox_x1,
+                    "y1": chunk.bbox_y1,
+                })
+
+    team_name = getattr(getattr(report.event_team, "team", None), "team_name", "?")
+    event_name = getattr(getattr(report.event_team, "event", None), "event_name", "?")
+
+    return render(request, "reports/report_extracted.html", {
+        "report": report,
+        "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
+        "team_name": team_name,
+        "event_name": event_name,
+        "pages": pages,
+        "images": images,
+        "chunk_data_json": json.dumps(chunk_data),
+    })
+
+
 # ── Page match detail ─────────────────────────────────────────────────────────
 
 def page_match_detail(request, page_match_id):
