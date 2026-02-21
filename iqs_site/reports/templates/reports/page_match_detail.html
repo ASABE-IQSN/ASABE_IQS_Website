@@ -244,9 +244,9 @@
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
 
-  const chunkLinks      = {{ chunk_links_json }};
-  const leftChunkData   = {{ left_chunk_data_json }};
-  const rightChunkData  = {{ right_chunk_data_json }};
+  const chunkLinks      = {{ chunk_links_json|safe }};
+  const leftChunkData   = {{ left_chunk_data_json|safe }};
+  const rightChunkData  = {{ right_chunk_data_json|safe }};
 
   const leftPdfUrl  = "{% url 'reports:report_download' pm.page_a.report.report_id %}";
   const rightPdfUrl = "{% url 'reports:report_download' pm.page_b.report.report_id %}";
