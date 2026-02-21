@@ -11,7 +11,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from events.models import Report
-from .models import AnalysisJob, ChunkMatch, PageMatch, ReportChunk, ReportPage
+from .models import AnalysisJob, ChunkMatch, ImageMatch, PageMatch, ReportChunk, ReportImage, ReportPage
 
 logger = logging.getLogger(__name__)
 
@@ -21,6 +21,9 @@ NUM_PERMUTATIONS = 128
 PAGE_SIMILARITY_THRESHOLD = 0.05   # min Jaccard to record a PageMatch
 CHUNK_SIMILARITY_THRESHOLD = 0.30  # min word-set Jaccard to record a ChunkMatch
 PARAGRAPH_GAP_PTS = 10             # vertical gap (pts) that starts a new chunk
+OCR_DPI = 200                      # DPI for rendering pages before OCR
+MIN_IMAGE_SIZE = 50                # px — skip icons/decorations smaller than this
+IMAGE_HAMMING_THRESHOLD = 10       # max pHash Hamming distance to record as a match
 PUBLIC_BASE_URL = "https://iqsconnect.org"
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -56,6 +59,58 @@ def _word_set_jaccard(text_a: str, text_b: str) -> float:
     return len(words_a & words_b) / len(words_a | words_b)
 
 
+def _ocr_page(pdf_bytes: bytes, page_num: int) -> list[dict]:
+    """
+    Render a single PDF page as an image and OCR it with Tesseract.
+    Returns chunk_dicts in the same format as _extract_pages.
+    page_num is 1-indexed. Returns [] if OCR libraries are unavailable.
+    """
+    try:
+        from pdf2image import convert_from_bytes
+        import pytesseract
+    except ImportError:
+        logger.warning("OCR libraries not installed (pdf2image, pytesseract); skipping OCR for page %d", page_num)
+        return []
+
+    scale = 72.0 / OCR_DPI  # pixels → PDF points
+
+    images = convert_from_bytes(pdf_bytes, dpi=OCR_DPI, first_page=page_num, last_page=page_num)
+    if not images:
+        return []
+
+    data = pytesseract.image_to_data(images[0], output_type=pytesseract.Output.DICT)
+
+    # Group words by (block_num, par_num) → paragraph-level chunks.
+    blocks: dict = {}
+    for i, text in enumerate(data["text"]):
+        if not text.strip() or int(data["conf"][i]) < 0:
+            continue
+        key = (data["block_num"][i], data["par_num"][i])
+        blocks.setdefault(key, []).append({
+            "text": text,
+            "left":   data["left"][i],
+            "top":    data["top"][i],
+            "right":  data["left"][i] + data["width"][i],
+            "bottom": data["top"][i]  + data["height"][i],
+        })
+
+    chunk_dicts = []
+    for idx, (_, words) in enumerate(sorted(blocks.items())):
+        text = " ".join(w["text"] for w in words)
+        if not text.strip():
+            continue
+        chunk_dicts.append({
+            "chunk_index": idx,
+            "text": text,
+            "bbox_x0": min(w["left"]   for w in words) * scale,
+            "bbox_y0": min(w["top"]    for w in words) * scale,
+            "bbox_x1": max(w["right"]  for w in words) * scale,
+            "bbox_y1": max(w["bottom"] for w in words) * scale,
+        })
+
+    return chunk_dicts
+
+
 def _extract_pages(pdf_bytes: bytes) -> list[dict]:
     """
     Open a PDF from raw bytes with pdfplumber.
@@ -78,6 +133,10 @@ def _extract_pages(pdf_bytes: bytes) -> list[dict]:
         for page_num, page in enumerate(pdf.pages, start=1):
             words = page.extract_words(use_text_flow=True)
             if not words:
+                logger.debug("Report page %d has no extractable text; attempting OCR", page_num)
+                chunk_dicts = _ocr_page(pdf_bytes, page_num)
+                if chunk_dicts:
+                    pages.append({"page_number": page_num, "chunks": chunk_dicts})
                 continue
 
             # Group words into paragraph-level chunks by vertical gap.
@@ -119,6 +178,66 @@ def _extract_pages(pdf_bytes: bytes) -> list[dict]:
     return pages
 
 
+# ── Image extraction ──────────────────────────────────────────────────────────
+
+def _extract_images(pdf_bytes: bytes) -> list[dict]:
+    """
+    Extract images from all pages of a PDF using pypdf + imagehash.
+    Returns a list of dicts:
+      {
+        "page_number": int,   # 1-indexed
+        "image_index": int,   # ordering within the page
+        "phash": str,         # 16-char hex pHash
+        "width": int,
+        "height": int,
+      }
+    Images smaller than MIN_IMAGE_SIZE in either dimension are skipped.
+    Un-decodable images are silently skipped.
+    """
+    try:
+        import imagehash
+        from PIL import Image
+        from pypdf import PdfReader
+    except ImportError:
+        logger.warning("Image extraction libraries not available (pypdf, Pillow, imagehash); skipping")
+        return []
+
+    results = []
+    try:
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+    except Exception:
+        logger.warning("Could not open PDF for image extraction", exc_info=True)
+        return []
+
+    for page_num, page in enumerate(reader.pages, start=1):
+        try:
+            page_images = list(page.images)
+        except Exception:
+            logger.debug("Could not list images on page %d", page_num, exc_info=True)
+            continue
+
+        for img_idx, img_obj in enumerate(page_images):
+            try:
+                pil_img = Image.open(io.BytesIO(img_obj.data))
+                if pil_img.width < MIN_IMAGE_SIZE or pil_img.height < MIN_IMAGE_SIZE:
+                    continue
+                # Convert to RGB so pHash works regardless of source mode (CMYK, P, etc.)
+                pil_img = pil_img.convert("RGB")
+                ph = str(imagehash.phash(pil_img))
+                results.append({
+                    "page_number": page_num,
+                    "image_index": img_idx,
+                    "phash": ph,
+                    "width": pil_img.width,
+                    "height": pil_img.height,
+                })
+            except Exception:
+                logger.debug("Skipping undecodable image %d on page %d", img_idx, page_num, exc_info=True)
+                continue
+
+    return results
+
+
 # ── Celery task ───────────────────────────────────────────────────────────────
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=3)
@@ -126,9 +245,10 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
     """
     Full plagiarism analysis across all report PDFs.
 
-    Phase 1: Download each PDF and extract ReportPage + ReportChunk records.
+    Phase 1: Download each PDF and extract ReportPage + ReportChunk + ReportImage records.
     Phase 2: MinHash page-level comparison → PageMatch records.
     Phase 3: Word-set Jaccard chunk comparison within each PageMatch → ChunkMatch records.
+    Phase 4: pHash image comparison → ImageMatch records.
     """
     job = AnalysisJob.objects.get(pk=job_id)
     job.status = AnalysisJob.Statuses.RUNNING
@@ -140,7 +260,7 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
     headers = {"X-Internal-Token": token} if token else {}
 
     try:
-        # ── Phase 1: extract pages and chunks ────────────────────────────────
+        # ── Phase 1: extract pages, chunks, and images ───────────────────────
         qs = Report.objects.all()
         if job.report_type is not None:
             qs = qs.filter(report_type=job.report_type)
@@ -176,8 +296,16 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
                 logger.warning("Report %s produced no pages", report.report_id)
                 continue
 
+            # Extract images (best-effort; failure doesn't abort text pipeline).
+            try:
+                image_data = _extract_images(resp.content)
+            except Exception:
+                logger.warning("Failed to extract images from report %s", report.report_id, exc_info=True)
+                image_data = []
+
             # Clear stale extraction for this report so re-runs are fresh.
             ReportPage.objects.filter(report=report).delete()
+            ReportImage.objects.filter(report=report).delete()
 
             for pdata in page_data:
                 rpage = ReportPage.objects.create(
@@ -197,11 +325,25 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
                     for c in pdata["chunks"]
                 ])
 
+            if image_data:
+                ReportImage.objects.bulk_create([
+                    ReportImage(
+                        report=report,
+                        page_number=img["page_number"],
+                        image_index=img["image_index"],
+                        phash=img["phash"],
+                        width=img["width"],
+                        height=img["height"],
+                    )
+                    for img in image_data
+                ])
+
             processed_report_ids.append(report.report_id)
             job.reports_processed += 1
             job.pages_processed += len(page_data)
-            job.save(update_fields=["reports_processed", "pages_processed"])
-            logger.info("Report %s: extracted %d pages", report.report_id, len(page_data))
+            job.images_processed += len(image_data)
+            job.save(update_fields=["reports_processed", "pages_processed", "images_processed"])
+            logger.info("Report %s: extracted %d pages, %d images", report.report_id, len(page_data), len(image_data))
 
         # ── Phase 2: page-level MinHash comparison ────────────────────────────
         # Load all pages for the processed reports.
@@ -263,6 +405,33 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
 
         logger.info("AnalysisJob %s: created %d ChunkMatch records", job_id, created_chunk_matches)
 
+        # ── Phase 4: pHash image comparison ───────────────────────────────────
+        all_images = list(
+            ReportImage.objects.filter(report_id__in=processed_report_ids)
+        )
+        logger.info("AnalysisJob %s: comparing %d images", job_id, len(all_images))
+
+        # Clear old image match data for processed reports.
+        ImageMatch.objects.filter(
+            image_a__report_id__in=processed_report_ids
+        ).delete()
+
+        try:
+            import imagehash
+            new_image_matches = []
+            for img_a, img_b in itertools.combinations(all_images, 2):
+                if img_a.report_id == img_b.report_id:
+                    continue
+                distance = imagehash.hex_to_hash(img_a.phash) - imagehash.hex_to_hash(img_b.phash)
+                if distance <= IMAGE_HAMMING_THRESHOLD:
+                    a, b = (img_a, img_b) if img_a.image_id < img_b.image_id else (img_b, img_a)
+                    new_image_matches.append(ImageMatch(image_a=a, image_b=b, hamming_distance=distance))
+            ImageMatch.objects.bulk_create(new_image_matches, ignore_conflicts=True)
+            logger.info("AnalysisJob %s: created %d ImageMatch records", job_id, len(new_image_matches))
+        except ImportError:
+            logger.warning("imagehash not available; skipping image comparison")
+            new_image_matches = []
+
         job.status = AnalysisJob.Statuses.SUCCEEDED
         job.completed_at = timezone.now()
         job.save(update_fields=["status", "completed_at"])
@@ -272,8 +441,10 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
             "status": job.status,
             "reports_processed": job.reports_processed,
             "pages_processed": job.pages_processed,
+            "images_processed": job.images_processed,
             "page_matches": len(new_page_matches),
             "chunk_matches": created_chunk_matches,
+            "image_matches": len(new_image_matches),
         }
 
     except Exception as exc:

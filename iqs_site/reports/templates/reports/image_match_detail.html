@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}Image Comparison — {{ team_a }} vs {{ team_b }}{% endblock %}
+
+{% block extra_styles %}
+  .breadcrumb {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+
+  .compare-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+
+  @media (max-width: 700px) {
+    .compare-grid { grid-template-columns: 1fr; }
+  }
+
+  .img-card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1rem 1.2rem;
+  }
+
+  .img-card h2 {
+    margin: 0 0 0.4rem;
+    font-size: 1rem;
+  }
+
+  .img-card .meta {
+    font-size: 0.82rem;
+    color: #9ca3af;
+    margin-bottom: 0.75rem;
+  }
+
+  .img-wrap {
+    background: #020617;
+    border: 1px solid #1f2937;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    overflow: hidden;
+  }
+
+  .img-wrap img {
+    max-width: 100%;
+    max-height: 500px;
+    object-fit: contain;
+    display: block;
+  }
+
+  .verdict {
+    text-align: center;
+    padding: 0.8rem;
+    border-radius: 0.7rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  .verdict.identical  { background: rgba(239,68,68,0.15);  border: 1px solid rgba(239,68,68,0.4);  color: #ef4444; }
+  .verdict.very-close { background: rgba(249,115,22,0.12); border: 1px solid rgba(249,115,22,0.35); color: #f97316; }
+  .verdict.similar    { background: rgba(234,179,8,0.10);  border: 1px solid rgba(234,179,8,0.3);  color: #eab308; }
+
+  .dist-badge {
+    display: inline-block;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-right: 0.5rem;
+  }
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'reports:report_image_matches' im.image_a.report.report_id %}">← Image Matches</a>
+  </div>
+
+  <h1 style="margin:0 0 0.2rem;">Image Comparison</h1>
+  <p style="color:#9ca3af;margin:0 0 1rem;font-size:0.9rem;">
+    <strong style="color:#f3f6e7;">{{ team_a }}</strong>
+    vs
+    <strong style="color:#f3f6e7;">{{ team_b }}</strong>
+  </p>
+
+  {% if im.hamming_distance == 0 %}
+    <div class="verdict identical">
+      <span class="dist-badge">0</span> bit difference &mdash; <strong>Identical images</strong>
+    </div>
+  {% elif im.hamming_distance <= 3 %}
+    <div class="verdict very-close">
+      <span class="dist-badge">{{ im.hamming_distance }}</span> bit{{ im.hamming_distance|pluralize }} difference &mdash; <strong>Near-identical</strong> (likely resized or re-compressed)
+    </div>
+  {% else %}
+    <div class="verdict similar">
+      <span class="dist-badge">{{ im.hamming_distance }}</span> bit{{ im.hamming_distance|pluralize }} difference &mdash; <strong>Visually similar</strong>
+    </div>
+  {% endif %}
+
+  <div class="compare-grid">
+    <div class="img-card">
+      <h2>{{ team_a }}</h2>
+      <div class="meta">
+        Page {{ im.image_a.page_number }}
+        &mdash; {{ im.image_a.width }}&times;{{ im.image_a.height }}px
+        &mdash; {{ im.image_a.report.event_team.event.event_name }}
+      </div>
+      <div class="img-wrap">
+        <img src="{% url 'reports:image_serve' im.image_a.image_id %}"
+             alt="Image from {{ team_a }}, page {{ im.image_a.page_number }}"
+             loading="lazy">
+      </div>
+    </div>
+
+    <div class="img-card">
+      <h2>{{ team_b }}</h2>
+      <div class="meta">
+        Page {{ im.image_b.page_number }}
+        &mdash; {{ im.image_b.width }}&times;{{ im.image_b.height }}px
+        &mdash; {{ im.image_b.report.event_team.event.event_name }}
+      </div>
+      <div class="img-wrap">
+        <img src="{% url 'reports:image_serve' im.image_b.image_id %}"
+             alt="Image from {{ team_b }}, page {{ im.image_b.page_number }}"
+             loading="lazy">
+      </div>
+    </div>
+  </div>
+{% endblock %}

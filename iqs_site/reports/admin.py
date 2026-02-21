@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import AnalysisJob, ChunkMatch, PageMatch, ReportChunk, ReportPage
+from .models import AnalysisJob, ChunkMatch, ImageMatch, PageMatch, ReportChunk, ReportImage, ReportPage
 
 
 @admin.register(ReportPage)
@@ -82,16 +82,36 @@ def queue_analysis_job(modeladmin, request, queryset):
 class AnalysisJobAdmin(admin.ModelAdmin):
     list_display = [
         "job_id", "report_type_display", "status", "created_at",
-        "reports_found", "reports_processed", "pages_processed",
+        "reports_found", "reports_processed", "pages_processed", "images_processed",
     ]
     list_filter = ["status", "report_type"]
     ordering = ["-created_at"]
     readonly_fields = [
         "status", "created_at", "started_at", "completed_at",
-        "reports_found", "reports_processed", "pages_processed", "error_message",
+        "reports_found", "reports_processed", "pages_processed", "images_processed", "error_message",
     ]
     actions = [queue_analysis_job]
 
     def report_type_display(self, obj):
         return obj.report_type if obj.report_type is not None else "All types"
     report_type_display.short_description = "Report type"
+
+
+@admin.register(ReportImage)
+class ReportImageAdmin(admin.ModelAdmin):
+    list_display = ["image_id", "report", "page_number", "image_index", "phash", "width", "height"]
+    list_filter = ["report__report_type"]
+    search_fields = ["report__report_id", "report__report_link", "phash"]
+    ordering = ["report", "page_number", "image_index"]
+    readonly_fields = ["report", "page_number", "image_index", "phash", "width", "height"]
+
+
+@admin.register(ImageMatch)
+class ImageMatchAdmin(admin.ModelAdmin):
+    list_display = ["image_match_id", "image_a", "image_b", "hamming_distance"]
+    ordering = ["hamming_distance"]
+    readonly_fields = ["image_a", "image_b", "hamming_distance"]
+    search_fields = [
+        "image_a__report__report_link",
+        "image_b__report__report_link",
+    ]

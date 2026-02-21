@@ -97,6 +97,57 @@ class ChunkMatch(models.Model):
         return f"ChunkMatch ({self.chunk_a_id} <-> {self.chunk_b_id}, {self.similarity:.3f})"
 
 
+class ReportImage(models.Model):
+    image_id = models.AutoField(primary_key=True)
+    report = models.ForeignKey(
+        "events.Report",
+        on_delete=models.CASCADE,
+        related_name="images",
+    )
+    page_number = models.IntegerField()   # 1-indexed, matches ReportPage.page_number
+    image_index = models.IntegerField()   # ordering within the page
+    phash = models.CharField(max_length=16)  # 64-bit pHash stored as hex
+    width = models.IntegerField()
+    height = models.IntegerField()
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["report", "page_number"]),
+        ]
+        ordering = ["report", "page_number", "image_index"]
+
+    def __str__(self):
+        return f"Report {self.report_id} – page {self.page_number} img {self.image_index}"
+
+
+class ImageMatch(models.Model):
+    image_match_id = models.AutoField(primary_key=True)
+    # image_a_id is always < image_b_id to avoid storing duplicate pairs.
+    image_a = models.ForeignKey(
+        ReportImage,
+        on_delete=models.CASCADE,
+        related_name="matches_as_a",
+    )
+    image_b = models.ForeignKey(
+        ReportImage,
+        on_delete=models.CASCADE,
+        related_name="matches_as_b",
+    )
+    hamming_distance = models.IntegerField()  # 0 = identical; higher = more different
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["image_a", "image_b"], name="uniq_image_match"),
+        ]
+        indexes = [
+            models.Index(fields=["hamming_distance"]),
+        ]
+        ordering = ["hamming_distance"]
+
+    def __str__(self):
+        return f"ImageMatch ({self.image_a_id} <-> {self.image_b_id}, d={self.hamming_distance})"
+
+
 class AnalysisJob(models.Model):
     class Statuses(models.TextChoices):
         QUEUED = "QUEUED", "Queued"
@@ -120,6 +171,7 @@ class AnalysisJob(models.Model):
     reports_found = models.IntegerField(default=0)
     reports_processed = models.IntegerField(default=0)
     pages_processed = models.IntegerField(default=0)
+    images_processed = models.IntegerField(default=0)
     error_message = models.TextField(null=True, blank=True)
 
     class Meta:

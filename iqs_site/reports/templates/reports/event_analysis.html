@@ -155,7 +155,7 @@
                 <a href="{% url 'reports:report_matches' rd.report.report_id %}">
                   {{ rd.report.event_team.team.team_abbreviation|default:rd.report.event_team.team.team_name }}
                 </a>
-                <div class="th-stats">{{ rd.page_count }}p · {{ rd.chunk_count }}ch</div>
+                <div class="th-stats">{{ rd.page_count }}p · {{ rd.chunk_count }}ch{% if rd.image_match_count %} · {{ rd.image_match_count }} img{% endif %}</div>
               </th>
             {% endfor %}
           </tr>

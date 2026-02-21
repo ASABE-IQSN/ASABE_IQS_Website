@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% load i18n %}
 
-{% block title %}Similarity — {{ report_type_label }}{% endblock %}
+{% block title %}Image Matches — {{ report.event_team.team.team_name }}{% endblock %}
 
 {% block extra_styles %}
   .card {
@@ -21,7 +21,7 @@
     gap: 1rem;
   }
 
-  .card-heading .max-sim {
+  .card-heading .min-dist {
     font-size: 0.85rem;
     color: #9ca3af;
     flex-shrink: 0;
@@ -46,18 +46,21 @@
     letter-spacing: 0.08em;
   }
 
-  .sim-bar-wrap {
+  .dist-bar-wrap {
     display: flex;
     align-items: center;
     gap: 0.5rem;
   }
 
-  .sim-bar {
+  .dist-bar {
     display: inline-block;
     height: 6px;
     border-radius: 3px;
+    /* low distance = very similar → red; high distance = barely flagged → blue */
     background: #6687fc;
   }
+
+  .dist-bar.close { background: #ef4444; }
 
   .btn-sm {
     background: #6687fc;
@@ -68,6 +71,7 @@
     font-weight: 600;
     text-decoration: none;
     font-size: 0.8rem;
+    white-space: nowrap;
   }
 
   .breadcrumb {
@@ -83,11 +87,8 @@
   </div>
 
   <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.25rem;">
-    <h1 style="margin:0;">Similarity Report</h1>
-    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-      <a class="btn-sm" href="{% url 'reports:report_image_matches' report.report_id %}">Image Matches &rarr;</a>
-      <a class="btn-sm" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
-    </div>
+    <h1 style="margin:0;">Image Matches</h1>
+    <a class="btn-sm" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
   </div>
   <p style="color:#9ca3af;margin:0 0 1.25rem;font-size:0.9rem;">
     <strong style="color:#f3f6e7;">{{ report.event_team.team.team_name }}</strong>
@@ -95,10 +96,10 @@
     ({{ report.event_team.event.event_name }})
   </p>
 
-  {% if no_pages %}
-    <p class="empty">This report has not been processed yet. Run an analysis from the dashboard first.</p>
+  {% if no_images %}
+    <p style="color:#9ca3af;">No images have been extracted from this report yet. Run an analysis from the dashboard first.</p>
   {% elif not match_groups %}
-    <p class="empty">No similar pages found for this report.</p>
+    <p style="color:#9ca3af;">No matching images found for this report.</p>
   {% else %}
     {% for group in match_groups %}
       <div class="card">
@@ -109,8 +110,8 @@
               &mdash; {{ group.report_type_label }} &mdash; {{ group.event_name }}
             </span>
           </span>
-          <span class="max-sim">
-            up to {% widthratio group.max_sim 1 100 %}% similar
+          <span class="min-dist">
+            closest: {{ group.min_hamming }} bit{{ group.min_hamming|pluralize }} diff
           </span>
         </div>
         <table>
@@ -118,23 +119,24 @@
             <tr>
               <th>This report, pg.</th>
               <th>Other report, pg.</th>
-              <th>Similarity</th>
+              <th>Difference</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {% for pair in group.page_pairs %}
+            {% for pair in group.image_pairs %}
               <tr>
-                <td>{{ pair.this_page.page_number }}</td>
-                <td>{{ pair.other_page.page_number }}</td>
+                <td>{{ pair.this_img.page_number }}</td>
+                <td>{{ pair.other_img.page_number }}</td>
                 <td>
-                  <div class="sim-bar-wrap">
-                    <span class="sim-bar" style="width:{% widthratio pair.similarity 1 80 %}px;"></span>
-                    {% widthratio pair.similarity 1 100 %}%
+                  <div class="dist-bar-wrap">
+                    <span class="dist-bar {% if pair.hamming_distance <= 3 %}close{% endif %}"
+                          style="width:{% widthratio pair.hamming_distance 10 80 %}px;"></span>
+                    {{ pair.hamming_distance }} bit{{ pair.hamming_distance|pluralize }}
                   </div>
                 </td>
                 <td>
-                  <a class="btn-sm" href="{% url 'reports:page_match_detail' pair.page_match_id %}">
+                  <a class="btn-sm" href="{% url 'reports:image_match_detail' pair.image_match_id %}">
                     Compare &rarr;
                   </a>
                 </td>

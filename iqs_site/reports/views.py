@@ -1,14 +1,17 @@
+import io
 import json
 
 from django.conf import settings
 from django.contrib import messages
-from django.db.models import Count, Max
+from django.db.models import Count, Max, Q
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
-from events.models import Event, Report
+import requests as http_requests
 
-from .models import AnalysisJob, ChunkMatch, PageMatch, ReportPage
+from events.models import Event, EventTeam, Report, Team
+
+from .models import AnalysisJob, ChunkMatch, ImageMatch, PageMatch, ReportImage, ReportPage
 
 REPORT_TYPE_LABELS = {
     1: "Design Report",
@@ -220,11 +223,32 @@ def event_analysis(request, event_id):
             .values("report_id")
             .annotate(page_count=Count("page_id"), chunk_count=Count("chunks"))
     }
+
+    # image match counts per report (matches in either direction)
+    img_match_counts = {}
+    for row in (
+        ImageMatch.objects
+        .filter(image_a__report_id__in=report_ids)
+        .values("image_a__report_id")
+        .annotate(n=Count("image_match_id"))
+    ):
+        rid = row["image_a__report_id"]
+        img_match_counts[rid] = img_match_counts.get(rid, 0) + row["n"]
+    for row in (
+        ImageMatch.objects
+        .filter(image_b__report_id__in=report_ids)
+        .values("image_b__report_id")
+        .annotate(n=Count("image_match_id"))
+    ):
+        rid = row["image_b__report_id"]
+        img_match_counts[rid] = img_match_counts.get(rid, 0) + row["n"]
+
     report_data = [
         {
             "report": r,
             "page_count": stats_by_report.get(r.report_id, {}).get("page_count", 0),
             "chunk_count": stats_by_report.get(r.report_id, {}).get("chunk_count", 0),
+            "image_match_count": img_match_counts.get(r.report_id, 0),
         }
         for r in reports
     ]
@@ -276,6 +300,203 @@ def event_analysis(request, event_id):
         "report_data": report_data,
         "rows": rows,
         "no_reports": False,
+    })
+
+
+# ── Report coverage matrix ────────────────────────────────────────────────────
+
+def report_coverage(request):
+    _require_staff(request)
+
+    try:
+        report_type = int(request.GET.get("report_type", 1))
+    except (TypeError, ValueError):
+        report_type = 1
+
+    events = list(Event.objects.order_by("-event_datetime"))
+
+    available_types = (
+        Report.objects
+        .values_list("report_type", flat=True)
+        .distinct()
+        .order_by("report_type")
+    )
+    report_type_choices = [
+        (rt, REPORT_TYPE_LABELS.get(rt, f"Type {rt}"))
+        for rt in available_types
+    ]
+
+    # Teams that appear in at least one of these events, sorted by name.
+    teams = list(
+        Team.objects
+        .filter(event_teams__event__in=events)
+        .distinct()
+        .order_by("team_name")
+    )
+
+    event_ids = [e.event_id for e in events]
+    team_ids  = [t.team_id  for t in teams]
+
+    # Which (event_id, team_id) pairs have an EventTeam record.
+    participation = set(
+        EventTeam.objects
+        .filter(event_id__in=event_ids, team_id__in=team_ids)
+        .values_list("event_id", "team_id")
+    )
+
+    # Which pairs have a report of the selected type.
+    has_report = set(
+        Report.objects
+        .filter(report_type=report_type, event_team__event_id__in=event_ids)
+        .values_list("event_team__event_id", "event_team__team_id")
+    )
+
+    rows = []
+    for event in events:
+        cells = []
+        for team in teams:
+            key = (event.event_id, team.team_id)
+            if key not in participation:
+                cells.append(None)          # didn't participate
+            elif key in has_report:
+                cells.append(True)          # submitted
+            else:
+                cells.append(False)         # participated but no report
+        rows.append({"event": event, "cells": cells})
+
+    return render(request, "reports/report_coverage.html", {
+        "report_type": report_type,
+        "report_type_label": REPORT_TYPE_LABELS.get(report_type, f"Type {report_type}"),
+        "report_type_choices": report_type_choices,
+        "teams": teams,
+        "rows": rows,
+    })
+
+
+# ── Image match list ──────────────────────────────────────────────────────────
+
+def report_image_matches(request, report_id):
+    _require_staff(request)
+
+    report = get_object_or_404(
+        Report.objects.select_related("event_team__team", "event_team__event"),
+        pk=report_id,
+    )
+
+    image_ids = list(ReportImage.objects.filter(report=report).values_list("image_id", flat=True))
+
+    if not image_ids:
+        return render(request, "reports/report_image_matches.html", {
+            "report": report,
+            "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
+            "match_groups": [],
+            "no_images": True,
+        })
+
+    matches_a = (
+        ImageMatch.objects
+        .filter(image_a_id__in=image_ids)
+        .select_related("image_a", "image_b__report__event_team__team", "image_b__report__event_team__event")
+        .order_by("hamming_distance")
+    )
+    matches_b = (
+        ImageMatch.objects
+        .filter(image_b_id__in=image_ids)
+        .select_related("image_b", "image_a__report__event_team__team", "image_a__report__event_team__event")
+        .order_by("hamming_distance")
+    )
+
+    groups = {}  # other_report_id → dict
+
+    def _add(this_img, other_img, other_report, distance, im_id):
+        key = other_report.report_id
+        if key not in groups:
+            groups[key] = {
+                "other_report": other_report,
+                "team_name": getattr(getattr(other_report.event_team, "team", None), "team_name", "?"),
+                "event_name": getattr(getattr(other_report.event_team, "event", None), "event_name", "?"),
+                "report_type_label": REPORT_TYPE_LABELS.get(other_report.report_type, f"Type {other_report.report_type}"),
+                "image_pairs": [],
+                "min_hamming": 999,
+            }
+        groups[key]["image_pairs"].append({
+            "this_img": this_img,
+            "other_img": other_img,
+            "hamming_distance": distance,
+            "image_match_id": im_id,
+        })
+        groups[key]["min_hamming"] = min(groups[key]["min_hamming"], distance)
+
+    for m in matches_a:
+        _add(m.image_a, m.image_b, m.image_b.report, m.hamming_distance, m.image_match_id)
+    for m in matches_b:
+        _add(m.image_b, m.image_a, m.image_a.report, m.hamming_distance, m.image_match_id)
+
+    match_groups = sorted(groups.values(), key=lambda g: g["min_hamming"])
+
+    return render(request, "reports/report_image_matches.html", {
+        "report": report,
+        "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
+        "match_groups": match_groups,
+        "no_images": False,
+    })
+
+
+# ── Image serve ───────────────────────────────────────────────────────────────
+
+def image_serve(request, image_id):
+    _require_staff(request)
+
+    rim = get_object_or_404(ReportImage, pk=image_id)
+
+    # Download the source PDF using the internal-token mechanism.
+    token = getattr(settings, "INTERNAL_REPORT_TOKEN", "")
+    headers = {"X-Internal-Token": token} if token else {}
+    url = f"https://iqsconnect.org/reports/{rim.report_id}"
+    try:
+        resp = http_requests.get(url, headers=headers, timeout=30)
+        resp.raise_for_status()
+    except Exception:
+        raise Http404("Could not fetch source PDF")
+
+    try:
+        from pypdf import PdfReader
+        from PIL import Image
+
+        reader = PdfReader(io.BytesIO(resp.content))
+        page = reader.pages[rim.page_number - 1]
+        img_obj = list(page.images)[rim.image_index]
+        pil_img = Image.open(io.BytesIO(img_obj.data)).convert("RGB")
+
+        buf = io.BytesIO()
+        pil_img.save(buf, format="JPEG", quality=85)
+        return HttpResponse(buf.getvalue(), content_type="image/jpeg")
+    except Exception:
+        raise Http404("Could not extract image from PDF")
+
+
+# ── Image match detail ────────────────────────────────────────────────────────
+
+def image_match_detail(request, image_match_id):
+    _require_staff(request)
+
+    im = get_object_or_404(
+        ImageMatch.objects.select_related(
+            "image_a__report__event_team__team",
+            "image_a__report__event_team__event",
+            "image_b__report__event_team__team",
+            "image_b__report__event_team__event",
+        ),
+        pk=image_match_id,
+    )
+
+    team_a = getattr(getattr(im.image_a.report.event_team, "team", None), "team_name", "?")
+    team_b = getattr(getattr(im.image_b.report.event_team, "team", None), "team_name", "?")
+
+    return render(request, "reports/image_match_detail.html", {
+        "im": im,
+        "team_a": team_a,
+        "team_b": team_b,
     })
 
 
