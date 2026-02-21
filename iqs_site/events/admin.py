@@ -16,6 +16,7 @@ from .models import (
     ScheduleItem,
     ScheduleItemType,
     TractorMedia,
+    Report,
 )
 from .models import (
     ScoreCategory,
@@ -383,6 +384,14 @@ class TractorMediaAdmin(admin.ModelAdmin):
         return "(unknown media type)"
 
     media_preview.short_description = "Preview"
+
+
+@admin.register(Report)
+class ReportAdmin(admin.ModelAdmin):
+    list_display = ("report_id", "report_type", "event_team", "report_link", "released")
+    list_filter = ("report_type", "released", "event_team__event")
+    search_fields = ("report_link", "event_team__team__team_name", "event_team__team__team_number")
+    ordering = ("report_id",)
 
 
 @admin.register(EditLog)

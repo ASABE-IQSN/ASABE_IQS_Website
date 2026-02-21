@@ -4,6 +4,9 @@
 {% block title %}Event Analysis — {{ event.event_name }}{% endblock %}
 
 {% block extra_styles %}
+  /* Break out of the default 1000px .wrap constraint */
+  .wrap { max-width: min(98vw, 1800px); }
+
   .breadcrumb {
     font-size: 0.85rem;
     color: #9ca3af;
