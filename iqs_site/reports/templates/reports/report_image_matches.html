@@ -33,10 +33,11 @@
   }
 
   th, td {
-    padding: 0.5rem;
+    padding: 0.5rem 0.75rem;
     border-bottom: 1px solid #1f2937;
     text-align: left;
     font-size: 0.88rem;
+    vertical-align: middle;
   }
 
   th {
@@ -61,6 +62,31 @@
   }
 
   .dist-bar.close { background: #ef4444; }
+
+  .img-thumb {
+    display: block;
+    max-width: 110px;
+    max-height: 80px;
+    width: auto;
+    height: auto;
+    border-radius: 0.4rem;
+    border: 1px solid #1f2937;
+    background: #060d1a;
+    object-fit: contain;
+  }
+
+  .img-cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.3rem;
+  }
+
+  .img-cell .pg-label {
+    font-size: 0.75rem;
+    color: #6b7280;
+    white-space: nowrap;
+  }
 
   .btn-sm {
     background: #6687fc;
@@ -117,8 +143,8 @@
         <table>
           <thead>
             <tr>
-              <th>This report, pg.</th>
-              <th>Other report, pg.</th>
+              <th>This report</th>
+              <th>Other report</th>
               <th>Difference</th>
               <th></th>
             </tr>
@@ -126,8 +152,24 @@
           <tbody>
             {% for pair in group.image_pairs %}
               <tr>
-                <td>{{ pair.this_img.page_number }}</td>
-                <td>{{ pair.other_img.page_number }}</td>
+                <td>
+                  <div class="img-cell">
+                    <img class="img-thumb"
+                         src="{% url 'reports:image_serve' pair.this_img.image_id %}"
+                         alt="This report, page {{ pair.this_img.page_number }}"
+                         loading="lazy">
+                    <span class="pg-label">pg. {{ pair.this_img.page_number }}</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="img-cell">
+                    <img class="img-thumb"
+                         src="{% url 'reports:image_serve' pair.other_img.image_id %}"
+                         alt="Other report, page {{ pair.other_img.page_number }}"
+                         loading="lazy">
+                    <span class="pg-label">pg. {{ pair.other_img.page_number }}</span>
+                  </div>
+                </td>
                 <td>
                   <div class="dist-bar-wrap">
                     <span class="dist-bar {% if pair.hamming_distance <= 3 %}close{% endif %}"

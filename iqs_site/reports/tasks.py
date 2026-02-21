@@ -1,3 +1,4 @@
+import bisect
 import io
 import itertools
 import logging
@@ -26,6 +27,8 @@ OCR_DPI = 200                      # DPI for rendering pages before OCR
 MIN_IMAGE_SIZE = 50                # px — skip icons/decorations smaller than this
 MIN_COLOR_STDDEV = 8               # per-channel stddev threshold; below this = uniform/blank image
 IMAGE_HAMMING_THRESHOLD = 10       # max pHash Hamming distance to record as a match
+IMAGE_COMPARE_CHUNK_SIZE = 500     # image IDs per parallel comparison sub-task
+IMAGE_LOG_INTERVAL = 500_000       # log a progress line every N pair comparisons
 PUBLIC_BASE_URL = "https://iqsconnect.org"
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -205,6 +208,7 @@ def _extract_images(pdf_bytes: bytes) -> list[dict]:
         return []
 
     results = []
+    seen_phashes: set[str] = set()
     try:
         reader = PdfReader(io.BytesIO(pdf_bytes))
     except Exception:
@@ -234,6 +238,14 @@ def _extract_images(pdf_bytes: bytes) -> list[dict]:
                     )
                     continue
                 ph = str(imagehash.phash(pil_img))
+                # Skip exact duplicates (e.g. logos repeated on every page)
+                if ph in seen_phashes:
+                    logger.debug(
+                        "Skipping duplicate image %d on page %d (phash=%s)",
+                        img_idx, page_num, ph,
+                    )
+                    continue
+                seen_phashes.add(ph)
                 results.append({
                     "page_number": page_num,
                     "image_index": img_idx,
@@ -408,6 +420,259 @@ def run_extraction(job_id: int) -> None:
 
     except Exception as exc:
         logger.exception("run_extraction %s failed during setup", job_id)
+        job.status = AnalysisJob.Statuses.FAILED
+        job.completed_at = timezone.now()
+        job.error_message = str(exc)[:4000]
+        job.save(update_fields=["status", "completed_at", "error_message"])
+        raise
+
+
+@shared_task
+def compare_images_chunk(
+    job_id: int,
+    chunk_idx: int,
+    total_chunks: int,
+    image_a_ids: list,
+    report_type,
+) -> None:
+    """
+    Compare one partition of images (image_a_ids) against every image with a
+    higher image_id, recording matches below IMAGE_HAMMING_THRESHOLD.
+
+    Designed to run inside a Celery chord group so workers operate in parallel.
+    Always returns without raising — chord callback fires even on individual errors.
+    Uses bisect to skip lower-id candidates without iterating the whole list.
+    """
+    try:
+        import imagehash
+    except ImportError:
+        logger.warning("imagehash not available; skipping image chunk %d", chunk_idx)
+        AnalysisJob.objects.filter(pk=job_id).update(
+            reports_processed=F("reports_processed") + 1,
+        )
+        return
+
+    # Load all relevant images once; each worker performs this cheap query.
+    image_qs = (
+        ReportImage.objects
+        .order_by("image_id")
+        .values("image_id", "report_id", "phash")
+    )
+    if report_type is not None:
+        image_qs = image_qs.filter(report__report_type=report_type)
+
+    all_images = list(image_qs)
+    if not all_images:
+        AnalysisJob.objects.filter(pk=job_id).update(
+            reports_processed=F("reports_processed") + 1,
+        )
+        return
+
+    # Pre-compute hash objects and build lookup maps (done once per worker).
+    sorted_ids   = [img["image_id"] for img in all_images]   # already sorted
+    hash_cache   = {img["image_id"]: imagehash.hex_to_hash(img["phash"]) for img in all_images}
+    report_cache = {img["image_id"]: img["report_id"] for img in all_images}
+
+    image_a_id_set = set(image_a_ids)
+    new_matches    = []
+    pair_count     = 0
+
+    for a_id in image_a_ids:
+        if a_id not in hash_cache:
+            continue  # image was deleted between coordinator and worker
+
+        hash_a    = hash_cache[a_id]
+        report_a  = report_cache[a_id]
+
+        # bisect past a_id so we only visit b_id > a_id, avoiding duplicate pairs.
+        start = bisect.bisect_right(sorted_ids, a_id)
+
+        for b_id in sorted_ids[start:]:
+            if report_cache[b_id] == report_a:
+                continue  # same report — never a match
+
+            distance = hash_a - hash_cache[b_id]
+            pair_count += 1
+
+            if pair_count % IMAGE_LOG_INTERVAL == 0:
+                logger.info(
+                    "Image chunk %d/%d (job %s): %d pairs checked, %d matches so far",
+                    chunk_idx + 1, total_chunks, job_id, pair_count, len(new_matches),
+                )
+
+            if distance <= IMAGE_HAMMING_THRESHOLD:
+                new_matches.append(ImageMatch(
+                    image_a_id=a_id,
+                    image_b_id=b_id,
+                    hamming_distance=distance,
+                ))
+
+    if new_matches:
+        ImageMatch.objects.bulk_create(new_matches, ignore_conflicts=True)
+
+    logger.info(
+        "Image chunk %d/%d (job %s): done — %d pairs checked, %d matches found",
+        chunk_idx + 1, total_chunks, job_id, pair_count, len(new_matches),
+    )
+
+    AnalysisJob.objects.filter(pk=job_id).update(
+        reports_processed=F("reports_processed") + 1,
+        images_processed=F("images_processed") + len(new_matches),
+    )
+
+
+@shared_task
+def finalize_similarity(job_id: int) -> None:
+    """Chord callback: mark the similarity analysis job as SUCCEEDED."""
+    AnalysisJob.objects.filter(pk=job_id).update(
+        status=AnalysisJob.Statuses.SUCCEEDED,
+        completed_at=timezone.now(),
+    )
+    logger.info("Similarity job %s completed", job_id)
+
+
+@shared_task
+def run_similarity_analysis(job_id: int) -> None:
+    """
+    Coordinator for similarity-only jobs.
+
+    Reads existing extracted data from the DB — run an extraction job first.
+
+    Phase 2: MinHash page-level comparison → PageMatch + ChunkMatch (sequential).
+    Phase 4: pHash image comparison → ImageMatch (parallel chord, one task per
+             IMAGE_COMPARE_CHUNK_SIZE images).
+
+    Counter semantics for this job type:
+      pages_processed  — pages fed into MinHash
+      reports_found    — total image comparison chunks
+      reports_processed — chunks completed (updated atomically by each worker)
+      images_processed — total ImageMatch records created
+    """
+    job = AnalysisJob.objects.get(pk=job_id)
+    job.status = AnalysisJob.Statuses.RUNNING
+    job.started_at = timezone.now()
+    job.error_message = None
+    job.save(update_fields=["status", "started_at", "error_message"])
+
+    try:
+        rt_filter = {"report__report_type": job.report_type} if job.report_type is not None else {}
+
+        # ── Phase 2: MinHash page comparison ─────────────────────────────────
+        all_pages = list(
+            ReportPage.objects
+            .filter(**rt_filter)
+            .prefetch_related("chunks")
+            .order_by("page_id")
+        )
+        logger.info("Similarity job %s: %d pages to compare via MinHash", job_id, len(all_pages))
+
+        page_hashes = []
+        for rpage in all_pages:
+            full_text = " ".join(c.text for c in rpage.chunks.all())
+            words = _normalize(full_text)
+            shs = _shingles(words, SHINGLE_SIZE_WORDS)
+            if shs:
+                page_hashes.append((rpage, _minhash(shs)))
+
+        # Clear stale PageMatch (and cascaded ChunkMatch) for this scope.
+        if job.report_type is not None:
+            PageMatch.objects.filter(page_a__report__report_type=job.report_type).delete()
+        else:
+            PageMatch.objects.all().delete()
+
+        new_page_matches = []
+        pairs_checked = 0
+        for (pa, mh_a), (pb, mh_b) in itertools.combinations(page_hashes, 2):
+            if pa.report_id == pb.report_id:
+                continue
+            pairs_checked += 1
+            if pairs_checked % 1_000_000 == 0:
+                logger.info(
+                    "Similarity job %s: %d page pairs compared, %d matches so far",
+                    job_id, pairs_checked, len(new_page_matches),
+                )
+            sim = mh_a.jaccard(mh_b)
+            if sim >= PAGE_SIMILARITY_THRESHOLD:
+                a, b = (pa, pb) if pa.page_id < pb.page_id else (pb, pa)
+                new_page_matches.append(PageMatch(page_a=a, page_b=b, similarity=sim))
+
+        PageMatch.objects.bulk_create(new_page_matches, ignore_conflicts=True)
+        logger.info(
+            "Similarity job %s: %d page pairs checked, %d PageMatch records created",
+            job_id, pairs_checked, len(new_page_matches),
+        )
+
+        # ── Phase 3: chunk-level matching ─────────────────────────────────────
+        page_ids = [p.page_id for p, _ in page_hashes]
+        created_chunk_matches = 0
+        for pm in PageMatch.objects.filter(page_a_id__in=page_ids).prefetch_related(
+            "page_a__chunks", "page_b__chunks"
+        ):
+            batch = [
+                ChunkMatch(page_match=pm, chunk_a=ca, chunk_b=cb, similarity=sim)
+                for ca in pm.page_a.chunks.all()
+                for cb in pm.page_b.chunks.all()
+                if (sim := _word_set_jaccard(ca.text, cb.text)) >= CHUNK_SIMILARITY_THRESHOLD
+            ]
+            if batch:
+                ChunkMatch.objects.bulk_create(batch)
+                created_chunk_matches += len(batch)
+
+        logger.info(
+            "Similarity job %s: %d ChunkMatch records created",
+            job_id, created_chunk_matches,
+        )
+
+        job.pages_processed = len(page_hashes)
+        job.save(update_fields=["pages_processed"])
+
+        # ── Phase 4: parallel image comparison ───────────────────────────────
+        all_image_ids = list(
+            ReportImage.objects
+            .filter(**rt_filter)
+            .order_by("image_id")
+            .values_list("image_id", flat=True)
+        )
+        logger.info("Similarity job %s: %d images — building comparison chunks", job_id, len(all_image_ids))
+
+        # Clear stale ImageMatch for this scope.
+        if job.report_type is not None:
+            ImageMatch.objects.filter(image_a__report__report_type=job.report_type).delete()
+        else:
+            ImageMatch.objects.all().delete()
+
+        if not all_image_ids:
+            job.status = AnalysisJob.Statuses.SUCCEEDED
+            job.completed_at = timezone.now()
+            job.save(update_fields=["status", "completed_at"])
+            return
+
+        chunks = [
+            all_image_ids[i: i + IMAGE_COMPARE_CHUNK_SIZE]
+            for i in range(0, len(all_image_ids), IMAGE_COMPARE_CHUNK_SIZE)
+        ]
+        total_chunks = len(chunks)
+
+        # Use reports_found / reports_processed to track chunk progress on the dashboard.
+        job.reports_found = total_chunks
+        job.reports_processed = 0
+        job.save(update_fields=["reports_found", "reports_processed"])
+
+        logger.info(
+            "Similarity job %s: spawning %d image comparison chunks (chunk_size=%d)",
+            job_id, total_chunks, IMAGE_COMPARE_CHUNK_SIZE,
+        )
+
+        chord(
+            group(
+                compare_images_chunk.s(job_id, idx, total_chunks, chunk_ids, job.report_type)
+                for idx, chunk_ids in enumerate(chunks)
+            ),
+            finalize_similarity.si(job_id),
+        ).delay()
+
+    except Exception as exc:
+        logger.exception("run_similarity_analysis %s failed", job_id)
         job.status = AnalysisJob.Statuses.FAILED
         job.completed_at = timezone.now()
         job.error_message = str(exc)[:4000]

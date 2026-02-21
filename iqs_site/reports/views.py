@@ -63,6 +63,14 @@ def analysis_dashboard(request):
             from .tasks import run_extraction
             run_extraction.delay(job.pk)
             messages.success(request, f"Extraction job #{job.pk} queued.")
+        elif job_type == "similarity":
+            job = AnalysisJob.objects.create(
+                report_type=report_type,
+                job_type=AnalysisJob.JobTypes.SIMILARITY,
+            )
+            from .tasks import run_similarity_analysis
+            run_similarity_analysis.delay(job.pk)
+            messages.success(request, f"Similarity job #{job.pk} queued.")
         else:
             job = AnalysisJob.objects.create(
                 report_type=report_type,
@@ -347,7 +355,7 @@ def report_coverage(request):
         Team.objects
         .filter(event_teams__event__in=events)
         .distinct()
-        .order_by("team_name")
+        .order_by("team_number")
     )
 
     event_ids = [e.event_id for e in events]

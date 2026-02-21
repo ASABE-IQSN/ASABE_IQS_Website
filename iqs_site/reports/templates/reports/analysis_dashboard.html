@@ -71,8 +71,9 @@
     color: #9ca3af;
   }
 
-  .job-type-chip.EXTRACTION { border-color: #a78bfa; color: #a78bfa; }
-  .job-type-chip.FULL       { border-color: #6687fc; color: #6687fc; }
+  .job-type-chip.EXTRACTION  { border-color: #a78bfa; color: #a78bfa; }
+  .job-type-chip.SIMILARITY  { border-color: #34d399; color: #34d399; }
+  .job-type-chip.FULL        { border-color: #6687fc; color: #6687fc; }
 
   table {
     width: 100%;
@@ -149,13 +150,17 @@
       <button type="submit" name="job_type" value="extraction" class="btn-secondary">
         Queue extraction
       </button>
+      <button type="submit" name="job_type" value="similarity" class="btn-secondary" style="border-color:#34d399;color:#34d399;">
+        Queue similarity
+      </button>
       <button type="submit" name="job_type" value="full">
         Queue full analysis
       </button>
     </div>
     <p style="margin:0.6rem 0 0;font-size:0.78rem;color:#9ca3af;">
-      <strong style="color:#a78bfa;">Extraction</strong> downloads and parses every PDF in parallel (one worker per report).
-      <strong style="color:#6687fc;">Full analysis</strong> also runs similarity comparison across all reports.
+      <strong style="color:#a78bfa;">Extraction</strong> — downloads &amp; parses every PDF in parallel (one worker per report).
+      <strong style="color:#34d399;">Similarity</strong> — MinHash page comparison (sequential) then image comparison in parallel chunks; requires extraction to have run first.
+      <strong style="color:#6687fc;">Full analysis</strong> — extraction + similarity in one job (sequential).
     </p>
   </form>
 
@@ -189,10 +194,14 @@
                 {{ job.status }}
               </span>
             </td>
-            <td id="reports-{{ job.job_id }}">
+            <td id="reports-{{ job.job_id }}"
+                title="{% if job.job_type == 'SIMILARITY' %}image chunks done / total{% else %}reports processed / found{% endif %}">
               {{ job.reports_processed }} / {{ job.reports_found }}
             </td>
-            <td id="pages-{{ job.job_id }}">{{ job.pages_processed }}</td>
+            <td id="pages-{{ job.job_id }}"
+                title="{% if job.job_type == 'SIMILARITY' %}pages fed into MinHash{% else %}pages extracted{% endif %}">
+              {{ job.pages_processed }}
+            </td>
             <td>{{ job.created_at|date:"M j, Y H:i" }}</td>
             <td id="error-{{ job.job_id }}" style="color:#ef4444;font-size:0.8rem;">
               {{ job.error_message|default:"" }}

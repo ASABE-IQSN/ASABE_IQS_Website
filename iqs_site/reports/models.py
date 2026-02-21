@@ -157,6 +157,7 @@ class AnalysisJob(models.Model):
 
     class JobTypes(models.TextChoices):
         EXTRACTION = "EXTRACTION", "Extraction"
+        SIMILARITY = "SIMILARITY", "Similarity Analysis"
         FULL = "FULL", "Full Analysis"
 
     job_id = models.AutoField(primary_key=True)
