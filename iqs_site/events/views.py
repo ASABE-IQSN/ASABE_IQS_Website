@@ -1557,7 +1557,7 @@ def team_event_edit(request, event_id: int, team_id: int):
         "active_page": "events",
     })
 
-
+@csrf_exempt
 @require_POST
 def upload_report(request, event_id: int, team_id: int):
     # Allow internal scripts via token, otherwise require a logged-in team editor.
