@@ -150,7 +150,7 @@ def _extract_pages(pdf_bytes: bytes) -> list[dict]:
             prev_top = None
             for word in words:
                 top = word.get("top", 0)
-                if prev_top is not None and (top - prev_top) > PARAGRAPH_GAP_PTS:
+                if prev_top is not None and abs(top - prev_top) > PARAGRAPH_GAP_PTS:
                     if current_group:
                         chunks_raw.append(current_group)
                         current_group = []
