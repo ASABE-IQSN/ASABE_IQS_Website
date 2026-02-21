@@ -60,7 +60,7 @@
               {% for report in existing_reports %}
                 <div style="padding: 0.5rem 0.75rem; background: #020617; border: 1px solid #1f2937; border-radius: 0.5rem; font-size: 0.85rem; color: #9ca3af; display: flex; align-items: center; gap: 0.5rem;">
                   <span style="color: #F3F6E7;">{{ report.report_link }}</span>
-                  <a href="{% url 'events:report' report.report_id %}" target="_blank"
+                  <a href="{% url 'reports:report_download' report.report_id %}" target="_blank"
                      style="color: #60a5fa; font-size: 0.8rem; margin-left: auto;">View</a>
                 </div>
               {% endfor %}

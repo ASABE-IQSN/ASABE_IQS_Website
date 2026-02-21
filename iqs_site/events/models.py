@@ -795,6 +795,7 @@ class Report(models.Model):
         related_name="reports",
     )
     report_link=models.CharField(max_length=255)
+    released=models.BooleanField(default=False)
 
     class Meta:
         db_table = 'reports'

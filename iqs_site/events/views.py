@@ -351,7 +351,7 @@ def team_event_detail(request, event_id, team_id):
     
     reports=(
         Report.objects.
-        filter(event_team=event_team).
+        filter(event_team=event_team,released=True).
         order_by("report_type")
     )
 
@@ -1556,3 +1556,72 @@ def team_event_edit(request, event_id: int, team_id: int):
         "existing_reports": existing_reports,
         "active_page": "events",
     })
+
+
+@require_POST
+def upload_report(request, event_id: int, team_id: int):
+    # Allow internal scripts via token, otherwise require a logged-in team editor.
+    internal_token = getattr(settings, "INTERNAL_REPORT_TOKEN", "")
+    is_internal = internal_token and request.headers.get("X-Internal-Token") == internal_token
+
+    if not is_internal:
+        if not request.user.is_authenticated:
+            from django.contrib.auth.views import redirect_to_login
+            return redirect_to_login(request.get_full_path())
+        event = get_object_or_404(Event, pk=event_id)
+        team = get_object_or_404(Team, pk=team_id)
+        if not can_edit_team(request.user, team):
+            raise PermissionDenied
+    else:
+        event = get_object_or_404(Event, pk=event_id)
+        team = get_object_or_404(Team, pk=team_id)
+
+    event_team = EventTeam.objects.filter(event=event, team=team).first()
+    if event_team is None:
+        if is_internal:
+            return JsonResponse({"error": "No EventTeam for this event/team pair."}, status=404)
+        raise Http404("This team is not registered for this event.")
+
+    report_file = request.FILES.get("report")
+    if not report_file or not report_file.name:
+        if is_internal:
+            return JsonResponse({"error": "No file provided."}, status=400)
+        messages.error(request, "No file selected.")
+        return redirect("events:team_event_edit", event_id=event_id, team_id=team_id)
+
+    if not _allowed_report(report_file.name):
+        if is_internal:
+            return JsonResponse({"error": "Invalid file type; only PDF allowed."}, status=400)
+        messages.error(request, "Invalid file type. Please upload a PDF.")
+        return redirect("events:team_event_edit", event_id=event_id, team_id=team_id)
+
+    report_type_raw = request.POST.get("report_type", "0")
+    report_type = int(report_type_raw) if report_type_raw.isdigit() else 0
+    if report_type not in (1, 2, 3):
+        if is_internal:
+            return JsonResponse({"error": "Invalid report_type; must be 1, 2, or 3."}, status=400)
+        messages.error(request, "Invalid report type.")
+        return redirect("events:team_event_edit", event_id=event_id, team_id=team_id)
+
+    name_root, ext = os.path.splitext(report_file.name)
+    ext = ext.lower()
+    safe_root = "".join(c for c in name_root if c.isalnum() or c in ("-", "_")) or "report"
+    filename = f"event{event_id}_team{team_id}_{safe_root}{ext}"
+
+    save_path = Path(f"/var/www/quarterscale/reports/{filename}")
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    with save_path.open("wb+") as dest:
+        for chunk in report_file.chunks():
+            dest.write(chunk)
+
+    report = Report.objects.create(
+        event_team=event_team,
+        report_type=report_type,
+        report_link=filename,
+    )
+
+    if is_internal:
+        return JsonResponse({"ok": True, "report_id": report.pk, "filename": filename})
+
+    messages.success(request, "Report uploaded successfully!")
+    return redirect("events:team_event_edit", event_id=event_id, team_id=team_id)
