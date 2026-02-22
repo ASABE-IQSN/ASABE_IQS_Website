@@ -826,7 +826,7 @@ def report_ai_detection(request, report_id):
         pk=report_id,
     )
 
-    pages = (
+    pages = list(
         ReportPage.objects
         .filter(report=report)
         .prefetch_related("chunks", "ai_detection__sentences")
@@ -837,6 +837,7 @@ def report_ai_detection(request, report_id):
     total_ai_words = 0
     total_text_words = 0
     analyzed_count = 0
+    chunk_data = []  # flat list consumed by pdf.js renderer
 
     for page in pages:
         try:
@@ -844,22 +845,43 @@ def report_ai_detection(request, report_id):
         except AIDetectionResult.DoesNotExist:
             result = None
 
-        chunks = list(page.chunks.order_by("chunk_index"))
-
-        flagged_sentence_texts = set()
+        # Build list of flagged sentences for this page.
+        flagged_sentences = []
         if result:
             analyzed_count += 1
             total_ai_words += result.ai_words
             total_text_words += result.text_words
             for s in result.sentences.all():
                 if s.text:
-                    flagged_sentence_texts.add(s.text)
+                    flagged_sentences.append({
+                        "text": s.text,
+                        "probability": s.generated_probability,
+                    })
+
+        # Build per-chunk JSON entries for the PDF overlay renderer.
+        for chunk in page.chunks.order_by("chunk_index"):
+            if chunk.bbox_x0 is None:
+                continue
+            # Match flagged sentences to this chunk via substring containment.
+            matching = [
+                s for s in flagged_sentences
+                if s["text"] in chunk.text or chunk.text in s["text"]
+            ]
+            chunk_data.append({
+                "id": f"chunk-{chunk.chunk_id}",
+                "page_number": page.page_number,
+                "x0": chunk.bbox_x0,
+                "y0": chunk.bbox_y0,
+                "x1": chunk.bbox_x1,
+                "y1": chunk.bbox_y1,
+                "flagged": bool(matching),
+                "sentences": matching,
+            })
 
         page_data.append({
             "page": page,
             "result": result,
-            "chunks": chunks,
-            "flagged_texts": flagged_sentence_texts,
+            "flagged_sentences": flagged_sentences,
         })
 
     avg_fake_pct = None
@@ -876,4 +898,5 @@ def report_ai_detection(request, report_id):
         "avg_fake_pct": avg_fake_pct,
         "total_ai_words": total_ai_words,
         "total_text_words": total_text_words,
+        "chunk_data_json": json.dumps(chunk_data),
     })
