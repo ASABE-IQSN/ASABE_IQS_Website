@@ -1,5 +1,7 @@
 import io
 import json
+import random
+import re
 
 from django.core.cache import cache
 from django.conf import settings
@@ -7,6 +9,7 @@ from django.contrib import messages
 from django.db.models import Avg, Count, Max, Min, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 import requests as http_requests
 
@@ -923,6 +926,230 @@ def retrigger_ai_detection(request, report_id):
         f"({report.event_team.event.event_name}). Refresh in a moment to see updated results.",
     )
     return redirect("reports:report_ai_detection", report_id=report_id)
+
+
+# ── Methodology explanations ──────────────────────────────────────────────────
+
+def methodology_image(request, image_match_id=None):
+    """Interactive walkthrough of the pHash image similarity algorithm.
+
+    When called with image_match_id (via the methodology_image_match URL), it pins
+    to that specific match instead of picking a random one.
+    """
+    _require_staff(request)
+
+    pinned = image_match_id is not None
+
+    if pinned:
+        im = get_object_or_404(
+            ImageMatch.objects.select_related(
+                "image_a__report__event_team__team",
+                "image_a__report__event_team__event",
+                "image_b__report__event_team__team",
+                "image_b__report__event_team__event",
+            ),
+            pk=image_match_id,
+        )
+    else:
+        def _pick_match(min_d, max_d):
+            qs = (
+                ImageMatch.objects
+                .select_related(
+                    "image_a__report__event_team__team",
+                    "image_a__report__event_team__event",
+                    "image_b__report__event_team__team",
+                    "image_b__report__event_team__event",
+                )
+                .filter(hamming_distance__gte=min_d, hamming_distance__lte=max_d)
+            )
+            count = qs.count()
+            if not count:
+                return None
+            return qs[random.randint(0, count - 1)]
+
+        # Prefer a slightly-different pair so the bit diff is interesting
+        im = _pick_match(1, 8) or _pick_match(0, 64)
+
+    if not im:
+        return render(request, "reports/methodology_image.html", {"no_data": True, "pinned": False})
+
+    def _hex_to_bits(h):
+        return bin(int(h, 16))[2:].zfill(64)
+
+    bits_a = _hex_to_bits(im.image_a.phash)
+    bits_b = _hex_to_bits(im.image_b.phash)
+
+    # 8×8 grids for template rendering
+    bit_grid_a    = [list(bits_a[i * 8:(i + 1) * 8]) for i in range(8)]
+    bit_grid_b    = [list(bits_b[i * 8:(i + 1) * 8]) for i in range(8)]
+    bit_grid_diff = [
+        [bits_a[i * 8 + j] != bits_b[i * 8 + j] for j in range(8)]
+        for i in range(8)
+    ]
+    # Flat list of 64 bit-pair dicts for Hamming diff view
+    bit_pairs = [
+        {"a": bits_a[i], "b": bits_b[i], "diff": bits_a[i] != bits_b[i]}
+        for i in range(64)
+    ]
+    # Combined grid: list of 8 rows, each row = list of 8 cell dicts
+    bit_grid_cmp = [
+        [
+            {"a": bits_a[i * 8 + j], "b": bits_b[i * 8 + j],
+             "diff": bits_a[i * 8 + j] != bits_b[i * 8 + j]}
+            for j in range(8)
+        ]
+        for i in range(8)
+    ]
+
+    team_a = getattr(getattr(im.image_a.report.event_team, "team", None), "team_name", "?")
+    team_b = getattr(getattr(im.image_b.report.event_team, "team", None), "team_name", "?")
+
+    image_a_url = request.build_absolute_uri(
+        reverse("reports:image_serve", args=[im.image_a.image_id])
+    )
+    image_b_url = request.build_absolute_uri(
+        reverse("reports:image_serve", args=[im.image_b.image_id])
+    )
+
+    return render(request, "reports/methodology_image.html", {
+        "no_data": False,
+        "pinned": pinned,
+        "im": im,
+        "team_a": team_a,
+        "team_b": team_b,
+        "bits_a": bits_a,
+        "bits_b": bits_b,
+        "bit_grid_a": bit_grid_a,
+        "bit_grid_b": bit_grid_b,
+        "bit_grid_diff": bit_grid_diff,
+        "bit_pairs": bit_pairs,
+        "bit_grid_cmp": bit_grid_cmp,
+        "image_a_url": image_a_url,
+        "image_b_url": image_b_url,
+        "image_a_id": im.image_a.image_id,
+        "image_b_id": im.image_b.image_id,
+        "phash_a": im.image_a.phash,
+        "phash_b": im.image_b.phash,
+        "hamming": im.hamming_distance,
+        "similarity_pct": round((1 - im.hamming_distance / 64) * 100, 1),
+    })
+
+
+def methodology_text(request):
+    """Interactive walkthrough of the text shingling / Jaccard similarity algorithm."""
+    _require_staff(request)
+
+    SHINGLE_K = 5
+
+    def _normalize(text):
+        text = text.lower()
+        text = re.sub(r"\s+", " ", text)
+        return re.findall(r"[a-z0-9']+", text)
+
+    def _shingles(words, k):
+        if len(words) < k:
+            return []
+        return [" ".join(words[i: i + k]) for i in range(len(words) - k + 1)]
+
+    MIN_WORDS = 8
+
+    def _pick_chunk_match(min_sim):
+        qs = (
+            ChunkMatch.objects
+            .filter(similarity__gte=min_sim)
+            .select_related(
+                "chunk_a__page__report__event_team__team",
+                "chunk_b__page__report__event_team__team",
+                "page_match",
+            )
+        )
+        candidates = [
+            cm for cm in qs
+            if len(cm.chunk_a.text.split()) > MIN_WORDS
+            and len(cm.chunk_b.text.split()) > MIN_WORDS
+        ]
+        if not candidates:
+            return None
+        return random.choice(candidates)
+
+    cm = _pick_chunk_match(0.6) or _pick_chunk_match(0.0)
+
+    if not cm:
+        return render(request, "reports/methodology_text.html", {"no_data": True})
+
+    text_a = cm.chunk_a.text
+    text_b = cm.chunk_b.text
+
+    words_a = _normalize(text_a)
+    words_b = _normalize(text_b)
+
+    # Word-set Jaccard (used by ChunkMatch)
+    set_words_a = set(words_a)
+    set_words_b = set(words_b)
+    word_intersection = set_words_a & set_words_b
+    word_union = set_words_a | set_words_b
+    word_jaccard = len(word_intersection) / len(word_union) if word_union else 0.0
+
+    # Shingle-based Jaccard (concept used for PageMatch via MinHash)
+    shingles_a = _shingles(words_a, SHINGLE_K)
+    shingles_b = _shingles(words_b, SHINGLE_K)
+    set_sh_a = set(shingles_a)
+    set_sh_b = set(shingles_b)
+    sh_shared = sorted(set_sh_a & set_sh_b)
+    sh_only_a = sorted(set_sh_a - set_sh_b)
+    sh_only_b = sorted(set_sh_b - set_sh_a)
+    sh_union_count = len(set_sh_a | set_sh_b)
+    shingle_jaccard = len(sh_shared) / sh_union_count if sh_union_count else 0.0
+
+    # Sliding window demonstration: first 8 shingles with per-word highlight data
+    window_demo = []
+    for start_idx, sh in enumerate(shingles_a[:8]):
+        word_display = words_a[:start_idx + SHINGLE_K + 4]  # show a bit of context
+        window_demo.append({
+            "shingle": sh,
+            "start": start_idx,
+            "end": start_idx + SHINGLE_K,
+            "words": [
+                {"word": w, "active": start_idx <= wi < start_idx + SHINGLE_K}
+                for wi, w in enumerate(word_display)
+            ],
+        })
+
+    team_a = getattr(getattr(cm.chunk_a.page.report.event_team, "team", None), "team_name", "?")
+    team_b = getattr(getattr(cm.chunk_b.page.report.event_team, "team", None), "team_name", "?")
+
+    return render(request, "reports/methodology_text.html", {
+        "no_data": False,
+        "cm": cm,
+        "team_a": team_a,
+        "team_b": team_b,
+        "text_a": text_a,
+        "text_b": text_b,
+        "words_a": words_a[:40],          # cap for display
+        "words_b": words_b[:40],
+        "shingle_k": SHINGLE_K,
+        "window_demo": window_demo,
+        "words_a_display": words_a[:30],
+        "words_b_display": words_b[:30],
+        "shingles_a": sorted(set_sh_a),
+        "shingles_b": sorted(set_sh_b),
+        "sh_shared": sh_shared,
+        "sh_only_a": sh_only_a,
+        "sh_only_b": sh_only_b,
+        "sh_count_a": len(set_sh_a),
+        "sh_count_b": len(set_sh_b),
+        "sh_intersection": len(sh_shared),
+        "sh_union": sh_union_count,
+        "shingle_jaccard": round(shingle_jaccard * 100, 1),
+        "word_set_a": sorted(set_words_a),
+        "word_set_b": sorted(set_words_b),
+        "word_intersection": sorted(word_intersection),
+        "word_union_count": len(word_union),
+        "word_intersection_count": len(word_intersection),
+        "word_jaccard": round(word_jaccard * 100, 1),
+        "stored_chunk_sim": round(cm.similarity * 100, 1),
+        "stored_page_sim": round(cm.page_match.similarity * 100, 1),
+    })
 
 
 # ── AI Detection report ───────────────────────────────────────────────────────

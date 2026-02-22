@@ -1,0 +1,1195 @@
+{% extends "base.html" %}
+
+{% block title %}How pHash Works — Image Similarity{% endblock %}
+
+{% block extra_styles %}
+  .wrap { max-width: min(98vw, 1200px); }
+
+  .breadcrumb { font-size: 0.85rem; color: #9ca3af; margin-bottom: 1.25rem; }
+
+  /* ── Step card ── */
+  .step-card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1.4rem 1.6rem;
+    margin-bottom: 1.5rem;
+  }
+  .step-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #6687fc;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+  }
+  .step-card h2 {
+    margin: 0 0 0.65rem;
+    font-size: 1.05rem;
+    color: #f3f6e7;
+  }
+  .explain {
+    font-size: 0.83rem;
+    color: #9ca3af;
+    line-height: 1.65;
+    margin-bottom: 0.85rem;
+  }
+  .explain code {
+    background: #1e293b;
+    border-radius: 3px;
+    padding: 0.1em 0.35em;
+    font-size: 0.82em;
+    color: #a5b4fc;
+  }
+
+  /* ── Two-column layout ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-label {
+    font-size: 0.73rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+  }
+
+  /* ── Image containers ── */
+  .img-box {
+    background: #020617;
+    border: 1px solid #1f2937;
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+  }
+  .img-box img {
+    max-width: 100%;
+    max-height: 260px;
+    object-fit: contain;
+    display: block;
+  }
+
+  /* ── Canvas pipeline boxes ── */
+  .canvas-box {
+    background: #020617;
+    border: 1px solid #1f2937;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100px;
+    overflow: hidden;
+  }
+  .canvas-box canvas { display: block; image-rendering: pixelated; }
+  .canvas-loading { font-size: 0.8rem; color: #4b5563; }
+
+  /* ── Metadata strips ── */
+  .meta-strip {
+    font-size: 0.78rem;
+    color: #6b7280;
+    margin-bottom: 0.3rem;
+  }
+  .meta-strip strong { color: #f3f6e7; }
+
+  /* ── Hash grid ── */
+  .hash-grid-wrap { overflow-x: auto; }
+  .hash-grid {
+    display: inline-grid;
+    grid-template-columns: repeat(8, 28px);
+    gap: 2px;
+    border: 1px solid #1f2937;
+    border-radius: 4px;
+    padding: 4px;
+    background: #0d1626;
+  }
+  .hash-cell {
+    width: 28px;
+    height: 28px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    font-family: monospace;
+  }
+  .hash-cell.bit-1 { background: #f3f6e7; color: #020617; }
+  .hash-cell.bit-0 { background: #111827; color: #374151; }
+  .hash-cell.diff  { outline: 2px solid #ef4444; outline-offset: 1px; }
+
+  /* ── Hamming distance banner ── */
+  .hamming-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin: 0.75rem 0;
+    flex-wrap: wrap;
+  }
+  .hamming-big {
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: #f3f6e7;
+    line-height: 1;
+  }
+  .hamming-desc { font-size: 0.85rem; color: #9ca3af; }
+  .hamming-bar-wrap { flex: 1; min-width: 140px; }
+  .hamming-bar-bg {
+    height: 10px;
+    background: #1e293b;
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .hamming-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #34d399, #6687fc);
+  }
+
+  /* ── Bit string display ── */
+  .bit-string {
+    font-family: monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: #4b5563;
+    word-break: break-all;
+    line-height: 1.8;
+    margin-top: 0.5rem;
+  }
+  .bit-string .b1 { color: #9ca3af; }
+  .bit-string .bd { color: #ef4444; font-weight: 700; }
+
+  /* ── Hex tag ── */
+  .hex-tag {
+    display: inline-block;
+    font-family: monospace;
+    font-size: 0.82rem;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 4px;
+    padding: 0.2em 0.55em;
+    color: #a5b4fc;
+    letter-spacing: 0.06em;
+    margin-top: 0.35rem;
+  }
+
+  /* ── Verdict banner ── */
+  .verdict {
+    border-radius: 0.75rem;
+    padding: 0.9rem 1.1rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.9rem;
+  }
+  .verdict.identical  { background: rgba(239,68,68,0.12);  border: 1px solid rgba(239,68,68,0.35);  color: #f87171; }
+  .verdict.very-close { background: rgba(249,115,22,0.10); border: 1px solid rgba(249,115,22,0.30); color: #fb923c; }
+  .verdict.similar    { background: rgba(234,179,8,0.09);  border: 1px solid rgba(234,179,8,0.28);  color: #fbbf24; }
+
+  /* ── Callout ── */
+  .callout {
+    background: rgba(102,135,252,0.07);
+    border-left: 3px solid #6687fc;
+    border-radius: 0 0.5rem 0.5rem 0;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin: 0.75rem 0 0;
+    line-height: 1.55;
+  }
+
+  /* ── Step number badge ── */
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.55rem;
+    height: 1.55rem;
+    background: #6687fc;
+    color: #020617;
+    border-radius: 50%;
+    font-size: 0.72rem;
+    font-weight: 800;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+    flex-shrink: 0;
+  }
+
+  /* ── DCT frequency diagram ── */
+  .freq-diagram {
+    display: grid;
+    grid-template-columns: repeat(4, 44px);
+    gap: 3px;
+  }
+  .freq-cell {
+    height: 44px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.85);
+    font-weight: 600;
+    text-align: center;
+    line-height: 1.2;
+  }
+
+  /* ── Verification badge ── */
+  .match-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-top: 0.3rem;
+  }
+  .match-badge.ok  { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.3); }
+  .match-badge.off { background: rgba(234,179,8,0.12);  color: #fbbf24; border: 1px solid rgba(234,179,8,0.3); }
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    {% if pinned %}
+      <a href="{% url 'reports:image_match_detail' im.image_match_id %}">← Back to image comparison</a>
+      &nbsp;&middot;&nbsp;
+      <a href="{% url 'reports:reports_overview' %}">Report Analysis</a>
+    {% else %}
+      <a href="{% url 'reports:reports_overview' %}">← Report Analysis</a>
+    {% endif %}
+  </div>
+
+  <h1 style="margin:0 0 0.2rem;">How Image Similarity Works</h1>
+  <p style="color:#9ca3af;margin:0 0 {% if pinned %}0.75{% else %}1.5{% endif %}rem;font-size:0.9rem;">
+    A step-by-step walkthrough of the <strong style="color:#f3f6e7;">Perceptual Hash (pHash)</strong>
+    algorithm used to detect matching images across submitted reports.
+    The two images below are a real match found in the database — the JavaScript
+    on this page independently recomputes the hash so you can verify every step.
+  </p>
+
+  {% if pinned %}
+  <div style="background:rgba(102,135,252,0.08);border:1px solid rgba(102,135,252,0.25);border-radius:0.6rem;padding:0.6rem 1rem;font-size:0.82rem;color:#9ca3af;margin-bottom:1.25rem;">
+    Showing the specific match between <strong style="color:#f3f6e7;">{{ team_a }}</strong>
+    and <strong style="color:#f3f6e7;">{{ team_b }}</strong> that you linked from.
+    <a href="{% url 'reports:methodology_image' %}" style="color:#6687fc;margin-left:0.5rem;">View a random match instead &rarr;</a>
+  </div>
+  {% endif %}
+
+  {% if no_data %}
+    <div class="step-card">
+      <p style="color:#9ca3af;margin:0;">No image matches found yet — run a similarity analysis job first.</p>
+    </div>
+  {% else %}
+
+  {% if hamming == 0 %}
+    <div class="verdict identical">
+      <strong>Hamming distance 0</strong> — These images are <em>perceptually identical</em>.
+    </div>
+  {% elif hamming <= 3 %}
+    <div class="verdict very-close">
+      <strong>Hamming distance {{ hamming }}</strong> —
+      Near-identical; likely resized, re-compressed, or color-shifted.
+    </div>
+  {% else %}
+    <div class="verdict similar">
+      <strong>Hamming distance {{ hamming }}</strong> —
+      Visually similar; {{ similarity_pct }}% of bits match.
+    </div>
+  {% endif %}
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 0: The Source Images                                           -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 0</div>
+    <h2><span class="step-num">0</span>The Source Images</h2>
+    <p class="explain">
+      These two images were extracted from PDF reports submitted by different teams and
+      are served directly from the analysis database — no preprocessing has been applied yet.
+    </p>
+    <div class="two-col">
+      <div>
+        <div class="col-label">{{ team_a }}</div>
+        <div class="meta-strip">Page {{ im.image_a.page_number }} — {{ im.image_a.width }}&times;{{ im.image_a.height }} px</div>
+        <div class="img-box">
+          <img id="orig-img-a"
+               src="{% url 'reports:image_serve' im.image_a.image_id %}"
+               alt="Image A from {{ team_a }}"
+               crossorigin="use-credentials">
+        </div>
+      </div>
+      <div>
+        <div class="col-label">{{ team_b }}</div>
+        <div class="meta-strip">Page {{ im.image_b.page_number }} — {{ im.image_b.width }}&times;{{ im.image_b.height }} px</div>
+        <div class="img-box">
+          <img id="orig-img-b"
+               src="{% url 'reports:image_serve' im.image_b.image_id %}"
+               alt="Image B from {{ team_b }}"
+               crossorigin="use-credentials">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 1: Resize to 32×32                                            -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 1</div>
+    <h2><span class="step-num">1</span>Resize to 32 &times; 32</h2>
+    <p class="explain">
+      Both images are scaled down to a fixed <strong>32&times;32 pixel</strong> thumbnail
+      using Lanczos resampling. This discards high-frequency detail and makes the hash robust
+      to resizing, aspect-ratio changes, and minor cropping.
+      <br>Each pixel is shown as a 10&times;10 block below for visibility.
+    </p>
+    <div class="two-col">
+      <div>
+        <div class="col-label">{{ team_a }}</div>
+        <div class="canvas-box" id="box-ds-a"><span class="canvas-loading">Loading&hellip;</span></div>
+      </div>
+      <div>
+        <div class="col-label">{{ team_b }}</div>
+        <div class="canvas-box" id="box-ds-b"><span class="canvas-loading">Loading&hellip;</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 2: Grayscale                                                   -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 2</div>
+    <h2><span class="step-num">2</span>Convert to Grayscale</h2>
+    <p class="explain">
+      Color information is discarded. Each RGB pixel becomes a single
+      <strong>luminance value</strong> using the standard perceptual weighting:
+    </p>
+    <p style="font-family:monospace;font-size:1rem;color:#a5b4fc;margin:0 0 0.85rem;letter-spacing:0.03em;">
+      Y = 0.299&thinsp;R + 0.587&thinsp;G + 0.114&thinsp;B
+    </p>
+    <p class="explain">
+      Green is weighted most heavily because the human eye is most sensitive to green light.
+      Grayscale conversion makes the hash insensitive to color shifts,
+      CMYK-to-RGB conversion, and JPEG chroma compression artifacts.
+    </p>
+    <div class="two-col">
+      <div>
+        <div class="col-label">{{ team_a }}</div>
+        <div class="canvas-box" id="box-gray-a"><span class="canvas-loading">Loading&hellip;</span></div>
+      </div>
+      <div>
+        <div class="col-label">{{ team_b }}</div>
+        <div class="canvas-box" id="box-gray-b"><span class="canvas-loading">Loading&hellip;</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 3: DCT                                                         -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 3</div>
+    <h2><span class="step-num">3</span>Discrete Cosine Transform (DCT)</h2>
+
+    <!-- ── 1-D intuition first ── -->
+    <p class="explain">
+      The DCT works like a Fourier transform — it decomposes a signal into a weighted sum of
+      cosine waves at increasing spatial frequencies. To build intuition, the chart below takes
+      a single horizontal <strong>row of pixels</strong> (row&nbsp;16) from the 32&times;32
+      grayscale image and shows exactly which cosine components combine to recreate it.
+      Each component is labelled <em>k</em>: <strong>k&nbsp;=&nbsp;0</strong> is the flat DC
+      average (overall brightness), and higher <em>k</em> adds progressively finer detail.
+      The first 8 components (k&nbsp;=&nbsp;0&ndash;7) are the ones the hash retains.
+    </p>
+    <div class="two-col">
+      <div>
+        <div class="col-label">{{ team_a }} — row 16 DCT decomposition</div>
+        <canvas id="wave-a" width="520" height="400"
+                style="width:100%;border-radius:0.5rem;border:1px solid #1f2937;background:#020617;"></canvas>
+      </div>
+      <div>
+        <div class="col-label">{{ team_b }} — row 16 DCT decomposition</div>
+        <canvas id="wave-b" width="520" height="400"
+                style="width:100%;border-radius:0.5rem;border:1px solid #1f2937;background:#020617;"></canvas>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:0.65rem;">
+      <strong>Gray bars</strong> = actual pixel luminosity of row 16.
+      <strong>Coloured waves</strong> = individual cosine components scaled by their DCT coefficient
+      (k=0 is the flat DC/average; k=1 is the gentlest curve; higher k = more oscillations).
+      <strong>Bottom panel</strong>: the k=0&ndash;7 sum (blue) vs the original row (white) —
+      this smooth approximation is all the hash cares about.
+    </div>
+
+    <!-- ── Bridge to 2D ── -->
+    <p class="explain" style="margin-top:1.1rem;">
+      Extending to two dimensions: the DCT is applied along every row, then along every column.
+      The result is a 32&times;32 grid where <strong>the column index is the horizontal
+      frequency k</strong> and the row index is the vertical frequency.
+      The colour-coded headers on the heatmap below match the wave colours above — trace
+      <em>k</em>=1&thinsp;<span style="color:#ef4444;">&#9632;</span> (red) from the chart to
+      column&nbsp;1 of the grid, <em>k</em>=2&thinsp;<span style="color:#f97316;">&#9632;</span>
+      to column&nbsp;2, and so on.
+    </p>
+
+    <div style="display:flex;gap:2rem;flex-wrap:wrap;align-items:flex-start;margin-bottom:0.75rem;">
+      <!-- Conceptual frequency diagram -->
+      <div>
+        <div class="col-label" style="margin-bottom:0.4rem;">Frequency layout</div>
+        <div class="freq-diagram">
+          <div class="freq-cell" style="background:#6687fc;">DC<br>avg</div>
+          <div class="freq-cell" style="background:#4f6ee0;">horiz<br>low</div>
+          <div class="freq-cell" style="background:#3858c8;">horiz<br>mid</div>
+          <div class="freq-cell" style="background:#2644b0;">horiz<br>high</div>
+          <div class="freq-cell" style="background:#4f6ee0;">vert<br>low</div>
+          <div class="freq-cell" style="background:#3858c8;">diag</div>
+          <div class="freq-cell" style="background:#2644b0;">—</div>
+          <div class="freq-cell" style="background:#162898;">—</div>
+          <div class="freq-cell" style="background:#3858c8;">vert<br>mid</div>
+          <div class="freq-cell" style="background:#2644b0;">—</div>
+          <div class="freq-cell" style="background:#162898;">high<br>mix</div>
+          <div class="freq-cell" style="background:#0c1870;">—</div>
+          <div class="freq-cell" style="background:#2644b0;">vert<br>high</div>
+          <div class="freq-cell" style="background:#162898;">—</div>
+          <div class="freq-cell" style="background:#0c1870;">—</div>
+          <div class="freq-cell" style="background:#060e40;">noise</div>
+        </div>
+        <div style="font-size:0.7rem;color:#4b5563;margin-top:0.35rem;">
+          Blue outline = region kept for hash
+        </div>
+      </div>
+
+      <!-- DCT heatmaps -->
+      <div class="two-col" style="flex:1;min-width:220px;">
+        <div>
+          <div class="col-label">{{ team_a }} — DCT heatmap (32×32)</div>
+          <div class="canvas-box" id="box-dct-a"><span class="canvas-loading">Loading&hellip;</span></div>
+        </div>
+        <div>
+          <div class="col-label">{{ team_b }} — DCT heatmap (32×32)</div>
+          <div class="canvas-box" id="box-dct-b"><span class="canvas-loading">Loading&hellip;</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="callout">
+      Coloured ticks above the heatmap mark columns k=0&ndash;7, matching the wave colours above.
+      The red outline marks the <strong>8&times;8 top-left block</strong> of DCT coefficients
+      — the only region used to build the perceptual hash.
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 4: Extract 8×8 and find median                                 -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 4</div>
+    <h2><span class="step-num">4</span>Extract 8&times;8 Low-Frequency Block &amp; Find Median</h2>
+    <p class="explain">
+      Only the <strong>top-left 8&times;8 = 64 coefficients</strong> are kept.
+      The first coefficient at [0,0] represents the image's average brightness (the DC term)
+      and is excluded from threshold computation to avoid sensitivity to overall exposure.
+      The <strong>median</strong> of all 64 values is then found — values above it will become
+      <code>1</code>, values at or below will become <code>0</code>.
+    </p>
+    <p class="explain">
+      Warm colours in the grid = large positive coefficients (strong low-frequency energy).
+      Cool colours = negative coefficients. The median line separates <code>1</code>-bits from <code>0</code>-bits.
+    </p>
+    <div class="two-col">
+      <div>
+        <div class="col-label">{{ team_a }} — 8×8 coefficients</div>
+        <div id="box-dct8-a" style="overflow-x:auto;"><span class="canvas-loading" style="padding:1rem;display:block;">Loading&hellip;</span></div>
+        <div id="median-a" class="meta-strip" style="margin-top:0.4rem;font-family:monospace;color:#6b7280;"></div>
+      </div>
+      <div>
+        <div class="col-label">{{ team_b }} — 8×8 coefficients</div>
+        <div id="box-dct8-b" style="overflow-x:auto;"><span class="canvas-loading" style="padding:1rem;display:block;">Loading&hellip;</span></div>
+        <div id="median-b" class="meta-strip" style="margin-top:0.4rem;font-family:monospace;color:#6b7280;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 5: The 64-bit hash                                             -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 5</div>
+    <h2><span class="step-num">5</span>Build the 64-Bit Perceptual Hash</h2>
+    <p class="explain">
+      Each of the 64 DCT coefficients is compared to the median.
+      <strong>1 if above, 0 if below (or equal).</strong>
+      This creates a compact 64-bit fingerprint that captures the image's structural
+      pattern while being insensitive to brightness, contrast, and compression level.
+      The 64 bits are encoded as a 16-character hexadecimal string for storage.
+    </p>
+    <div class="two-col">
+      <div>
+        <div class="col-label">{{ team_a }}</div>
+        <div class="hash-grid-wrap" id="grid-a">
+          <!-- Pre-rendered from stored DB hash; JS will update after computing -->
+          <div class="hash-grid">
+            {% for row in bit_grid_a %}{% for bit in row %}<div class="hash-cell bit-{{ bit }}">{{ bit }}</div>{% endfor %}{% endfor %}
+          </div>
+        </div>
+        <div><span class="hex-tag" id="hex-a">{{ phash_a }}</span></div>
+        <div id="match-a" style="margin-top:0.4rem;"></div>
+      </div>
+      <div>
+        <div class="col-label">{{ team_b }}</div>
+        <div class="hash-grid-wrap" id="grid-b">
+          <div class="hash-grid">
+            {% for row in bit_grid_b %}{% for bit in row %}<div class="hash-cell bit-{{ bit }}">{{ bit }}</div>{% endfor %}{% endfor %}
+          </div>
+        </div>
+        <div><span class="hex-tag" id="hex-b">{{ phash_b }}</span></div>
+        <div id="match-b" style="margin-top:0.4rem;"></div>
+      </div>
+    </div>
+    <div class="callout">
+      The grids above start from the <strong>stored database values</strong> and are
+      updated by the JavaScript pipeline running in your browser.
+      A ✓ confirms the live computation matches — minor differences may appear
+      due to resampling algorithm differences (browser bilinear vs. Python Lanczos).
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 6: Hamming Distance                                            -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 6</div>
+    <h2><span class="step-num">6</span>Hamming Distance — Comparing the Two Hashes</h2>
+    <p class="explain">
+      The <strong>Hamming distance</strong> is simply the count of bit positions where
+      the two hashes differ. A distance of 0 means perceptually identical;
+      higher values mean more visual difference.
+      Pairs with distance &le;&nbsp;10 are recorded as matches (out of 64 total bits).
+    </p>
+
+    <div class="hamming-row">
+      <div class="hamming-big">{{ hamming }}</div>
+      <div>
+        <div style="font-size:0.92rem;color:#f3f6e7;font-weight:600;">bit{{ hamming|pluralize }} differ</div>
+        <div class="hamming-desc">out of 64 — {{ similarity_pct }}% match</div>
+      </div>
+      <div class="hamming-bar-wrap">
+        <div style="font-size:0.7rem;color:#6b7280;margin-bottom:0.25rem;display:flex;justify-content:space-between;">
+          <span>0 (identical)</span><span>64 (unrelated)</span>
+        </div>
+        <div class="hamming-bar-bg">
+          <div class="hamming-bar-fill" style="width:{{ similarity_pct }}%;"></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="explain">
+      Differing bits are highlighted in <span style="color:#ef4444;font-weight:600;">red</span> below.
+    </p>
+
+    <div class="two-col">
+      <!-- Hash A with diffs highlighted -->
+      <div>
+        <div class="col-label">{{ team_a }}</div>
+        <div class="hash-grid-wrap">
+          <div class="hash-grid">
+            {% for row in bit_grid_cmp %}
+              {% for cell in row %}
+                <div class="hash-cell bit-{{ cell.a }}{% if cell.diff %} diff{% endif %}">{{ cell.a }}</div>
+              {% endfor %}
+            {% endfor %}
+          </div>
+        </div>
+        <div class="bit-string">
+          {% for pair in bit_pairs %}{% if pair.diff %}<span class="bd">{{ pair.a }}</span>{% elif pair.a == "1" %}<span class="b1">{{ pair.a }}</span>{% else %}{{ pair.a }}{% endif %}{% endfor %}
+        </div>
+      </div>
+      <!-- Hash B with diffs highlighted -->
+      <div>
+        <div class="col-label">{{ team_b }}</div>
+        <div class="hash-grid-wrap">
+          <div class="hash-grid">
+            {% for row in bit_grid_cmp %}
+              {% for cell in row %}
+                <div class="hash-cell bit-{{ cell.b }}{% if cell.diff %} diff{% endif %}">{{ cell.b }}</div>
+              {% endfor %}
+            {% endfor %}
+          </div>
+        </div>
+        <div class="bit-string">
+          {% for pair in bit_pairs %}{% if pair.diff %}<span class="bd">{{ pair.b }}</span>{% elif pair.b == "1" %}<span class="b1">{{ pair.b }}</span>{% else %}{{ pair.b }}{% endif %}{% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:1rem;">
+      <strong>Threshold:</strong> pairs with Hamming distance &le;&nbsp;10 are stored as
+      <code>ImageMatch</code> records. Distance 0–3 = near-identical (likely the same figure
+      resized or reformatted); 4–10 = visually similar but not conclusive on its own.
+    </div>
+  </div>
+
+  <!-- ── Navigation ──────────────────────────────────────────────────── -->
+  <div style="margin-bottom:2rem;display:flex;gap:1.5rem;flex-wrap:wrap;font-size:0.85rem;">
+    <a href="{% url 'reports:image_match_detail' im.image_match_id %}" style="color:#6687fc;">
+      View this image match in the comparison tool &rarr;
+    </a>
+    <a href="{% url 'reports:methodology_text' %}" style="color:#9ca3af;">
+      See how text similarity works &rarr;
+    </a>
+  </div>
+
+  {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% if not no_data %}
+<script>
+/* ============================================================
+   pHash pipeline — computes each step in the browser from the
+   actual images and compares results against stored DB hashes.
+   Algorithm matches imagehash.phash() behaviour.
+   ============================================================ */
+
+const STORED_A = "{{ phash_a }}";
+const STORED_B = "{{ phash_b }}";
+
+/* ── Utilities ─────────────────────────────────────────────── */
+
+function waitForImg(img) {
+  return new Promise(resolve => {
+    if (img.complete && img.naturalWidth > 0) { resolve(img); return; }
+    img.addEventListener('load',  () => resolve(img), { once: true });
+    img.addEventListener('error', () => resolve(img), { once: true });
+  });
+}
+
+function setBox(id, el) {
+  const box = document.getElementById(id);
+  if (!box) return;
+  box.innerHTML = '';
+  box.appendChild(el);
+}
+
+/* ── Step 1 & 2: Downsample + Grayscale ────────────────────── */
+
+/**
+ * Draw a translucent blue highlight stripe on a pixel-grid canvas
+ * at the given pixel row (0-indexed in the 32×32 source grid).
+ * CELL must match the cell size used in makePixelCanvas (10px).
+ */
+function highlightRow(canvas, row, alpha) {
+  const CELL = 10;
+  const ctx  = canvas.getContext('2d');
+  const y    = row * CELL;
+  // Translucent fill
+  ctx.fillStyle = `rgba(102,135,252,${alpha})`;
+  ctx.fillRect(0, y, canvas.width, CELL);
+  // Solid border lines (top & bottom of the strip)
+  ctx.strokeStyle = '#6687fc';
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(0, y + 0.75);         ctx.lineTo(canvas.width, y + 0.75);
+  ctx.moveTo(0, y + CELL - 0.75);  ctx.lineTo(canvas.width, y + CELL - 0.75);
+  ctx.stroke();
+}
+
+function makePixelCanvas(img, grayscale) {
+  const CELL = 10, N = 32;
+
+  // Off-screen render to 32×32
+  const off  = document.createElement('canvas');
+  off.width  = N; off.height = N;
+  off.getContext('2d').drawImage(img, 0, 0, N, N);
+  const raw  = off.getContext('2d').getImageData(0, 0, N, N).data;
+
+  // Display with big pixels
+  const c    = document.createElement('canvas');
+  c.width    = N * CELL; c.height = N * CELL;
+  const ctx  = c.getContext('2d');
+
+  for (let y = 0; y < N; y++) {
+    for (let x = 0; x < N; x++) {
+      const p = (y * N + x) * 4;
+      let r = raw[p], g = raw[p+1], b = raw[p+2];
+      if (grayscale) { const lum = Math.round(0.299*r + 0.587*g + 0.114*b); r=g=b=lum; }
+      ctx.fillStyle = `rgb(${r},${g},${b})`;
+      ctx.fillRect(x*CELL, y*CELL, CELL, CELL);
+    }
+  }
+  return { canvas: c, raw };
+}
+
+/* ── Grayscale matrix from raw ImageData ────────────────────── */
+
+function grayMatrix(raw) {
+  const N = 32, mat = [];
+  for (let y = 0; y < N; y++) {
+    const row = [];
+    for (let x = 0; x < N; x++) {
+      const p = (y*N+x)*4;
+      row.push(0.299*raw[p] + 0.587*raw[p+1] + 0.114*raw[p+2]);
+    }
+    mat.push(row);
+  }
+  return mat;
+}
+
+/* ── 1-D DCT-II, unnormalised (matches scipy.fftpack.dct) ─── */
+
+function dct1d(x) {
+  const N   = x.length;
+  const out = new Float64Array(N);
+  for (let k = 0; k < N; k++) {
+    let s = 0;
+    const f = Math.PI * k / (2 * N);
+    for (let n = 0; n < N; n++) s += x[n] * Math.cos(f * (2*n+1));
+    out[k] = 2 * s;
+  }
+  return out;
+}
+
+/* ── 2-D DCT (separable: rows then columns) ─────────────────── */
+
+function dct2d(mat) {
+  const N = mat.length;
+  const tmp = mat.map(row => dct1d(row));
+  const out = Array.from({length: N}, () => new Float64Array(N));
+  for (let j = 0; j < N; j++) {
+    const col = Float64Array.from({length: N}, (_, i) => tmp[i][j]);
+    const cd  = dct1d(col);
+    for (let i = 0; i < N; i++) out[i][j] = cd[i];
+  }
+  return out;
+}
+
+/* ── Median ─────────────────────────────────────────────────── */
+
+function median(vals) {
+  const s = [...vals].sort((a,b)=>a-b);
+  const m = Math.floor(s.length/2);
+  return s.length%2 ? s[m] : (s[m-1]+s[m])/2;
+}
+
+/* ── Wave decomposition panel ───────────────────────────────── */
+/*
+ * Shows how the DCT of a single image row decomposes into cosine
+ * waves, and how summing the lowest 8 approximates the original.
+ *
+ * My dct1d uses the unnormalized DCT-II:
+ *   X[k] = 2 * Σ x[n] * cos(π·k·(2n+1) / (2N))
+ *
+ * The inverse (partial reconstruction using first K components):
+ *   x̂[n] = X[0]/(2N)  +  (1/N) * Σ_{k=1}^{K-1} X[k] * cos(π·k·(2n+1)/(2N))
+ */
+function renderWavePanel(grayMat, canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  const N    = 32;
+  const ROW  = 16; // middle row — representative horizontal slice
+  const row  = grayMat[ROW];
+
+  // 1D DCT of this row (forward pass only — same as the row step in dct2d)
+  const coeffs = dct1d(row);
+
+  const W   = canvas.width;
+  const H   = canvas.height;
+  const ctx = canvas.getContext('2d');
+
+  // Clear
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(0, 0, W, H);
+
+  const PAD_L   = 52;   // left margin for labels
+  const PAD_R   = 10;
+  const graphW  = W - PAD_L - PAD_R;
+  const pixW    = graphW / N; // canvas pixels per image pixel
+
+  // Colours: DC neutral, then rainbow low→high freq
+  const COLORS = [
+    '#6b7280',  // k=0  DC   grey
+    '#ef4444',  // k=1       red
+    '#f97316',  // k=2       orange
+    '#eab308',  // k=3       yellow
+    '#22c55e',  // k=4       green
+    '#06b6d4',  // k=5       cyan
+    '#6687fc',  // k=6       blue (brand)
+    '#a855f7',  // k=7       purple
+  ];
+
+  // ── Text style helper ──────────────────────────────────────────
+  function label(text, x, y, color, size) {
+    ctx.fillStyle = color || '#4b5563';
+    ctx.font = `${size||9}px system-ui, sans-serif`;
+    ctx.textAlign = 'left';
+    ctx.fillText(text, x, y);
+  }
+
+  // ── Thin horizontal rule ───────────────────────────────────────
+  function hRule(y) {
+    ctx.strokeStyle = '#1f2937';
+    ctx.lineWidth   = 0.5;
+    ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(PAD_L + graphW, y); ctx.stroke();
+  }
+
+  // ── Line chart helper ──────────────────────────────────────────
+  function drawLine(values, x0, midY, halfH, color, lineW) {
+    const mx = Math.max(...values.map(Math.abs), 0.001);
+    ctx.beginPath();
+    for (let n = 0; n < N; n++) {
+      const x  = x0 + (n + 0.5) * pixW;
+      const yy = midY - (values[n] / mx) * halfH;
+      n === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
+    }
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = lineW || 1.5;
+    ctx.stroke();
+
+    // Subtle fill
+    ctx.lineTo(x0 + (N - 0.5) * pixW, midY);
+    ctx.lineTo(x0 + 0.5 * pixW, midY);
+    ctx.closePath();
+    ctx.fillStyle = color + '1a';
+    ctx.fill();
+  }
+
+  // ── Reconstruction using first K components ────────────────────
+  function reconstruct(K) {
+    const out = new Float64Array(N);
+    for (let n = 0; n < N; n++) {
+      out[n] = coeffs[0] / (2 * N);
+      for (let k = 1; k < K; k++) {
+        out[n] += coeffs[k] * Math.cos(Math.PI * k * (2*n+1) / (2*N)) / N;
+      }
+    }
+    return out;
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Layout constants
+  const ORIG_H  = 56;   // height of original row panel
+  const COMP_H  = 22;   // height of each cosine component strip
+  const COMP_G  = 3;    // gap between component strips
+  const RECON_H = 58;   // height of reconstruction comparison panel
+  const GAP     = 10;
+  const SEC_GAP = 18;   // gap between major sections
+
+  let y = 8;
+
+  // ── Section 1: Original row luminosity ────────────────────────
+  label('Pixel', 0, y + 12);
+  label('row 16', 0, y + 22);
+  ctx.fillStyle = '#0d1626';
+  ctx.fillRect(PAD_L, y, graphW, ORIG_H);
+
+  // Grayscale bars
+  for (let n = 0; n < N; n++) {
+    const v    = Math.max(0, Math.min(255, Math.round(row[n])));
+    const barH = Math.round((v / 255) * (ORIG_H - 2));
+    ctx.fillStyle = `rgb(${v},${v},${v})`;
+    ctx.fillRect(PAD_L + n * pixW + 0.5, y + ORIG_H - barH - 1, pixW - 1, barH);
+  }
+  // Overlay line on top for clarity
+  const rowMax = Math.max(...row), rowMin = Math.min(...row);
+  ctx.beginPath();
+  for (let n = 0; n < N; n++) {
+    const x  = PAD_L + (n + 0.5) * pixW;
+    const yy = y + ORIG_H - 2 - ((row[n] - rowMin) / (rowMax - rowMin + 0.001)) * (ORIG_H - 4);
+    n === 0 ? ctx.moveTo(x, yy) : ctx.lineTo(x, yy);
+  }
+  ctx.strokeStyle = '#6687fc';
+  ctx.lineWidth   = 1.5;
+  ctx.stroke();
+
+  y += ORIG_H + GAP;
+
+  // ── Section separator ─────────────────────────────────────────
+  label('= sum of cosine waves:', PAD_L, y + 9, '#374151', 8);
+  hRule(y + 12);
+  y += SEC_GAP;
+
+  // ── Section 2: Individual cosine components k=0..7 ───────────
+  for (let k = 0; k < 8; k++) {
+    const color = COLORS[k];
+
+    // Compute this component's contribution
+    const comp = new Float64Array(N);
+    for (let n = 0; n < N; n++) {
+      comp[n] = k === 0
+        ? coeffs[0] / (2 * N)                                             // DC: average
+        : coeffs[k] * Math.cos(Math.PI * k * (2*n+1) / (2*N)) / N;       // harmonic k
+    }
+
+    // Label
+    ctx.fillStyle = color;
+    ctx.font = '9px monospace';
+    ctx.textAlign = 'left';
+    const lbl = k === 0 ? 'k=0 DC' : `k=${k}`;
+    ctx.fillText(lbl, 0, y + COMP_H / 2 + 3);
+
+    // Background strip
+    ctx.fillStyle = '#0d1626';
+    ctx.fillRect(PAD_L, y, graphW, COMP_H);
+
+    // Centre line
+    hRule(y + COMP_H / 2);
+
+    // Wave
+    const midY = y + COMP_H / 2;
+    drawLine(comp, PAD_L, midY, COMP_H / 2 - 2, color, 1.5);
+
+    y += COMP_H + COMP_G;
+  }
+
+  y += GAP;
+
+  // ── Section separator ─────────────────────────────────────────
+  label('k=0..7 reconstruction vs original:', PAD_L, y + 9, '#374151', 8);
+  hRule(y + 12);
+  y += SEC_GAP;
+
+  // ── Section 3: Reconstruction comparison ─────────────────────
+  const recon = reconstruct(8);
+
+  // Shared Y scale for original and reconstruction
+  const allVals = [...row, ...recon];
+  const allMin  = Math.min(...allVals);
+  const allMax  = Math.max(...allVals);
+  const scY = v => y + RECON_H - 4 - ((v - allMin) / (allMax - allMin + 0.001)) * (RECON_H - 6);
+
+  ctx.fillStyle = '#0d1626';
+  ctx.fillRect(PAD_L, y, graphW, RECON_H);
+
+  // Original (white/dim)
+  ctx.beginPath();
+  for (let n = 0; n < N; n++) {
+    const x = PAD_L + (n + 0.5) * pixW;
+    n === 0 ? ctx.moveTo(x, scY(row[n])) : ctx.lineTo(x, scY(row[n]));
+  }
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+  ctx.lineWidth   = 1.5;
+  ctx.stroke();
+
+  // Reconstruction (brand blue)
+  ctx.beginPath();
+  for (let n = 0; n < N; n++) {
+    const x = PAD_L + (n + 0.5) * pixW;
+    n === 0 ? ctx.moveTo(x, scY(recon[n])) : ctx.lineTo(x, scY(recon[n]));
+  }
+  ctx.strokeStyle = '#6687fc';
+  ctx.lineWidth   = 2;
+  ctx.stroke();
+
+  y += RECON_H + 6;
+
+  // Legend
+  ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(PAD_L, y+4); ctx.lineTo(PAD_L+16, y+4); ctx.stroke();
+  label('original', PAD_L + 20, y + 7, '#6b7280', 8);
+  ctx.strokeStyle = '#6687fc'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(PAD_L + 64, y+4); ctx.lineTo(PAD_L+80, y+4); ctx.stroke();
+  label('k=0–7 sum', PAD_L + 84, y + 7, '#6b7280', 8);
+}
+
+/* ── Render DCT heatmap (32×32) ─────────────────────────────── */
+
+// Wave panel colours — must match COLORS array in renderWavePanel
+const WAVE_COLORS = [
+  '#6b7280',  // k=0  DC   grey
+  '#ef4444',  // k=1       red
+  '#f97316',  // k=2       orange
+  '#eab308',  // k=3       yellow
+  '#22c55e',  // k=4       green
+  '#06b6d4',  // k=5       cyan
+  '#6687fc',  // k=6       blue (brand)
+  '#a855f7',  // k=7       purple
+];
+
+function renderDCTHeatmap(dct) {
+  const N = dct.length, CELL = 10;
+  const HEADER = 20; // space for coloured k-column tick marks
+  let maxA = 0;
+  for (let i=0;i<N;i++) for (let j=0;j<N;j++) {
+    if (i===0&&j===0) continue;
+    const a = Math.abs(dct[i][j]);
+    if (a > maxA) maxA = a;
+  }
+
+  const c   = document.createElement('canvas');
+  c.width   = N*CELL; c.height = N*CELL + HEADER;
+  const ctx = c.getContext('2d');
+
+  // Header background
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(0, 0, c.width, HEADER);
+
+  // Coloured tick marks + k labels for columns 0..7
+  ctx.font = '7px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  for (let k = 0; k < 8; k++) {
+    const cx = k * CELL + CELL / 2;
+    ctx.fillStyle = WAVE_COLORS[k];
+    // Label at top
+    ctx.fillText(`k${k}`, cx, 2);
+    // Tick bar just above heatmap
+    ctx.fillRect(k * CELL + 1, HEADER - 5, CELL - 2, 4);
+  }
+
+  // Heatmap cells
+  for (let y=0;y<N;y++) for (let x=0;x<N;x++) {
+    const t = maxA>0 ? Math.min(Math.abs(dct[y][x])/maxA, 1) : 0;
+    const r = Math.round(18 + t*220);
+    const g = Math.round(8  + t*50);
+    const b = Math.round(200 - t*170);
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(x*CELL, HEADER + y*CELL, CELL, CELL);
+  }
+
+  // Red outline around 8×8 region
+  ctx.strokeStyle = '#ef4444';
+  ctx.lineWidth   = 2;
+  ctx.strokeRect(1, HEADER + 1, 8*CELL-1, 8*CELL-1);
+
+  return c;
+}
+
+/* ── Render 8×8 coefficient block ───────────────────────────── */
+
+function renderDCT8(block, med) {
+  const CELL = 44, N = 8;
+  const HEADER = 30; // space for coloured k-column labels
+  const c    = document.createElement('canvas');
+  c.width    = N*CELL; c.height = N*CELL + HEADER;
+  const ctx  = c.getContext('2d');
+  ctx.textAlign    = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Header background
+  ctx.fillStyle = '#020617';
+  ctx.fillRect(0, 0, c.width, HEADER);
+
+  // Coloured k-label header for each column
+  for (let k = 0; k < N; k++) {
+    // Top colour bar strip
+    ctx.fillStyle = WAVE_COLORS[k];
+    ctx.fillRect(k*CELL + 1, 0, CELL - 2, 5);
+    // k label text
+    ctx.fillStyle = WAVE_COLORS[k];
+    ctx.font = '9px monospace';
+    ctx.fillText(k === 0 ? 'k=0 DC' : `k=${k}`, k*CELL + CELL/2, HEADER/2 + 4);
+  }
+
+  const flat = block.flat();
+  const mx   = Math.max(...flat.map(Math.abs), 1);
+
+  for (let y=0;y<N;y++) for (let x=0;x<N;x++) {
+    const v = block[y][x];
+    const n = v/mx;
+    let r,g,b;
+    if (n>=0) { r=Math.round(240*n); g=Math.round(140*n); b=20; }
+    else       { r=20; g=Math.round(50*(-n)); b=Math.round(220*(-n)); }
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(x*CELL, HEADER + y*CELL, CELL, CELL);
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+    ctx.lineWidth   = 0.5;
+    ctx.strokeRect(x*CELL, HEADER + y*CELL, CELL, CELL);
+
+    ctx.fillStyle = v>med ? '#fff' : 'rgba(255,255,255,0.38)';
+    ctx.font = '9px monospace';
+    ctx.fillText(Math.round(v).toLocaleString(), x*CELL+CELL/2, HEADER + y*CELL+CELL/2);
+  }
+  return c;
+}
+
+/* ── Render 8×8 binary hash grid (DOM) ─────────────────────── */
+
+function renderHashGrid(containerId, bits2d) {
+  const wrap = document.getElementById(containerId);
+  if (!wrap) return;
+  const old  = wrap.querySelector('.hash-grid');
+  const grid = document.createElement('div');
+  grid.className = 'hash-grid';
+  for (let i=0;i<8;i++) for (let j=0;j<8;j++) {
+    const c = document.createElement('div');
+    c.className = `hash-cell bit-${bits2d[i][j]}`;
+    c.textContent = bits2d[i][j];
+    grid.appendChild(c);
+  }
+  if (old) old.replaceWith(grid);
+  else wrap.appendChild(grid);
+}
+
+/* ── Hex string from 8×8 bits ───────────────────────────────── */
+
+function bitsToHex(bits2d) {
+  const bs = bits2d.flat().join('');
+  let h = '';
+  for (let i=0;i<64;i+=4) h += parseInt(bs.slice(i,i+4),2).toString(16);
+  return h.padStart(16,'0');
+}
+
+/* ── Main ────────────────────────────────────────────────────── */
+
+async function runPipeline() {
+  const imgA = document.getElementById('orig-img-a');
+  const imgB = document.getElementById('orig-img-b');
+
+  await Promise.all([waitForImg(imgA), waitForImg(imgB)]);
+
+  for (const [img, s, stored] of [[imgA,'a',STORED_A],[imgB,'b',STORED_B]]) {
+    // Step 1: downsample colour
+    const { canvas: dsC, raw } = makePixelCanvas(img, false);
+    highlightRow(dsC, 16, 0.22);
+    setBox(`box-ds-${s}`, dsC);
+
+    // Step 2: grayscale
+    const { canvas: gsC } = makePixelCanvas(img, true);
+    highlightRow(gsC, 16, 0.35);
+    setBox(`box-gray-${s}`, gsC);
+
+    // Step 3: 2D DCT + wave decomposition
+    const mat = grayMatrix(raw);
+    const dct = dct2d(mat);
+    setBox(`box-dct-${s}`, renderDCTHeatmap(dct));
+    renderWavePanel(mat, `wave-${s}`);
+
+    // Step 4: 8×8 block + median
+    const block = dct.slice(0,8).map(r => Array.from(r.slice(0,8)));
+    const flat  = block.flat();
+    const med   = median(flat);
+
+    const dct8Box = document.getElementById(`box-dct8-${s}`);
+    if (dct8Box) { dct8Box.innerHTML=''; dct8Box.appendChild(renderDCT8(block, med)); }
+
+    const medEl = document.getElementById(`median-${s}`);
+    if (medEl) medEl.textContent = `median = ${med.toFixed(2)}`;
+
+    // Step 5: threshold → hash
+    const bits = block.map(row => row.map(v => v > med ? 1 : 0));
+    renderHashGrid(`grid-${s}`, bits);
+
+    const hex = bitsToHex(bits);
+    const hexEl = document.getElementById(`hex-${s}`);
+    if (hexEl) hexEl.textContent = hex;
+
+    // Verify against stored hash
+    const ok = hex.toLowerCase() === stored.toLowerCase();
+    const matchEl = document.getElementById(`match-${s}`);
+    if (matchEl) {
+      matchEl.innerHTML = ok
+        ? `<span class="match-badge ok">✓ Matches stored hash</span>`
+        : `<span class="match-badge off">≈ Minor resampling difference vs stored</span>`;
+    }
+  }
+}
+
+runPipeline().catch(e => console.error('Pipeline error:', e));
+</script>
+{% endif %}
+{% endblock %}

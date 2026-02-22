@@ -154,19 +154,24 @@
     <strong style="color:#f3f6e7;">{{ team_b }}</strong>
   </p>
 
-  {% if im.hamming_distance == 0 %}
-    <div class="verdict identical">
-      <span class="dist-badge">0</span> bit difference &mdash; <strong>Identical images</strong>
-    </div>
-  {% elif im.hamming_distance <= 3 %}
-    <div class="verdict very-close">
-      <span class="dist-badge">{{ im.hamming_distance }}</span> bit{{ im.hamming_distance|pluralize }} difference &mdash; <strong>Near-identical</strong> (likely resized or re-compressed)
-    </div>
-  {% else %}
-    <div class="verdict similar">
-      <span class="dist-badge">{{ im.hamming_distance }}</span> bit{{ im.hamming_distance|pluralize }} difference &mdash; <strong>Visually similar</strong>
-    </div>
-  {% endif %}
+  <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;">
+    {% if im.hamming_distance == 0 %}
+      <div class="verdict identical" style="flex:1;margin-bottom:0;">
+        <span class="dist-badge">0</span> bit difference &mdash; <strong>Identical images</strong>
+      </div>
+    {% elif im.hamming_distance <= 3 %}
+      <div class="verdict very-close" style="flex:1;margin-bottom:0;">
+        <span class="dist-badge">{{ im.hamming_distance }}</span> bit{{ im.hamming_distance|pluralize }} difference &mdash; <strong>Near-identical</strong> (likely resized or re-compressed)
+      </div>
+    {% else %}
+      <div class="verdict similar" style="flex:1;margin-bottom:0;">
+        <span class="dist-badge">{{ im.hamming_distance }}</span> bit{{ im.hamming_distance|pluralize }} difference &mdash; <strong>Visually similar</strong>
+      </div>
+    {% endif %}
+    <a class="btn-report" href="{% url 'reports:methodology_image_match' im.image_match_id %}" style="white-space:nowrap;">
+      Why did these match? &rarr;
+    </a>
+  </div>
 
   <div class="compare-grid">
     <div class="img-card">

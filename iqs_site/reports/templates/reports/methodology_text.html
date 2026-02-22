@@ -1,0 +1,799 @@
+{% extends "base.html" %}
+
+{% block title %}How Text Similarity Works{% endblock %}
+
+{% block extra_styles %}
+  .wrap { max-width: min(98vw, 1100px); }
+
+  .breadcrumb { font-size: 0.85rem; color: #9ca3af; margin-bottom: 1.25rem; }
+
+  /* ── Step card ── */
+  .step-card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1.4rem 1.6rem;
+    margin-bottom: 1.5rem;
+  }
+  .step-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #6687fc;
+    font-weight: 700;
+    margin-bottom: 0.2rem;
+  }
+  .step-card h2 {
+    margin: 0 0 0.65rem;
+    font-size: 1.05rem;
+    color: #f3f6e7;
+  }
+  .explain {
+    font-size: 0.83rem;
+    color: #9ca3af;
+    line-height: 1.65;
+    margin-bottom: 0.85rem;
+  }
+  .explain code {
+    background: #1e293b;
+    border-radius: 3px;
+    padding: 0.1em 0.35em;
+    font-size: 0.82em;
+    color: #a5b4fc;
+  }
+
+  /* ── Step number badge ── */
+  .step-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.55rem;
+    height: 1.55rem;
+    background: #6687fc;
+    color: #020617;
+    border-radius: 50%;
+    font-size: 0.72rem;
+    font-weight: 800;
+    margin-right: 0.4rem;
+    vertical-align: middle;
+  }
+
+  /* ── Two-column ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+  .col-label {
+    font-size: 0.73rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6b7280;
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+  }
+
+  /* ── Text quote boxes ── */
+  .text-box {
+    background: #020617;
+    border: 1px solid #1f2937;
+    border-radius: 0.5rem;
+    padding: 0.85rem 1rem;
+    font-size: 0.82rem;
+    color: #d1d5db;
+    line-height: 1.7;
+  }
+
+  /* ── Callout ── */
+  .callout {
+    background: rgba(102,135,252,0.07);
+    border-left: 3px solid #6687fc;
+    border-radius: 0 0.5rem 0.5rem 0;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin: 0.75rem 0 0;
+    line-height: 1.55;
+  }
+
+  /* ── Word tokens ── */
+  .word-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 0.5rem;
+  }
+  .word-token {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 4px;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.72rem;
+    font-family: monospace;
+    color: #9ca3af;
+  }
+  .word-token.ellipsis {
+    color: #4b5563;
+    border-color: #1f2937;
+    background: transparent;
+  }
+
+  /* ── Shingle chips ── */
+  .shingle-cloud {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 0.5rem;
+  }
+  .sh-chip {
+    border-radius: 999px;
+    padding: 0.2rem 0.6rem;
+    font-size: 0.72rem;
+    font-family: monospace;
+    white-space: nowrap;
+  }
+  .sh-chip.shared {
+    background: rgba(52,211,153,0.12);
+    border: 1px solid rgba(52,211,153,0.3);
+    color: #34d399;
+  }
+  .sh-chip.only-a {
+    background: rgba(102,135,252,0.10);
+    border: 1px solid rgba(102,135,252,0.25);
+    color: #818cf8;
+  }
+  .sh-chip.only-b {
+    background: rgba(249,115,22,0.10);
+    border: 1px solid rgba(249,115,22,0.25);
+    color: #fb923c;
+  }
+
+  /* ── Sliding window demo ── */
+  .window-demo { margin-top: 0.75rem; }
+  .window-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+  }
+  .win-word {
+    border-radius: 4px;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.72rem;
+    font-family: monospace;
+    border: 1px solid transparent;
+    color: #4b5563;
+  }
+  .win-word.active {
+    background: rgba(102,135,252,0.18);
+    border-color: #6687fc;
+    color: #a5b4fc;
+  }
+  .win-arrow {
+    font-size: 0.7rem;
+    color: #374151;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .win-result {
+    font-family: monospace;
+    font-size: 0.72rem;
+    color: #6687fc;
+    flex-shrink: 0;
+  }
+
+  /* ── Venn-like diagram ── */
+  .venn-row {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    margin-top: 0.75rem;
+  }
+  .venn-col {
+    background: #020617;
+    border: 1px solid #1f2937;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+  }
+  .venn-col.shared-col {
+    border-color: rgba(52,211,153,0.3);
+    background: rgba(52,211,153,0.04);
+  }
+  .venn-col-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-bottom: 0.4rem;
+  }
+  .venn-col.shared-col .venn-col-label { color: #34d399; }
+  .venn-col:not(.shared-col) .venn-col-label { color: #6b7280; }
+
+  /* ── Jaccard formula ── */
+  .formula-box {
+    background: #020617;
+    border: 1px solid #334155;
+    border-radius: 0.6rem;
+    padding: 1rem 1.2rem;
+    margin: 0.75rem 0;
+    text-align: center;
+  }
+  .formula-main {
+    font-family: monospace;
+    font-size: 1.1rem;
+    color: #f3f6e7;
+    line-height: 1.6;
+  }
+  .formula-main .frac {
+    display: inline-block;
+    vertical-align: middle;
+    text-align: center;
+  }
+  .formula-main .frac .num,
+  .formula-main .frac .den {
+    display: block;
+    padding: 0.1em 0.4em;
+    font-size: 0.95rem;
+  }
+  .formula-main .frac .num { border-bottom: 1.5px solid #6687fc; }
+  .formula-main .frac .den { }
+  .formula-result {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #34d399;
+    margin-top: 0.4rem;
+  }
+
+  /* ── Stats row ── */
+  .stats-row {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin: 0.75rem 0;
+  }
+  .stat-item { }
+  .stat-val {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #f3f6e7;
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 0.72rem;
+    color: #6b7280;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-top: 0.1rem;
+  }
+  .stat-item.green .stat-val { color: #34d399; }
+
+  /* ── MinHash illustration ── */
+  .minhash-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 3px;
+    margin-top: 0.6rem;
+  }
+  .mh-cell {
+    height: 22px;
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-family: monospace;
+    color: rgba(255,255,255,0.6);
+  }
+  .mh-cell.same   { background: rgba(52,211,153,0.25); color:#34d399; }
+  .mh-cell.diff-a { background: rgba(102,135,252,0.2); color:#818cf8; }
+  .mh-cell.diff-b { background: rgba(249,115,22,0.15); color:#fb923c; }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+  }
+  .legend-item { display: flex; align-items: center; gap: 0.35rem; }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── Similarity badge ── */
+  .sim-badge {
+    display: inline-block;
+    padding: 0.25rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+  }
+  .sim-badge.high   { background: rgba(239,68,68,0.12);  border:1px solid rgba(239,68,68,0.35);  color:#f87171; }
+  .sim-badge.medium { background: rgba(249,115,22,0.10); border:1px solid rgba(249,115,22,0.30); color:#fb923c; }
+  .sim-badge.low    { background: rgba(234,179,8,0.09);  border:1px solid rgba(234,179,8,0.28);  color:#fbbf24; }
+
+  /* ── Code-like formula display ── */
+  .code-formula {
+    font-family: monospace;
+    font-size: 0.88rem;
+    color: #a5b4fc;
+    background: #0d1626;
+    border: 1px solid #1e293b;
+    border-radius: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    display: inline-block;
+    margin: 0.5rem 0 0.85rem;
+    line-height: 1.5;
+  }
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'reports:reports_overview' %}">← Report Analysis</a>
+  </div>
+
+  <h1 style="margin:0 0 0.2rem;">How Text Similarity Works</h1>
+  <p style="color:#9ca3af;margin:0 0 1.5rem;font-size:0.9rem;">
+    A step-by-step walkthrough of the <strong style="color:#f3f6e7;">Shingling + MinHash + Jaccard</strong>
+    algorithm used to detect matching text across submitted reports.
+    The two paragraphs below are a real match found in the database.
+  </p>
+
+  {% if no_data %}
+    <div class="step-card">
+      <p style="color:#9ca3af;margin:0;">No text matches found yet — run a similarity analysis job first.</p>
+    </div>
+  {% else %}
+
+  {% if stored_chunk_sim >= 80 %}
+    <div class="sim-badge high">{{ stored_chunk_sim }}% word-set similarity — Strong match</div>
+  {% elif stored_chunk_sim >= 55 %}
+    <div class="sim-badge medium">{{ stored_chunk_sim }}% word-set similarity — Moderate match</div>
+  {% else %}
+    <div class="sim-badge low">{{ stored_chunk_sim }}% word-set similarity — Partial match</div>
+  {% endif %}
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 0: Source Texts                                                -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 0</div>
+    <h2><span class="step-num">0</span>The Source Paragraphs</h2>
+    <p class="explain">
+      These two text chunks were extracted from the PDF reports of different teams.
+      They appear on page {{ cm.chunk_a.page.page_number }} and page {{ cm.chunk_b.page.page_number }}
+      respectively and were flagged as a match.
+    </p>
+    <div class="two-col">
+      <div>
+        <div class="col-label">{{ team_a }}</div>
+        <div class="text-box">{{ text_a }}</div>
+      </div>
+      <div>
+        <div class="col-label">{{ team_b }}</div>
+        <div class="text-box">{{ text_b }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 1: Normalize                                                   -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 1</div>
+    <h2><span class="step-num">1</span>Normalize the Text</h2>
+    <p class="explain">
+      Before comparison, each chunk is <strong>normalised</strong>:
+      converted to lowercase, stripped of punctuation, and tokenised into individual words.
+      This makes the comparison insensitive to capitalisation, hyphenation, and minor
+      punctuation differences between reports.
+    </p>
+    <div class="code-formula">
+      text = text.lower()<br>
+      words = re.findall(r"[a-z0-9']+", text)
+    </div>
+    <div class="two-col">
+      <div>
+        <div class="col-label">{{ team_a }} — {{ words_a|length }} words{% if words_a|length == 40 %}+{% endif %}</div>
+        <div class="word-list">
+          {% for w in words_a %}
+            <span class="word-token">{{ w }}</span>
+          {% endfor %}
+          {% if words_a|length == 40 %}
+            <span class="word-token ellipsis">&hellip;</span>
+          {% endif %}
+        </div>
+      </div>
+      <div>
+        <div class="col-label">{{ team_b }} — {{ words_b|length }} words{% if words_b|length == 40 %}+{% endif %}</div>
+        <div class="word-list">
+          {% for w in words_b %}
+            <span class="word-token">{{ w }}</span>
+          {% endfor %}
+          {% if words_b|length == 40 %}
+            <span class="word-token ellipsis">&hellip;</span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 2a: Word-Set Jaccard (used for chunk comparison)              -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 2a — Chunk Level</div>
+    <h2><span class="step-num">2a</span>Word-Set Jaccard (used for chunk matching)</h2>
+    <p class="explain">
+      For comparing individual <em>chunks</em> (paragraphs) within a page pair, the system uses a
+      fast <strong>word-set Jaccard</strong> similarity.
+      Each text is treated as a <em>set</em> of unique words, and Jaccard measures the
+      overlap between the two sets.
+    </p>
+    <div class="code-formula">
+      J(A,B) = |words_A ∩ words_B| / |words_A ∪ words_B|
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-val">{{ word_set_a|length }}</div>
+        <div class="stat-label">unique words in A</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val">{{ word_set_b|length }}</div>
+        <div class="stat-label">unique words in B</div>
+      </div>
+      <div class="stat-item green">
+        <div class="stat-val">{{ word_intersection_count }}</div>
+        <div class="stat-label">shared (∩)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val">{{ word_union_count }}</div>
+        <div class="stat-label">total (∪)</div>
+      </div>
+    </div>
+
+    <div class="formula-box">
+      <div class="formula-main">
+        J =
+        <span class="frac">
+          <span class="num">{{ word_intersection_count }}</span>
+          <span class="den">{{ word_union_count }}</span>
+        </span>
+        = {{ word_jaccard }}%
+      </div>
+      <div class="formula-result">{{ word_jaccard }}%</div>
+      <div style="font-size:0.75rem;color:#6b7280;margin-top:0.25rem;">
+        Stored chunk similarity: <strong style="color:#f3f6e7;">{{ stored_chunk_sim }}%</strong>
+        (computed on the full text, not the truncated display above)
+      </div>
+    </div>
+
+    <div class="callout">
+      Word-set Jaccard is fast and sufficient for short chunks.
+      It treats word order as irrelevant — "the tractor pulls the load" and
+      "the load pulls the tractor" score 100%. For longer texts and page-level comparison,
+      the system switches to <strong>shingling</strong> (Step 2b below).
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 2b: Shingling (used for page-level comparison)                -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 2b — Page Level</div>
+    <h2><span class="step-num">2b</span>k-Shingle Extraction (used for page matching)</h2>
+    <p class="explain">
+      For comparing entire <em>pages</em>, the system uses <strong>5-word shingles</strong>
+      (also called k-grams or n-grams). A shingle is a sequence of
+      <code>k = {{ shingle_k }}</code> consecutive words.
+      A sliding window steps through the text one word at a time, producing one shingle per position.
+    </p>
+    <p class="explain">
+      Unlike word-set Jaccard, shingles are <strong>order-sensitive</strong> — they capture
+      phrase-level patterns. Two texts that use the same words in different orders will
+      have low shingle Jaccard even if they share many vocabulary words.
+    </p>
+    <div class="code-formula">
+      shingles = [" ".join(words[i : i+{{ shingle_k }}])<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;for i in range(len(words) − {{ shingle_k }} + 1)]
+    </div>
+
+    <p style="font-size:0.8rem;color:#6b7280;margin:0 0 0.4rem;">
+      Sliding window over <strong>{{ team_a }}</strong>
+      (first {{ window_demo|length }} shingles — highlighted words form each shingle):
+    </p>
+    <div class="window-demo">
+      {% for row in window_demo %}
+        <div class="window-row">
+          {% for wdata in row.words %}
+            {% if wdata.active %}
+              <span class="win-word active">{{ wdata.word }}</span>
+            {% else %}
+              <span class="win-word">{{ wdata.word }}</span>
+            {% endif %}
+          {% endfor %}
+          <span class="win-arrow">…</span>
+          <span class="win-arrow">→</span>
+          <span class="win-result">"{{ row.shingle }}"</span>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 3: Shingle Sets & Overlap                                      -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 3</div>
+    <h2><span class="step-num">3</span>Build Shingle Sets &amp; Find Overlap</h2>
+    <p class="explain">
+      Duplicate shingles within a single text are removed — each text becomes a
+      <strong>set</strong> of unique shingles.
+      Green shingles appear in <em>both</em> texts;
+      blue are unique to {{ team_a }};
+      orange are unique to {{ team_b }}.
+    </p>
+
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-val">{{ sh_count_a }}</div>
+        <div class="stat-label">shingles in A</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val">{{ sh_count_b }}</div>
+        <div class="stat-label">shingles in B</div>
+      </div>
+      <div class="stat-item green">
+        <div class="stat-val">{{ sh_intersection }}</div>
+        <div class="stat-label">shared (∩)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-val">{{ sh_union }}</div>
+        <div class="stat-label">union (∪)</div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#34d399;"></div>
+        <span style="color:#9ca3af;">shared ({{ sh_intersection }})</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#818cf8;"></div>
+        <span style="color:#9ca3af;">only {{ team_a }} ({{ sh_only_a|length }})</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#fb923c;"></div>
+        <span style="color:#9ca3af;">only {{ team_b }} ({{ sh_only_b|length }})</span>
+      </div>
+    </div>
+
+    {% if sh_shared %}
+      <p class="col-label" style="margin-top:0.75rem;">Shared shingles</p>
+      <div class="shingle-cloud">
+        {% for sh in sh_shared %}
+          <span class="sh-chip shared">{{ sh }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if sh_only_a %}
+      <p class="col-label" style="margin-top:0.75rem;">Only in {{ team_a }}</p>
+      <div class="shingle-cloud">
+        {% for sh in sh_only_a|slice:":24" %}
+          <span class="sh-chip only-a">{{ sh }}</span>
+        {% endfor %}
+        {% if sh_only_a|length > 24 %}
+          <span style="font-size:0.72rem;color:#4b5563;align-self:center;">&hellip; {{ sh_only_a|length }} total</span>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    {% if sh_only_b %}
+      <p class="col-label" style="margin-top:0.75rem;">Only in {{ team_b }}</p>
+      <div class="shingle-cloud">
+        {% for sh in sh_only_b|slice:":24" %}
+          <span class="sh-chip only-b">{{ sh }}</span>
+        {% endfor %}
+        {% if sh_only_b|length > 24 %}
+          <span style="font-size:0.72rem;color:#4b5563;align-self:center;">&hellip; {{ sh_only_b|length }} total</span>
+        {% endif %}
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 4: Shingle Jaccard                                             -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 4</div>
+    <h2><span class="step-num">4</span>Shingle Jaccard Similarity</h2>
+    <p class="explain">
+      Jaccard similarity between the two shingle sets is computed the same way as the
+      word-set version — intersection divided by union.
+      Because shingles are order-sensitive phrases rather than individual words, this
+      score is generally <em>lower</em> than the word-set Jaccard for the same pair of texts.
+    </p>
+
+    <div class="formula-box">
+      <div class="formula-main">
+        J(A,B) =
+        <span class="frac">
+          <span class="num">|A&nbsp;∩&nbsp;B|</span>
+          <span class="den">|A&nbsp;∪&nbsp;B|</span>
+        </span>
+        =
+        <span class="frac">
+          <span class="num">{{ sh_intersection }}</span>
+          <span class="den">{{ sh_union }}</span>
+        </span>
+      </div>
+      <div class="formula-result">{{ shingle_jaccard }}%</div>
+    </div>
+
+    <div class="callout">
+      For this chunk pair: <strong>word-set Jaccard = {{ word_jaccard }}%</strong>
+      vs <strong>shingle Jaccard = {{ shingle_jaccard }}%</strong>.
+      Shingling is stricter because it requires the same words to appear in the same order.
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Step 5: MinHash approximation                                       -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card">
+    <div class="step-label">Step 5</div>
+    <h2><span class="step-num">5</span>MinHash — Scaling to Millions of Shingle Pairs</h2>
+    <p class="explain">
+      When comparing full <em>pages</em> across many reports, computing exact Jaccard
+      for every pair of shingle sets is too expensive — a single page may produce
+      thousands of shingles, and comparing every pair of pages across hundreds of reports
+      results in millions of set intersection computations.
+    </p>
+    <p class="explain">
+      <strong>MinHash</strong> solves this by replacing each shingle set with a compact
+      <strong>signature</strong> — a vector of <code>{{ "128" }}</code> integers, one per hash permutation.
+      The expected fraction of <em>matching</em> positions in two signatures equals the
+      Jaccard similarity of the original sets. This reduces the storage and comparison
+      cost from O(shingles) to O(128) per page.
+    </p>
+    <div class="code-formula">
+      m = MinHash(num_perm=128)<br>
+      for shingle in shingles:<br>
+      &nbsp;&nbsp;&nbsp;&nbsp;m.update(shingle.encode("utf-8"))<br>
+      <br>
+      similarity = minhash_A.jaccard(minhash_B)  # ≈ true Jaccard
+    </div>
+
+    <p class="explain">
+      The diagram below illustrates 128 MinHash slots for the two pages.
+      <span style="color:#34d399;">Green</span> = matching minimum hash value (contributes +1 to similarity);
+      <span style="color:#818cf8;">blue</span> = only in A;
+      <span style="color:#fb923c;">orange</span> = only in B.
+    </p>
+
+    <!-- Visual MinHash signature (simulated for illustration) -->
+    <div id="minhash-visual">
+      <div class="minhash-grid" id="mh-grid">
+        <!-- Filled by JS -->
+      </div>
+      <div class="legend" style="margin-top:0.5rem;">
+        <div class="legend-item">
+          <div class="legend-dot" style="background:rgba(52,211,153,0.5);"></div>
+          <span style="color:#9ca3af;">Matching slot (≈ shared shingle)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:rgba(102,135,252,0.4);"></div>
+          <span style="color:#9ca3af;">Slot only in A</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-dot" style="background:rgba(249,115,22,0.35);"></div>
+          <span style="color:#9ca3af;">Slot only in B</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="formula-box" style="margin-top:0.75rem;">
+      <div class="formula-main">
+        MinHash similarity ≈ Jaccard(A, B) = {{ shingle_jaccard }}%
+      </div>
+      <div style="font-size:0.75rem;color:#6b7280;margin-top:0.25rem;">
+        Stored page-level similarity (from MinHash):
+        <strong style="color:#f3f6e7;">{{ stored_page_sim }}%</strong>
+      </div>
+    </div>
+
+    <div class="callout">
+      Pages are recorded as a <code>PageMatch</code> when their MinHash Jaccard is &ge;&nbsp;5%.
+      Within each page pair, individual chunk pairs are then compared using the faster
+      word-set Jaccard, and those above 30% become <code>ChunkMatch</code> records.
+    </div>
+  </div>
+
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <!-- Summary                                                             -->
+  <!-- ─────────────────────────────────────────────────────────────────── -->
+  <div class="step-card" style="border-color:#334155;">
+    <h2 style="margin:0 0 0.75rem;">Pipeline Summary</h2>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:0.4rem 1rem;align-items:start;font-size:0.83rem;">
+      <span style="color:#6687fc;font-weight:700;">1.</span>
+      <span style="color:#9ca3af;">Extract text from PDF, group into paragraph chunks.</span>
+      <span style="color:#6687fc;font-weight:700;">2.</span>
+      <span style="color:#9ca3af;">Normalise: lowercase, strip punctuation, tokenise.</span>
+      <span style="color:#6687fc;font-weight:700;">3.</span>
+      <span style="color:#9ca3af;">Build 5-word shingle set for each page.</span>
+      <span style="color:#6687fc;font-weight:700;">4.</span>
+      <span style="color:#9ca3af;">Compute 128-permutation MinHash signature for each page.</span>
+      <span style="color:#6687fc;font-weight:700;">5.</span>
+      <span style="color:#9ca3af;">Compare all page pairs with MinHash Jaccard; record pairs &ge;&nbsp;5% as <code style="color:#a5b4fc;">PageMatch</code>.</span>
+      <span style="color:#6687fc;font-weight:700;">6.</span>
+      <span style="color:#9ca3af;">Within each <code style="color:#a5b4fc;">PageMatch</code>, compare every chunk pair by word-set Jaccard; record pairs &ge;&nbsp;30% as <code style="color:#a5b4fc;">ChunkMatch</code>.</span>
+    </div>
+  </div>
+
+  <!-- ── Navigation ──────────────────────────────────────────────────── -->
+  <div style="margin-bottom:2rem;display:flex;gap:1.5rem;flex-wrap:wrap;font-size:0.85rem;">
+    <a href="{% url 'reports:page_match_detail' cm.page_match.page_match_id %}" style="color:#6687fc;">
+      View this page match in the comparison tool &rarr;
+    </a>
+    <a href="{% url 'reports:methodology_image' %}" style="color:#9ca3af;">
+      See how image similarity works &rarr;
+    </a>
+  </div>
+
+  {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+{% if not no_data %}
+<script>
+/* Simulate MinHash signature for illustration */
+(function () {
+  const TARGET_SIM = {{ shingle_jaccard }} / 100;
+  const SLOTS = 128;
+  const grid  = document.getElementById('mh-grid');
+  if (!grid) return;
+
+  // Assign each slot a type based on target similarity
+  const cells = [];
+  for (let i = 0; i < SLOTS; i++) {
+    const r = Math.random();
+    let cls;
+    if (r < TARGET_SIM) {
+      cls = 'same';
+    } else if (r < TARGET_SIM + (1 - TARGET_SIM) / 2) {
+      cls = 'diff-a';
+    } else {
+      cls = 'diff-b';
+    }
+    cells.push(cls);
+  }
+
+  cells.forEach((cls, i) => {
+    const d = document.createElement('div');
+    d.className = `mh-cell ${cls}`;
+    d.title = cls === 'same' ? 'Matching' : cls === 'diff-a' ? 'Only A' : 'Only B';
+    d.textContent = (i+1).toString().padStart(3,' ');
+    grid.appendChild(d);
+  });
+
+  const matches = cells.filter(c => c === 'same').length;
+  const pct = (matches / SLOTS * 100).toFixed(1);
+
+  const note = document.createElement('div');
+  note.style.cssText = 'font-size:0.75rem;color:#6b7280;margin-top:0.4rem;';
+  note.textContent = `Simulation: ${matches}/${SLOTS} slots match ≈ ${pct}% (target ≈ ${(TARGET_SIM*100).toFixed(1)}%)`;
+  grid.parentNode.appendChild(note);
+})();
+</script>
+{% endif %}
+{% endblock %}

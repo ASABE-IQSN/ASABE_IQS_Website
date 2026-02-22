@@ -19,5 +19,8 @@ urlpatterns = [
     path("page-match/<int:page_match_id>/", views.page_match_detail, name="page_match_detail"),
     path("ai-detection/<int:report_id>/", views.report_ai_detection, name="report_ai_detection"),
     path("ai-detection/<int:report_id>/run/", views.retrigger_ai_detection, name="retrigger_ai_detection"),
+    path("analysis/methodology/image/", views.methodology_image, name="methodology_image"),
+    path("analysis/methodology/image/<int:image_match_id>/", views.methodology_image, name="methodology_image_match"),
+    path("analysis/methodology/text/", views.methodology_text, name="methodology_text"),
     path("<int:report_id>", views.report_download, name="report_download"),
 ]
