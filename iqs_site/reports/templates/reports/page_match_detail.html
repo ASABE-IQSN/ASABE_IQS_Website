@@ -8,7 +8,7 @@
 
 {% block extra_styles %}
   /* Break out of the 1000px .wrap constraint for this page */
-  .wrap { max-width: min(98vw, 1800px); }
+  .wrap { max-width: min(99vw, 2400px); }
 
   .breadcrumb {
     font-size: 0.85rem;
@@ -54,17 +54,29 @@
     vertical-align: middle;
   }
 
-  /* Two-column PDF comparison */
-  .compare-grid {
+  /* ── Three-column layout: left PDF | chunk sidebar | right PDF ── */
+
+  .main-layout {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 320px 1fr;
     gap: 1rem;
-    margin-bottom: 1.5rem;
     align-items: start;
   }
 
-  @media (max-width: 800px) {
-    .compare-grid { grid-template-columns: 1fr; }
+  @media (max-width: 1000px) {
+    .main-layout {
+      grid-template-columns: 1fr 1fr;
+    }
+    .chunk-sidebar {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      position: static !important;
+      max-height: none !important;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .main-layout { grid-template-columns: 1fr; }
   }
 
   .col-label {
@@ -75,14 +87,15 @@
     margin: 0 0 0.4rem;
   }
 
-  /* The PDF canvas + overlay container */
+  /* ── The PDF canvas + overlay container ─────────────────────── */
+
   .pdf-wrap {
     position: relative;
     background: #1e293b;
     border: 1px solid #1f2937;
     border-radius: 0.5rem;
     overflow: hidden;
-    line-height: 0; /* removes gap below canvas */
+    line-height: 0;
   }
 
   .pdf-wrap canvas {
@@ -90,7 +103,6 @@
     display: block;
   }
 
-  /* Loading / error states */
   .pdf-status {
     position: absolute;
     inset: 0;
@@ -102,7 +114,8 @@
     pointer-events: none;
   }
 
-  /* Chunk overlay boxes */
+  /* ── Chunk overlay boxes ─────────────────────────────────────── */
+
   .chunk-overlay {
     position: absolute;
     pointer-events: none;
@@ -136,7 +149,17 @@
     border-color: rgba(34,197,94,0.85);
   }
 
-  /* Chunk match table */
+  /* ── Chunk sidebar ───────────────────────────────────────────── */
+
+  .chunk-sidebar {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #334155 transparent;
+  }
+
   .card {
     background: #0b1120;
     border: 1px solid #1f2937;
@@ -144,31 +167,66 @@
     padding: 1rem 1.2rem;
   }
 
-  .card h2 { margin: 0 0 0.75rem; font-size: 1rem; }
+  .card h2 { margin: 0 0 0.6rem; font-size: 0.9rem; color: #9ca3af; font-weight: 500; }
 
   table { width: 100%; border-collapse: collapse; }
 
   th, td {
-    padding: 0.5rem;
+    padding: 0.45rem 0.4rem;
     border-bottom: 1px solid #1f2937;
     text-align: left;
-    font-size: 0.82rem;
+    font-size: 0.8rem;
   }
 
   th {
     color: #9ca3af;
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
   }
 
+  /* ── Chunk rows: clickable, hover, selected ──────────────────── */
+
+  .chunk-row {
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .chunk-row:hover { background: rgba(255,255,255,0.03); }
+
+  .chunk-row.row-hover {
+    background: rgba(102,135,252,0.08);
+    outline: 1px solid rgba(102,135,252,0.25);
+  }
+
+  .chunk-row.selected {
+    background: rgba(102,135,252,0.12);
+    outline: 1px solid rgba(102,135,252,0.4);
+  }
+
   .snippet {
     color: #9ca3af;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 280px;
+    white-space: normal;
+    overflow-wrap: break-word;
     display: block;
+    line-height: 1.4;
+  }
+
+  .sim-chip {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 0.1rem 0.4rem;
+    border: 1px solid rgba(102,135,252,0.35);
+    color: #6687fc;
+    white-space: nowrap;
+  }
+
+  .click-hint {
+    font-size: 0.72rem;
+    color: #4b5563;
+    margin-bottom: 0.5rem;
   }
 {% endblock %}
 
@@ -192,7 +250,9 @@
     <span>Hover a highlighted region to cross-highlight its match.</span>
   </div>
 
-  <div class="compare-grid">
+  <div class="main-layout">
+
+    <!-- Left PDF -->
     <div>
       <p class="col-label">
         <strong style="color:#fbbf24;">{{ team_a }}</strong>
@@ -204,6 +264,37 @@
       </div>
     </div>
 
+    <!-- Chunk sidebar (centre column) -->
+    {% if chunk_matches %}
+    <div class="chunk-sidebar">
+      <div class="card">
+        <h2>Matching Chunks ({{ chunk_matches|length }})</h2>
+        <p class="click-hint">Click a row to highlight in the PDF.</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Sim.</th>
+              <th style="color:#fbbf24;">{{ team_a }}</th>
+              <th style="color:#22c55e;">{{ team_b }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cm in chunk_matches %}
+              <tr class="chunk-row"
+                  data-a="chunk-{{ cm.chunk_a.chunk_id }}"
+                  data-b="chunk-{{ cm.chunk_b.chunk_id }}">
+                <td><span class="sim-chip">{% widthratio cm.similarity 1 100 %}%</span></td>
+                <td><span class="snippet" title="{{ cm.chunk_a.text }}">{{ cm.chunk_a.text|truncatechars:200 }}</span></td>
+                <td><span class="snippet" title="{{ cm.chunk_b.text }}">{{ cm.chunk_b.text|truncatechars:200 }}</span></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Right PDF -->
     <div>
       <p class="col-label">
         <strong style="color:#22c55e;">{{ team_b }}</strong>
@@ -214,31 +305,8 @@
         <div class="pdf-status" id="status-right">Loading…</div>
       </div>
     </div>
-  </div>
 
-  {% if chunk_matches %}
-    <div class="card">
-      <h2>Matching Chunk Pairs ({{ chunk_matches|length }})</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Sim.</th>
-            <th>{{ team_a }}</th>
-            <th>{{ team_b }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for cm in chunk_matches %}
-            <tr>
-              <td style="white-space:nowrap;">{% widthratio cm.similarity 1 100 %}%</td>
-              <td><span class="snippet">{{ cm.chunk_a.text|truncatechars:120 }}</span></td>
-              <td><span class="snippet">{{ cm.chunk_b.text|truncatechars:120 }}</span></td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  {% endif %}
+  </div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -247,40 +315,96 @@
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
 
-  const chunkLinks      = {{ chunk_links_json|safe }};
-  const leftChunkData   = {{ left_chunk_data_json|safe }};
-  const rightChunkData  = {{ right_chunk_data_json|safe }};
+  const chunkLinks     = {{ chunk_links_json|safe }};
+  const leftChunkData  = {{ left_chunk_data_json|safe }};
+  const rightChunkData = {{ right_chunk_data_json|safe }};
 
   const leftPdfUrl  = "{% url 'reports:report_download' pm.page_a.report.report_id %}";
   const rightPdfUrl = "{% url 'reports:report_download' pm.page_b.report.report_id %}";
   const leftPageNum  = {{ pm.page_a.page_number }};
   const rightPageNum = {{ pm.page_b.page_number }};
 
+  // ── Utility ──────────────────────────────────────────────────────
   function clearActive() {
     document.querySelectorAll('.chunk-overlay.active').forEach(el => el.classList.remove('active'));
   }
 
+  function clearRowHover() {
+    document.querySelectorAll('.chunk-row.row-hover').forEach(r => r.classList.remove('row-hover'));
+  }
+
+  function clearSelected() {
+    document.querySelectorAll('.chunk-row.selected').forEach(r => r.classList.remove('selected'));
+  }
+
+  // Map chunk overlay ID → table rows that reference it (built below).
+  const chunkToRows = {};
+
+  // ── Table row → PDF chunk interaction ────────────────────────────
+  document.querySelectorAll('.chunk-row').forEach(row => {
+    const aId = row.dataset.a;
+    const bId = row.dataset.b;
+
+    // Register row in the reverse-lookup map.
+    if (aId) (chunkToRows[aId] ??= []).push(row);
+    if (bId) (chunkToRows[bId] ??= []).push(row);
+
+    row.addEventListener('click', () => {
+      clearActive();
+      clearSelected();
+      row.classList.add('selected');
+
+      // Activate both chunk overlays.
+      [aId, bId].forEach(cid => {
+        if (!cid) return;
+        const el = document.getElementById(cid);
+        if (el) el.classList.add('active');
+      });
+    });
+  });
+
+  // ── PDF chunk overlay → cross-highlight + table row highlight ────
   function addHover(el) {
     const id = el.id;
     if (!id || !chunkLinks[id]) return;
+
     el.addEventListener('mouseenter', () => {
       clearActive();
+      clearRowHover();
       el.classList.add('active');
+
+      // Cross-highlight linked overlays on the other PDF.
       chunkLinks[id].forEach(linkedId => {
         const linked = document.getElementById(linkedId);
         if (linked) linked.classList.add('active');
       });
+
+      // Highlight corresponding table rows and scroll into view.
+      const allIds = [id, ...(chunkLinks[id] || [])];
+      const seen = new Set();
+      allIds.forEach(cid => {
+        (chunkToRows[cid] || []).forEach(row => {
+          if (seen.has(row)) return;
+          seen.add(row);
+          row.classList.add('row-hover');
+          row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        });
+      });
     });
-    el.addEventListener('mouseleave', clearActive);
+
+    el.addEventListener('mouseleave', () => {
+      clearActive();
+      clearRowHover();
+    });
   }
 
+  // ── Render a PDF page with chunk overlays ─────────────────────────
   async function renderPage(pdfUrl, pageNum, canvasEl, wrapEl, statusEl, chunkData, hlClass) {
     try {
       const pdf  = await pdfjsLib.getDocument(pdfUrl).promise;
       const page = await pdf.getPage(pageNum);
 
-      // Scale to the container's rendered width.
-      const naturalVp = page.getViewport({ scale: 1 });
+      const naturalVp  = page.getViewport({ scale: 1 });
       const containerW = wrapEl.clientWidth || 480;
       const scale      = containerW / naturalVp.width;
       const viewport   = page.getViewport({ scale });
@@ -289,21 +413,16 @@
       canvasEl.height = viewport.height;
 
       await page.render({ canvasContext: canvasEl.getContext('2d'), viewport }).promise;
-
       statusEl.style.display = 'none';
 
-      // Add overlay divs for each chunk with bbox data.
       for (const chunk of chunkData) {
         const div = document.createElement('div');
         div.id = chunk.id;
-        div.className = 'chunk-overlay' +
-          (chunk.matched ? ` matched ${hlClass}` : '');
-
+        div.className = 'chunk-overlay' + (chunk.matched ? ` matched ${hlClass}` : '');
         div.style.left   = (chunk.x0 * scale) + 'px';
         div.style.top    = (chunk.y0 * scale) + 'px';
         div.style.width  = ((chunk.x1 - chunk.x0) * scale) + 'px';
         div.style.height = ((chunk.y1 - chunk.y0) * scale) + 'px';
-
         wrapEl.appendChild(div);
         if (chunk.matched) addHover(div);
       }
