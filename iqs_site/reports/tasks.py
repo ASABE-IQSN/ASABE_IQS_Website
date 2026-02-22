@@ -4,6 +4,7 @@ import itertools
 import logging
 import os
 import re
+import time
 
 import pdfplumber
 import requests
@@ -13,7 +14,11 @@ from django.db.models import F
 from django.utils import timezone
 
 from events.models import Report
-from .models import AnalysisJob, ChunkMatch, ImageMatch, PageMatch, ReportChunk, ReportImage, ReportPage
+from .models import (
+    AIDetectedSentence, AIDetectionResult,
+    AnalysisJob, ChunkMatch, ImageMatch, PageMatch,
+    ReportChunk, ReportImage, ReportPage,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -850,6 +855,148 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
 
     except Exception as exc:
         logger.exception("AnalysisJob %s failed", job_id)
+        job.status = AnalysisJob.Statuses.FAILED
+        job.completed_at = timezone.now()
+        job.error_message = str(exc)[:4000]
+        job.save(update_fields=["status", "completed_at", "error_message"])
+        raise
+
+
+# ── AI Detection ──────────────────────────────────────────────────────────────
+
+ZEROGPT_API_URL = "https://api.zerogpt.com/api/detect/detectText"
+ZEROGPT_INTER_REQUEST_DELAY = 0.5  # seconds between API calls
+
+
+@shared_task
+def run_ai_detection(job_id: int):
+    """Call ZeroGPT for each ReportPage in the job's event and store results."""
+    job = AnalysisJob.objects.get(pk=job_id)
+    job.status = AnalysisJob.Statuses.RUNNING
+    job.started_at = timezone.now()
+    job.save(update_fields=["status", "started_at"])
+
+    try:
+        api_key = getattr(settings, "ZEROGPT_API_KEY", "")
+        if not api_key:
+            raise ValueError("ZEROGPT_API_KEY is not configured in settings.")
+
+        if not job.event_id:
+            raise ValueError("AI detection job requires an event_id.")
+
+        # Build page queryset filtered by event (and optionally report_type).
+        pages_qs = (
+            ReportPage.objects
+            .filter(report__event_team__event_id=job.event_id)
+            .prefetch_related("chunks")
+            .select_related("report")
+            .order_by("report_id", "page_number")
+        )
+        if job.report_type is not None:
+            pages_qs = pages_qs.filter(report__report_type=job.report_type)
+
+        pages = list(pages_qs)
+
+        distinct_reports = len({p.report_id for p in pages})
+        job.reports_found = distinct_reports
+        job.save(update_fields=["reports_found"])
+
+        logger.info(
+            "AI detection job %s: %d pages across %d reports (event %s, report_type %s)",
+            job_id, len(pages), distinct_reports, job.event_id, job.report_type,
+        )
+
+        headers = {"ApiKey": api_key, "Content-Type": "application/json"}
+
+        for i, page in enumerate(pages):
+            chunks = list(page.chunks.order_by("chunk_index"))
+            text = "\n\n".join(c.text for c in chunks).strip()
+
+            if not text:
+                logger.debug("AI detection job %s: page %s has no text, skipping", job_id, page.page_id)
+                continue
+
+            try:
+                resp = requests.post(
+                    ZEROGPT_API_URL,
+                    headers=headers,
+                    json={"input_text": text},
+                    timeout=30,
+                )
+                resp.raise_for_status()
+                payload = resp.json()
+            except Exception as exc:
+                logger.warning(
+                    "AI detection job %s: API error on page %s: %s", job_id, page.page_id, exc
+                )
+                time.sleep(ZEROGPT_INTER_REQUEST_DELAY)
+                continue
+
+            data = payload.get("data", {})
+
+            def _float(val, default=0.0):
+                try:
+                    return float(val)
+                except (TypeError, ValueError):
+                    return default
+
+            def _int(val, default=0):
+                try:
+                    return int(val)
+                except (TypeError, ValueError):
+                    return default
+
+            result, _ = AIDetectionResult.objects.update_or_create(
+                page=page,
+                defaults={
+                    "fake_percentage": _float(data.get("fakePercentage")),
+                    "ai_words": _int(data.get("aiWords")),
+                    "text_words": _int(data.get("textWords")),
+                    "h_score": _float(data.get("h")) if data.get("h") not in (None, "") else None,
+                    "collection_id": str(data.get("collection_id") or ""),
+                    "zerogpt_id": str(data.get("id") or ""),
+                    "feedback": str(data.get("feedback") or ""),
+                },
+            )
+
+            # Replace any previous sentence results.
+            result.sentences.all().delete()
+            raw_sentences = data.get("sentences") or []
+            if isinstance(raw_sentences, list):
+                sentence_objs = []
+                for idx, item in enumerate(raw_sentences):
+                    if isinstance(item, dict):
+                        sentence_text = str(item.get("sentence") or item.get("text") or "")
+                        prob = _float(item.get("generated_probability") or item.get("probability"), default=None)
+                        prob = prob if prob is not None else None
+                    else:
+                        sentence_text = str(item)
+                        prob = None
+                    if sentence_text:
+                        sentence_objs.append(AIDetectedSentence(
+                            result=result,
+                            sentence_index=idx,
+                            text=sentence_text,
+                            generated_probability=prob,
+                        ))
+                if sentence_objs:
+                    AIDetectedSentence.objects.bulk_create(sentence_objs)
+
+            job.pages_processed += 1
+            if job.pages_processed % 10 == 0:
+                job.save(update_fields=["pages_processed"])
+
+            time.sleep(ZEROGPT_INTER_REQUEST_DELAY)
+
+        job.pages_processed = job.pages_processed  # ensure final count saved
+        job.status = AnalysisJob.Statuses.SUCCEEDED
+        job.completed_at = timezone.now()
+        job.save(update_fields=["status", "completed_at", "pages_processed"])
+
+        logger.info("AI detection job %s succeeded (%d pages processed)", job_id, job.pages_processed)
+
+    except Exception as exc:
+        logger.exception("AI detection job %s failed", job_id)
         job.status = AnalysisJob.Statuses.FAILED
         job.completed_at = timezone.now()
         job.error_message = str(exc)[:4000]

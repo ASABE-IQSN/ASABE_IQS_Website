@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}AI Detection — {{ report_type_label }}{% endblock %}
+
+{% block extra_styles %}
+  .card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
+  }
+
+  .card-heading {
+    margin: 0 0 0.6rem;
+    font-size: 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .pct-chip {
+    display: inline-block;
+    border-radius: 999px;
+    padding: 0.15rem 0.65rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border: 1px solid currentColor;
+  }
+
+  .pct-low   { color: #22c55e; }
+  .pct-mid   { color: #f59e0b; }
+  .pct-high  { color: #ef4444; }
+
+  .stats-bar {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 0.8rem 1.2rem;
+    margin-bottom: 1rem;
+    font-size: 0.88rem;
+  }
+
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .stat-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+  }
+
+  .stat-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #f3f6e7;
+  }
+
+  .chunk-block {
+    padding: 0.4rem 0.6rem;
+    border-radius: 0.4rem;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    margin-bottom: 0.35rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .chunk-flagged {
+    background: rgba(245, 158, 11, 0.18);
+    border-left: 3px solid #f59e0b;
+  }
+
+  .chunk-normal {
+    color: #9ca3af;
+  }
+
+  .page-stats {
+    font-size: 0.78rem;
+    color: #6b7280;
+    margin-left: auto;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .not-analyzed {
+    font-size: 0.85rem;
+    color: #4b5563;
+    font-style: italic;
+  }
+
+  .btn-sm {
+    background: #6687fc;
+    border: 1px solid #6687fc;
+    color: #020617;
+    border-radius: 999px;
+    padding: 0.25rem 0.7rem;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .btn-sm-ghost {
+    background: transparent;
+    border: 1px solid #334155;
+    color: #9ca3af;
+    border-radius: 999px;
+    padding: 0.25rem 0.7rem;
+    font-weight: 500;
+    text-decoration: none;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .btn-sm-ghost:hover {
+    border-color: #6687fc;
+    color: #6687fc;
+  }
+
+  .breadcrumb {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'reports:event_analysis' report.event_team.event.event_id %}?report_type={{ report.report_type }}">← Event Analysis</a>
+  </div>
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.25rem;">
+    <h1 style="margin:0;">AI Detection</h1>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+      <a class="btn-sm-ghost" href="{% url 'reports:report_extracted' report.report_id %}">Extracted Content &rarr;</a>
+      <a class="btn-sm-ghost" href="{% url 'reports:report_matches' report.report_id %}">Text Matches &rarr;</a>
+      <a class="btn-sm-ghost" href="{% url 'reports:report_image_matches' report.report_id %}">Image Matches &rarr;</a>
+      <a class="btn-sm" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
+    </div>
+  </div>
+  <p style="color:#9ca3af;margin:0 0 1.25rem;font-size:0.9rem;">
+    <strong style="color:#f3f6e7;">{{ report.event_team.team.team_name }}</strong>
+    &mdash; {{ report_type_label }}
+    ({{ report.event_team.event.event_name }})
+  </p>
+
+  {% if analyzed_count %}
+    <div class="stats-bar">
+      <div class="stat-item">
+        <span class="stat-label">Pages analyzed</span>
+        <span class="stat-value">{{ analyzed_count }} / {{ total_pages }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Avg AI %</span>
+        <span class="stat-value
+          {% if avg_fake_pct < 20 %}pct-low
+          {% elif avg_fake_pct < 60 %}pct-mid
+          {% else %}pct-high{% endif %}">
+          {{ avg_fake_pct }}%
+        </span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">AI words</span>
+        <span class="stat-value">{{ total_ai_words }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Total words</span>
+        <span class="stat-value">{{ total_text_words }}</span>
+      </div>
+    </div>
+  {% else %}
+    <p style="color:#9ca3af;margin-bottom:1rem;font-size:0.9rem;">
+      No AI detection results for this report yet. Queue an AI detection job from the
+      <a href="{% url 'reports:analysis_dashboard' %}" style="color:#f59e0b;">dashboard</a>.
+    </p>
+  {% endif %}
+
+  {% for pd in page_data %}
+    <div class="card">
+      <div class="card-heading">
+        <span style="font-weight:600;">Page {{ pd.page.page_number }}</span>
+        {% if pd.result %}
+          <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+            <span class="pct-chip
+              {% if pd.result.fake_percentage < 20 %}pct-low
+              {% elif pd.result.fake_percentage < 60 %}pct-mid
+              {% else %}pct-high{% endif %}">
+              {{ pd.result.fake_percentage|floatformat:1 }}% AI
+            </span>
+            <span class="page-stats">
+              <span>{{ pd.result.ai_words }} AI words</span>
+              <span>/ {{ pd.result.text_words }} total</span>
+              {% if pd.result.feedback %}<span style="color:#6b7280;">{{ pd.result.feedback }}</span>{% endif %}
+            </span>
+          </div>
+        {% else %}
+          <span class="not-analyzed">Not analyzed</span>
+        {% endif %}
+      </div>
+
+      {% if pd.chunks %}
+        <div>
+          {% for chunk in pd.chunks %}
+            {% if chunk.text in pd.flagged_texts %}
+              <div class="chunk-block chunk-flagged">{{ chunk.text }}</div>
+            {% else %}
+              <div class="chunk-block chunk-normal">{{ chunk.text }}</div>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% else %}
+        <p class="not-analyzed">No text extracted for this page.</p>
+      {% endif %}
+
+      {% if pd.result and pd.result.sentences.all %}
+        <details style="margin-top:0.75rem;">
+          <summary style="font-size:0.78rem;color:#6b7280;cursor:pointer;">
+            {{ pd.result.sentences.count }} flagged sentence{{ pd.result.sentences.count|pluralize }}
+          </summary>
+          <ol style="margin:0.5rem 0 0 1.2rem;padding:0;font-size:0.82rem;color:#f59e0b;line-height:1.6;">
+            {% for sentence in pd.result.sentences.all %}
+              <li style="margin-bottom:0.25rem;">
+                {{ sentence.text }}
+                {% if sentence.generated_probability is not None %}
+                  <span style="color:#6b7280;font-size:0.75rem;">({{ sentence.generated_probability|floatformat:0 }}%)</span>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ol>
+        </details>
+      {% endif %}
+    </div>
+  {% empty %}
+    <p style="color:#9ca3af;">No pages found for this report.</p>
+  {% endfor %}
+{% endblock %}

@@ -92,7 +92,7 @@
   }
 
   .sim-cell {
-    min-width: 7rem;
+    min-width: 10rem;
     padding: 0;
     font-variant-numeric: tabular-nums;
   }
@@ -114,6 +114,19 @@
 
   .text-half {
     border-right: 1px solid #1f2937;
+  }
+
+  .img-half {
+    border-right: 1px solid #1f2937;
+  }
+
+  .ai-third {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .ai-third:hover {
+    opacity: 0.85;
   }
 
   .no-page {
@@ -148,6 +161,10 @@
 
   .legend-bar.img-bar {
     background: linear-gradient(to right, rgba(102,135,252,0.05), rgba(102,135,252,1));
+  }
+
+  .legend-bar.ai-bar {
+    background: linear-gradient(to right, rgba(245,158,11,0.05), rgba(245,158,11,1));
   }
 {% endblock %}
 
@@ -207,6 +224,12 @@
                             {% if cell.img_sim_pct %}data-img-sim="{{ cell.img_sim_pct }}"{% endif %}>
                         {% if cell.img_sim_pct %}{{ cell.img_sim_pct }}%{% else %}—{% endif %}
                       </span>
+                      <a class="half ai-third"
+                         href="{% url 'reports:report_ai_detection' cell.report_id %}"
+                         title="View AI detection details"
+                         {% if cell.ai_pct is not None %}data-ai-pct="{{ cell.ai_pct }}"{% endif %}>
+                        {% if cell.ai_pct is not None %}{{ cell.ai_pct }}%{% else %}—{% endif %}
+                      </a>
                     </div>
                   </td>
                 {% endif %}
@@ -222,6 +245,8 @@
       <span>Text similarity</span>
       <div class="legend-bar img-bar" style="margin-left:0.75rem;"></div>
       <span>Image similarity</span>
+      <div class="legend-bar ai-bar" style="margin-left:0.75rem;"></div>
+      <span>AI detection %</span>
       <span style="margin-left:0.5rem;color:#4b5563;">(low → high)</span>
     </div>
   {% endif %}
@@ -243,6 +268,15 @@
     if (v > 0) {
       const alpha = Math.min((v / 80) * 0.9 + 0.05, 1.0);
       el.style.background = `rgba(102,135,252,${alpha.toFixed(2)})`;
+      if (v >= 50) el.style.color = '#020617';
+    }
+  });
+
+  document.querySelectorAll('.ai-third[data-ai-pct]').forEach(el => {
+    const v = parseInt(el.dataset.aiPct, 10);
+    if (v > 0) {
+      const alpha = Math.min((v / 80) * 0.9 + 0.05, 1.0);
+      el.style.background = `rgba(245,158,11,${alpha.toFixed(2)})`;
       if (v >= 50) el.style.color = '#020617';
     }
   });

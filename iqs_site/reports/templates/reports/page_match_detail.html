@@ -174,7 +174,7 @@
 
 {% block content %}
   <div class="breadcrumb">
-    <a href="{% url 'reports:report_matches' pm.page_a.report.report_id %}">← {{ team_a }} matches</a>
+    <a href="{% url 'reports:report_matches' back_report_id %}">← {{ back_team }} matches</a>
   </div>
 
   <div class="compare-header">

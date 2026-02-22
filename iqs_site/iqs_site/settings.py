@@ -353,6 +353,7 @@ CELERY_TIMEZONE = "UTC"
 APIURL=os.environ["APIURL"]
 
 INTERNAL_REPORT_TOKEN = os.environ.get("INTERNAL_REPORT_TOKEN", "")
+ZEROGPT_API_KEY = os.environ.get("ZEROGPT_API_KEY", "")
 
 # ── Django REST Framework ─────────────────────────────────────────────
 REST_FRAMEWORK = {

@@ -159,6 +159,7 @@ class AnalysisJob(models.Model):
         EXTRACTION = "EXTRACTION", "Extraction"
         SIMILARITY = "SIMILARITY", "Similarity Analysis"
         FULL = "FULL", "Full Analysis"
+        AI_DETECTION = "AI_DETECTION", "AI Detection"
 
     job_id = models.AutoField(primary_key=True)
     job_type = models.CharField(
@@ -169,6 +170,13 @@ class AnalysisJob(models.Model):
     report_type = models.IntegerField(
         null=True, blank=True,
         help_text="Limit analysis to this report_type. Leave blank to compare all types.",
+    )
+    event = models.ForeignKey(
+        "events.Event",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="ai_detection_jobs",
+        help_text="Limit AI detection to this event (required for AI_DETECTION jobs).",
     )
     status = models.CharField(
         max_length=16,
@@ -190,3 +198,44 @@ class AnalysisJob(models.Model):
     def __str__(self):
         rtype = f"type={self.report_type}" if self.report_type is not None else "all types"
         return f"AnalysisJob #{self.job_id} ({rtype}) – {self.status}"
+
+
+class AIDetectionResult(models.Model):
+    result_id = models.AutoField(primary_key=True)
+    page = models.OneToOneField(
+        ReportPage,
+        on_delete=models.CASCADE,
+        related_name="ai_detection",
+    )
+    fake_percentage = models.FloatField()  # 0–100
+    ai_words = models.IntegerField(default=0)
+    text_words = models.IntegerField(default=0)
+    h_score = models.FloatField(null=True, blank=True)
+    collection_id = models.CharField(max_length=255, blank=True)
+    zerogpt_id = models.CharField(max_length=255, blank=True)
+    feedback = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["page"]
+
+    def __str__(self):
+        return f"AIDetectionResult page {self.page_id} – {self.fake_percentage:.1f}% AI"
+
+
+class AIDetectedSentence(models.Model):
+    sentence_id = models.AutoField(primary_key=True)
+    result = models.ForeignKey(
+        AIDetectionResult,
+        on_delete=models.CASCADE,
+        related_name="sentences",
+    )
+    sentence_index = models.IntegerField()
+    text = models.TextField()
+    generated_probability = models.FloatField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["result", "sentence_index"]
+
+    def __str__(self):
+        return f"AIDetectedSentence {self.sentence_index} (result {self.result_id})"

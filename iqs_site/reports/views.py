@@ -12,7 +12,11 @@ import requests as http_requests
 
 from events.models import Event, EventTeam, Report, Team
 
-from .models import AnalysisJob, ChunkMatch, ImageMatch, PageMatch, ReportImage, ReportPage
+from .models import (
+    AIDetectedSentence, AIDetectionResult,
+    AnalysisJob, ChunkMatch, ImageMatch, PageMatch,
+    ReportChunk, ReportImage, ReportPage,
+)
 
 REPORT_TYPE_LABELS = {
     1: "Design Report",
@@ -122,6 +126,20 @@ def analysis_dashboard(request):
             from .tasks import run_similarity_analysis
             run_similarity_analysis.delay(job.pk)
             messages.success(request, f"Similarity job #{job.pk} queued.")
+        elif job_type == "ai_detection":
+            raw_event = request.POST.get("event_id", "").strip()
+            event_id = int(raw_event) if raw_event.isdigit() else None
+            if not event_id:
+                messages.error(request, "AI detection requires an event to be selected.")
+                return redirect("reports:analysis_dashboard")
+            job = AnalysisJob.objects.create(
+                report_type=report_type,
+                job_type=AnalysisJob.JobTypes.AI_DETECTION,
+                event_id=event_id,
+            )
+            from .tasks import run_ai_detection
+            run_ai_detection.delay(job.pk)
+            messages.success(request, f"AI detection job #{job.pk} queued.")
         else:
             job = AnalysisJob.objects.create(
                 report_type=report_type,
@@ -147,10 +165,13 @@ def analysis_dashboard(request):
         for rt in available_types
     ]
 
+    events = Event.objects.order_by("-event_datetime")
+
     return render(request, "reports/analysis_dashboard.html", {
         "jobs": jobs,
         "active_job_ids_json": json.dumps(active_job_ids),
         "report_type_choices": report_type_choices,
+        "events": events,
     })
 
 
@@ -236,7 +257,25 @@ def report_matches(request, report_id):
     for m in matches_b:
         _add(m.page_b, m.page_a, m.page_a.report, m.similarity, m.page_match_id)
 
-    match_groups = sorted(groups.values(), key=lambda g: g["max_sim"], reverse=True)
+    # Compute word counts for all pages that appear in pairs (one bulk query).
+    all_pair_page_ids = set()
+    for g in groups.values():
+        for pair in g["page_pairs"]:
+            all_pair_page_ids.add(pair["this_page"].page_id)
+            all_pair_page_ids.add(pair["other_page"].page_id)
+    word_counts = {}
+    for chunk in ReportChunk.objects.filter(page_id__in=all_pair_page_ids).values("page_id", "text"):
+        word_counts[chunk["page_id"]] = word_counts.get(chunk["page_id"], 0) + len(chunk["text"].split())
+    for g in groups.values():
+        for pair in g["page_pairs"]:
+            pair["this_word_count"] = word_counts.get(pair["this_page"].page_id, 0)
+            pair["other_word_count"] = word_counts.get(pair["other_page"].page_id, 0)
+            pair["min_word_count"] = min(pair["this_word_count"], pair["other_word_count"])
+            pair["sort_score"] = pair["min_word_count"] * pair["similarity"]
+        g["page_pairs"].sort(key=lambda p: p["sort_score"], reverse=True)
+        g["max_sort_score"] = g["page_pairs"][0]["sort_score"] if g["page_pairs"] else 0
+
+    match_groups = sorted(groups.values(), key=lambda g: g["max_sort_score"], reverse=True)
 
     return render(request, "reports/report_matches.html", {
         "report": report,
@@ -379,6 +418,19 @@ def event_analysis(request, event_id):
             existing = report_page_img_sims[rid].get(pnum, 0)
             report_page_img_sims[rid][pnum] = max(existing, img_sim_pct)
 
+    # AI detection fake_percentage per page_id.
+    ai_pct_by_page = {
+        r["page_id"]: r["fake_percentage"]
+        for r in AIDetectionResult.objects
+            .filter(page_id__in=page_ids)
+            .values("page_id", "fake_percentage")
+    }
+    # report_id → {page_number: ai fake_pct}
+    report_page_ai = {r.report_id: {} for r in reports}
+    for pid, (rid, pnum) in page_info.items():
+        if pid in ai_pct_by_page:
+            report_page_ai[rid][pnum] = round(ai_pct_by_page[pid])
+
     rows = []
     for pnum in all_page_numbers:
         cells = []
@@ -389,8 +441,10 @@ def event_analysis(request, event_id):
             else:
                 sim = ps[pnum] or 0.0
                 cells.append({
+                    "report_id": r.report_id,
                     "sim_pct": round(sim * 100),
                     "img_sim_pct": report_page_img_sims[r.report_id].get(pnum),  # None = no img matches
+                    "ai_pct": report_page_ai[r.report_id].get(pnum),  # None = not analyzed
                 })
         rows.append({"page_number": pnum, "cells": cells})
 
@@ -613,10 +667,24 @@ def image_match_detail(request, image_match_id):
     team_a = getattr(getattr(im.image_a.report.event_team, "team", None), "team_name", "?")
     team_b = getattr(getattr(im.image_b.report.event_team, "team", None), "team_name", "?")
 
+    try:
+        from_report_id = int(request.GET.get("from_report", 0))
+    except (TypeError, ValueError):
+        from_report_id = 0
+
+    if from_report_id == im.image_b.report_id:
+        back_report_id = im.image_b.report_id
+        back_team = team_b
+    else:
+        back_report_id = im.image_a.report_id
+        back_team = team_a
+
     return render(request, "reports/image_match_detail.html", {
         "im": im,
         "team_a": team_a,
         "team_b": team_b,
+        "back_report_id": back_report_id,
+        "back_team": back_team,
     })
 
 
@@ -723,12 +791,89 @@ def page_match_detail(request, page_match_id):
     team_a = getattr(getattr(pm.page_a.report.event_team, "team", None), "team_name", "?")
     team_b = getattr(getattr(pm.page_b.report.event_team, "team", None), "team_name", "?")
 
+    try:
+        from_report_id = int(request.GET.get("from_report", 0))
+    except (TypeError, ValueError):
+        from_report_id = 0
+
+    if from_report_id == pm.page_b.report_id:
+        back_report_id = pm.page_b.report_id
+        back_team = team_b
+    else:
+        back_report_id = pm.page_a.report_id
+        back_team = team_a
+
     return render(request, "reports/page_match_detail.html", {
         "pm": pm,
         "team_a": team_a,
         "team_b": team_b,
+        "back_report_id": back_report_id,
+        "back_team": back_team,
         "chunk_matches": chunk_matches,
         "chunk_links_json": json.dumps(chunk_links),
         "left_chunk_data_json": _chunk_data(a_chunks, matched_a_ids),
         "right_chunk_data_json": _chunk_data(b_chunks, matched_b_ids),
+    })
+
+
+# ── AI Detection report ───────────────────────────────────────────────────────
+
+def report_ai_detection(request, report_id):
+    _require_staff(request)
+
+    report = get_object_or_404(
+        Report.objects.select_related("event_team__team", "event_team__event"),
+        pk=report_id,
+    )
+
+    pages = (
+        ReportPage.objects
+        .filter(report=report)
+        .prefetch_related("chunks", "ai_detection__sentences")
+        .order_by("page_number")
+    )
+
+    page_data = []
+    total_ai_words = 0
+    total_text_words = 0
+    analyzed_count = 0
+
+    for page in pages:
+        try:
+            result = page.ai_detection
+        except AIDetectionResult.DoesNotExist:
+            result = None
+
+        chunks = list(page.chunks.order_by("chunk_index"))
+
+        flagged_sentence_texts = set()
+        if result:
+            analyzed_count += 1
+            total_ai_words += result.ai_words
+            total_text_words += result.text_words
+            for s in result.sentences.all():
+                if s.text:
+                    flagged_sentence_texts.add(s.text)
+
+        page_data.append({
+            "page": page,
+            "result": result,
+            "chunks": chunks,
+            "flagged_texts": flagged_sentence_texts,
+        })
+
+    avg_fake_pct = None
+    if analyzed_count:
+        total = sum(pd["result"].fake_percentage for pd in page_data if pd["result"])
+        avg_fake_pct = round(total / analyzed_count, 1)
+
+    return render(request, "reports/report_ai_detection.html", {
+        "report": report,
+        "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
+        "page_data": page_data,
+        "analyzed_count": analyzed_count,
+        "total_pages": len(page_data),
+        "avg_fake_pct": avg_fake_pct,
+        "total_ai_words": total_ai_words,
+        "total_text_words": total_text_words,
     })

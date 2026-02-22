@@ -198,7 +198,7 @@
                   </div>
                 </td>
                 <td>
-                  <a class="btn-sm" href="{% url 'reports:image_match_detail' pair.image_match_id %}">
+                  <a class="btn-sm" href="{% url 'reports:image_match_detail' pair.image_match_id %}?from_report={{ report.report_id }}">
                     Compare &rarr;
                   </a>
                 </td>

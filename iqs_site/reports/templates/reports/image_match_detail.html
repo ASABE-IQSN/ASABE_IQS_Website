@@ -144,7 +144,7 @@
 
 {% block content %}
   <div class="breadcrumb">
-    <a href="{% url 'reports:report_image_matches' im.image_a.report.report_id %}">← Image Matches</a>
+    <a href="{% url 'reports:report_image_matches' back_report_id %}">← {{ back_team }} image matches</a>
   </div>
 
   <h1 style="margin:0 0 0.2rem;">Image Comparison</h1>

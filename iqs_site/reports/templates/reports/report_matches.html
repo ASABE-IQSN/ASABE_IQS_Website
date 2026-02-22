@@ -141,22 +141,24 @@
               <th>This report, pg.</th>
               <th>Other report, pg.</th>
               <th>Similarity</th>
+              <th>Similar Words</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
             {% for pair in group.page_pairs %}
               <tr>
-                <td>{{ pair.this_page.page_number }}</td>
-                <td>{{ pair.other_page.page_number }}</td>
+                <td>{{ pair.this_page.page_number }} <span style="color:#6b7280;font-size:0.78rem;">({{ pair.this_word_count }}w)</span></td>
+                <td>{{ pair.other_page.page_number }} <span style="color:#6b7280;font-size:0.78rem;">({{ pair.other_word_count }}w)</span></td>
                 <td>
                   <div class="sim-bar-wrap">
                     <span class="sim-bar" style="width:{% widthratio pair.similarity 1 80 %}px;"></span>
                     {% widthratio pair.similarity 1 100 %}%
                   </div>
                 </td>
+                <td style="color:#9ca3af;">{{ pair.sort_score|floatformat:0 }}w</td>
                 <td>
-                  <a class="btn-sm" href="{% url 'reports:page_match_detail' pair.page_match_id %}">
+                  <a class="btn-sm" href="{% url 'reports:page_match_detail' pair.page_match_id %}?from_report={{ report.report_id }}">
                     Compare &rarr;
                   </a>
                 </td>

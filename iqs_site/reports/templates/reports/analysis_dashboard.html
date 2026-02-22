@@ -74,6 +74,7 @@
   .job-type-chip.EXTRACTION  { border-color: #a78bfa; color: #a78bfa; }
   .job-type-chip.SIMILARITY  { border-color: #34d399; color: #34d399; }
   .job-type-chip.FULL        { border-color: #6687fc; color: #6687fc; }
+  .job-type-chip.AI_DETECTION { border-color: #f59e0b; color: #f59e0b; }
 
   table {
     width: 100%;
@@ -156,6 +157,15 @@
           {% endfor %}
         </select>
       </label>
+      <label>
+        Event <span style="color:#4b5563;font-size:0.75rem;">(AI detection only)</span>
+        <select name="event_id">
+          <option value="">— select event —</option>
+          {% for ev in events %}
+            <option value="{{ ev.event_id }}">{{ ev.event_name }}</option>
+          {% endfor %}
+        </select>
+      </label>
       <button type="submit" name="job_type" value="extraction" class="btn-secondary">
         Queue extraction
       </button>
@@ -165,11 +175,15 @@
       <button type="submit" name="job_type" value="full">
         Queue full analysis
       </button>
+      <button type="submit" name="job_type" value="ai_detection" class="btn-secondary" style="border-color:#f59e0b;color:#f59e0b;">
+        Queue AI detection
+      </button>
     </div>
     <p style="margin:0.6rem 0 0;font-size:0.78rem;color:#9ca3af;">
       <strong style="color:#a78bfa;">Extraction</strong> — downloads &amp; parses every PDF in parallel (one worker per report).
       <strong style="color:#34d399;">Similarity</strong> — MinHash page comparison (sequential) then image comparison in parallel chunks; requires extraction to have run first.
       <strong style="color:#6687fc;">Full analysis</strong> — extraction + similarity in one job (sequential).
+      <strong style="color:#f59e0b;">AI detection</strong> — sends each page's text to ZeroGPT to check for AI-generated content. Requires an event to be selected (billed per word).
     </p>
   </form>
 
@@ -181,6 +195,7 @@
           <th>Job</th>
           <th>Type</th>
           <th>Report filter</th>
+          <th>Event</th>
           <th>Status</th>
           <th>Reports</th>
           <th>Pages</th>
@@ -198,6 +213,7 @@
               </span>
             </td>
             <td>{{ job.report_type|default:"All" }}</td>
+            <td style="font-size:0.8rem;color:#9ca3af;">{{ job.event.event_name|default:"—" }}</td>
             <td>
               <span class="status-chip {{ job.status }}" id="status-{{ job.job_id }}">
                 {{ job.status }}
@@ -217,7 +233,7 @@
             </td>
           </tr>
         {% empty %}
-          <tr><td colspan="7" class="empty">No jobs yet.</td></tr>
+          <tr><td colspan="9" class="empty">No jobs yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>
