@@ -868,6 +868,117 @@ ZEROGPT_API_URL = "https://api.zerogpt.com/api/detect/detectText"
 ZEROGPT_INTER_REQUEST_DELAY = 0.5  # seconds between API calls
 
 
+def _zerogpt_process_page(page, api_key: str) -> bool:
+    """
+    Send one ReportPage to ZeroGPT and persist the result.
+
+    Returns True if the page was submitted and a result saved, False if
+    skipped (no text).  Raises on API errors so callers can decide whether
+    to continue or abort.
+    """
+    chunks = list(page.chunks.order_by("chunk_index"))
+    text = "\n\n".join(c.text for c in chunks).strip()
+    if not text:
+        return False
+
+    headers = {"ApiKey": api_key, "Content-Type": "application/json"}
+    resp = requests.post(
+        ZEROGPT_API_URL,
+        headers=headers,
+        json={"input_text": text},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json().get("data", {})
+
+    def _float(val, default=0.0):
+        try:
+            return float(val)
+        except (TypeError, ValueError):
+            return default
+
+    def _int(val, default=0):
+        try:
+            return int(val)
+        except (TypeError, ValueError):
+            return default
+
+    result, _ = AIDetectionResult.objects.update_or_create(
+        page=page,
+        defaults={
+            "fake_percentage": _float(data.get("fakePercentage")),
+            "ai_words": _int(data.get("aiWords")),
+            "text_words": _int(data.get("textWords")),
+            "h_score": None,
+            "collection_id": str(data.get("collection_id") or ""),
+            "zerogpt_id": str(data.get("id") or ""),
+            "feedback": str(data.get("feedback") or ""),
+        },
+    )
+
+    result.sentences.all().delete()
+    raw_sentences = list(data.get("h") or []) + list(data.get("hi") or [])
+    if raw_sentences:
+        sentence_objs = []
+        for idx, item in enumerate(raw_sentences):
+            if isinstance(item, dict):
+                sentence_text = str(item.get("sentence") or item.get("text") or "")
+                prob = _float(item.get("generated_probability") or item.get("probability"), default=None)
+                prob = prob if prob is not None else None
+            else:
+                sentence_text = str(item)
+                prob = None
+            if sentence_text:
+                sentence_objs.append(AIDetectedSentence(
+                    result=result,
+                    sentence_index=idx,
+                    text=sentence_text,
+                    generated_probability=prob,
+                ))
+        if sentence_objs:
+            AIDetectedSentence.objects.bulk_create(sentence_objs)
+
+    return True
+
+
+@shared_task
+def run_ai_detection_report(report_id: int):
+    """Run ZeroGPT AI detection for every page of a single report."""
+    from events.models import Report as ReportModel
+    api_key = getattr(settings, "ZEROGPT_API_KEY", "")
+    if not api_key:
+        raise ValueError("ZEROGPT_API_KEY is not configured in settings.")
+
+    try:
+        report = ReportModel.objects.get(pk=report_id)
+    except ReportModel.DoesNotExist:
+        logger.error("run_ai_detection_report: report %s not found", report_id)
+        return
+
+    pages = list(
+        ReportPage.objects
+        .filter(report=report)
+        .prefetch_related("chunks")
+        .order_by("page_number")
+    )
+
+    logger.info("AI detection (single report %s): %d pages", report_id, len(pages))
+    processed = 0
+    for page in pages:
+        try:
+            submitted = _zerogpt_process_page(page, api_key)
+            if submitted:
+                processed += 1
+        except Exception as exc:
+            logger.warning(
+                "AI detection (single report %s): API error on page %s: %s",
+                report_id, page.page_id, exc,
+            )
+        time.sleep(ZEROGPT_INTER_REQUEST_DELAY)
+
+    logger.info("AI detection (single report %s): done, %d pages processed", report_id, processed)
+
+
 @shared_task
 def run_ai_detection(job_id: int):
     """Call ZeroGPT for each ReportPage in the job's event and store results."""
@@ -906,86 +1017,17 @@ def run_ai_detection(job_id: int):
             job_id, len(pages), distinct_reports, job.event_id, job.report_type,
         )
 
-        headers = {"ApiKey": api_key, "Content-Type": "application/json"}
-
-        for i, page in enumerate(pages):
-            chunks = list(page.chunks.order_by("chunk_index"))
-            text = "\n\n".join(c.text for c in chunks).strip()
-
-            if not text:
-                logger.debug("AI detection job %s: page %s has no text, skipping", job_id, page.page_id)
-                continue
-
+        for page in pages:
             try:
-                resp = requests.post(
-                    ZEROGPT_API_URL,
-                    headers=headers,
-                    json={"input_text": text},
-                    timeout=30,
-                )
-                resp.raise_for_status()
-                payload = resp.json()
+                submitted = _zerogpt_process_page(page, api_key)
+                if submitted:
+                    job.pages_processed += 1
+                    if job.pages_processed % 10 == 0:
+                        job.save(update_fields=["pages_processed"])
             except Exception as exc:
                 logger.warning(
                     "AI detection job %s: API error on page %s: %s", job_id, page.page_id, exc
                 )
-                time.sleep(ZEROGPT_INTER_REQUEST_DELAY)
-                continue
-
-            data = payload.get("data", {})
-
-            def _float(val, default=0.0):
-                try:
-                    return float(val)
-                except (TypeError, ValueError):
-                    return default
-
-            def _int(val, default=0):
-                try:
-                    return int(val)
-                except (TypeError, ValueError):
-                    return default
-
-            result, _ = AIDetectionResult.objects.update_or_create(
-                page=page,
-                defaults={
-                    "fake_percentage": _float(data.get("fakePercentage")),
-                    "ai_words": _int(data.get("aiWords")),
-                    "text_words": _int(data.get("textWords")),
-                    "h_score": _float(data.get("h")) if data.get("h") not in (None, "") else None,
-                    "collection_id": str(data.get("collection_id") or ""),
-                    "zerogpt_id": str(data.get("id") or ""),
-                    "feedback": str(data.get("feedback") or ""),
-                },
-            )
-
-            # Replace any previous sentence results.
-            result.sentences.all().delete()
-            raw_sentences = data.get("sentences") or []
-            if isinstance(raw_sentences, list):
-                sentence_objs = []
-                for idx, item in enumerate(raw_sentences):
-                    if isinstance(item, dict):
-                        sentence_text = str(item.get("sentence") or item.get("text") or "")
-                        prob = _float(item.get("generated_probability") or item.get("probability"), default=None)
-                        prob = prob if prob is not None else None
-                    else:
-                        sentence_text = str(item)
-                        prob = None
-                    if sentence_text:
-                        sentence_objs.append(AIDetectedSentence(
-                            result=result,
-                            sentence_index=idx,
-                            text=sentence_text,
-                            generated_probability=prob,
-                        ))
-                if sentence_objs:
-                    AIDetectedSentence.objects.bulk_create(sentence_objs)
-
-            job.pages_processed += 1
-            if job.pages_processed % 10 == 0:
-                job.save(update_fields=["pages_processed"])
-
             time.sleep(ZEROGPT_INTER_REQUEST_DELAY)
 
         job.pages_processed = job.pages_processed  # ensure final count saved

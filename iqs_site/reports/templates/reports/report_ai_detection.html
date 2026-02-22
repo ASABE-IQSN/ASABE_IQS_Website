@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block extra_styles %}
-  .wrap { max-width: min(98vw, 1200px); }
+  .wrap { max-width: min(98vw, 1600px); }
 
   .breadcrumb {
     font-size: 0.85rem;
@@ -61,56 +61,47 @@
     background: #0b1120;
     border: 1px solid #1f2937;
     border-radius: 0.9rem;
-    padding: 0.8rem 1.2rem;
+    padding: 0.7rem 1.2rem;
     margin-bottom: 0.9rem;
     font-size: 0.88rem;
   }
 
-  .stat-item { display: flex; flex-direction: column; gap: 0.15rem; }
+  .stat-item { display: flex; flex-direction: column; gap: 0.1rem; }
 
   .stat-label {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: #6b7280;
   }
 
-  .stat-value { font-size: 1.1rem; font-weight: 600; color: #f3f6e7; }
+  .stat-value { font-size: 1rem; font-weight: 600; color: #f3f6e7; }
 
   .pct-low  { color: #22c55e; }
   .pct-mid  { color: #f59e0b; }
   .pct-high { color: #ef4444; }
 
-  /* ── Legend ────────────────────────────────────────────────── */
+  /* ── Main two-column layout ─────────────────────────────────── */
 
-  .legend {
-    display: flex;
-    gap: 1.25rem;
-    font-size: 0.78rem;
-    color: #9ca3af;
-    margin-bottom: 0.9rem;
-    flex-wrap: wrap;
-    align-items: center;
+  .viewer-layout {
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 1rem;
+    align-items: start;
   }
 
-  .legend-dot {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    border-radius: 2px;
-    margin-right: 0.3rem;
-    vertical-align: middle;
+  @media (max-width: 860px) {
+    .viewer-layout { grid-template-columns: 1fr; }
+    .score-sidebar { position: static !important; max-height: none !important; }
   }
 
-  /* ── PDF viewer ─────────────────────────────────────────────── */
+  /* ── PDF viewer (left) ──────────────────────────────────────── */
 
   #pdf-loading {
     color: #9ca3af;
     font-size: 0.85rem;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
   }
-
-  #pdf-viewer { margin-bottom: 1.5rem; }
 
   .pdf-page-wrap {
     position: relative;
@@ -165,72 +156,142 @@
     position: fixed;
     z-index: 9999;
     display: none;
-    max-width: 380px;
+    max-width: 360px;
     background: #0f172a;
     border: 1px solid rgba(245,158,11,0.45);
     border-radius: 0.5rem;
-    padding: 0.6rem 0.8rem;
-    font-size: 0.8rem;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.79rem;
     line-height: 1.5;
     color: #f3f6e7;
     pointer-events: none;
     box-shadow: 0 4px 16px rgba(0,0,0,0.5);
   }
 
-  #chunk-tooltip .tooltip-sentence {
-    margin-bottom: 0.35rem;
-  }
-
+  #chunk-tooltip .tooltip-sentence { margin-bottom: 0.3rem; }
   #chunk-tooltip .tooltip-sentence:last-child { margin-bottom: 0; }
 
-  #chunk-tooltip .tooltip-prob {
-    color: #f59e0b;
-    font-size: 0.75rem;
+  /* ── Score sidebar (right) ──────────────────────────────────── */
+
+  .score-sidebar {
+    position: sticky;
+    top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    scrollbar-width: thin;
+    scrollbar-color: #1f2937 transparent;
   }
 
-  /* ── Flagged sentence list ──────────────────────────────────── */
-
-  .card {
+  .score-card {
     background: #0b1120;
     border: 1px solid #1f2937;
-    border-radius: 0.9rem;
-    padding: 1rem 1.2rem;
-    margin-bottom: 1rem;
-  }
-
-  .card summary {
+    border-radius: 0.6rem;
+    padding: 0.6rem 0.8rem;
     cursor: pointer;
-    font-size: 0.88rem;
-    color: #9ca3af;
-    user-select: none;
-    padding: 0.1rem 0;
+    transition: border-color 0.15s;
+    font-size: 0.82rem;
   }
 
-  .card summary:hover { color: #f3f6e7; }
+  .score-card:hover { border-color: #334155; }
+
+  .score-card.active {
+    border-color: rgba(245,158,11,0.6);
+    background: rgba(245,158,11,0.05);
+  }
+
+  .score-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.3rem;
+  }
+
+  .score-page-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+  }
 
   .pct-chip {
     display: inline-block;
     border-radius: 999px;
-    padding: 0.1rem 0.55rem;
-    font-size: 0.75rem;
-    font-weight: 600;
+    padding: 0.1rem 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
     border: 1px solid currentColor;
-    margin-left: 0.5rem;
   }
 
-  .sentence-list {
-    margin: 0.6rem 0 0;
-    padding: 0 0 0 1.1rem;
-    font-size: 0.82rem;
-    line-height: 1.6;
-    color: #f3f6e7;
+  .score-word-row {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-bottom: 0.25rem;
   }
 
-  .sentence-list li { margin-bottom: 0.3rem; }
+  .score-feedback {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    font-style: italic;
+    margin-bottom: 0.3rem;
+  }
 
-  .sentence-prob { color: #f59e0b; font-size: 0.75rem; }
+  .score-sentences {
+    margin: 0.35rem 0 0;
+    padding: 0 0 0 1rem;
+    font-size: 0.75rem;
+    color: #d1d5db;
+    line-height: 1.5;
+  }
+
+  .score-sentences li { margin-bottom: 0.2rem; }
+
+  .score-card.not-analyzed {
+    cursor: default;
+  }
+
+  .score-card.not-analyzed .score-page-label { color: #4b5563; }
 
   .empty-note { color: #9ca3af; font-size: 0.85rem; font-style: italic; }
+
+  .messages { margin-bottom: 0.75rem; }
+  .messages .success {
+    border-radius: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    background: rgba(16,185,129,0.12);
+    border: 1px solid rgba(16,185,129,0.3);
+    color: #34d399;
+  }
+  .messages .error {
+    border-radius: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.85rem;
+    background: rgba(239,68,68,0.12);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: #ef4444;
+  }
+
+  .legend {
+    font-size: 0.78rem;
+    color: #9ca3af;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: 0.25rem;
+    vertical-align: middle;
+  }
 {% endblock %}
 
 {% block content %}
@@ -245,9 +306,23 @@
       <a class="btn-sm-ghost" href="{% url 'reports:report_matches' report.report_id %}">Text Matches &rarr;</a>
       <a class="btn-sm-ghost" href="{% url 'reports:report_image_matches' report.report_id %}">Image Matches &rarr;</a>
       <a class="btn-sm" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
+      <form method="post" action="{% url 'reports:retrigger_ai_detection' report.report_id %}" style="display:inline;">
+        {% csrf_token %}
+        <button type="submit" class="btn-sm-ghost" style="border-color:#f59e0b;color:#f59e0b;cursor:pointer;">
+          Re-run AI Detection
+        </button>
+      </form>
     </div>
   </div>
-  <p style="color:#9ca3af;margin:0 0 1.25rem;font-size:0.9rem;">
+
+  {% if messages %}
+    <div class="messages">
+      {% for message in messages %}
+        <div class="{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  <p style="color:#9ca3af;margin:0 0 1rem;font-size:0.9rem;">
     <strong style="color:#f3f6e7;">{{ report.event_team.team.team_name }}</strong>
     &mdash; {{ report_type_label }}
     ({{ report.event_team.event.event_name }})
@@ -261,9 +336,7 @@
       </div>
       <div class="stat-item">
         <span class="stat-label">Avg AI %</span>
-        <span class="stat-value {% if avg_fake_pct < 20 %}pct-low{% elif avg_fake_pct < 60 %}pct-mid{% else %}pct-high{% endif %}">
-          {{ avg_fake_pct }}%
-        </span>
+        <span class="stat-value {% if avg_fake_pct < 20 %}pct-low{% elif avg_fake_pct < 60 %}pct-mid{% else %}pct-high{% endif %}">{{ avg_fake_pct }}%</span>
       </div>
       <div class="stat-item">
         <span class="stat-label">AI words</span>
@@ -276,58 +349,61 @@
     </div>
 
     <div class="legend">
-      <span>
-        <span class="legend-dot" style="background:rgba(245,158,11,0.5);border:1px solid rgba(245,158,11,0.7);"></span>
-        AI-flagged sentence &mdash; hover for details
-      </span>
+      <span class="legend-dot" style="background:rgba(245,158,11,0.5);border:1px solid rgba(245,158,11,0.7);"></span>
+      AI-flagged sentence &mdash; hover for details
+    </div>
+  {% else %}
+    <p style="color:#9ca3af;margin-bottom:1rem;font-size:0.9rem;">
+      No AI detection results yet. Queue an AI detection job from the
+      <a href="{% url 'reports:analysis_dashboard' %}" style="color:#f59e0b;">dashboard</a>.
+    </p>
+  {% endif %}
+
+  <div class="viewer-layout">
+
+    <!-- Left: PDF viewer -->
+    <div>
+      <div id="pdf-loading">Loading PDF…</div>
+      <div id="pdf-viewer"></div>
     </div>
 
-    <div id="pdf-loading">Loading PDF…</div>
-    <div id="pdf-viewer"></div>
-
-    <!-- Flagged sentences per page -->
-    {% for pd in page_data %}
-      {% if pd.flagged_sentences %}
-        <div class="card">
-          <details>
-            <summary>
-              Page {{ pd.page.page_number }}
+    <!-- Right: Score sidebar -->
+    <div class="score-sidebar" id="score-sidebar">
+      {% for pd in page_data %}
+        <div class="score-card {% if not pd.result %}not-analyzed{% endif %}"
+             id="score-card-{{ pd.page.page_number }}"
+             data-page="{{ pd.page.page_number }}">
+          <div class="score-card-header">
+            <span class="score-page-label">Page {{ pd.page.page_number }}</span>
+            {% if pd.result %}
               <span class="pct-chip {% if pd.result.fake_percentage < 20 %}pct-low{% elif pd.result.fake_percentage < 60 %}pct-mid{% else %}pct-high{% endif %}">
                 {{ pd.result.fake_percentage|floatformat:1 }}% AI
               </span>
-              &mdash; {{ pd.flagged_sentences|length }} flagged sentence{{ pd.flagged_sentences|length|pluralize }}
-            </summary>
-            <ol class="sentence-list">
-              {% for s in pd.flagged_sentences %}
-                <li>
-                  {{ s.text }}
-                  {% if s.probability is not None %}
-                    <span class="sentence-prob">({{ s.probability|floatformat:0 }}%)</span>
-                  {% endif %}
-                </li>
-              {% endfor %}
-            </ol>
-          </details>
+            {% else %}
+              <span style="font-size:0.72rem;color:#4b5563;">not analyzed</span>
+            {% endif %}
+          </div>
+          {% if pd.result %}
+            <div class="score-word-row">{{ pd.result.ai_words }} AI / {{ pd.result.text_words }} words</div>
+            {% if pd.result.feedback %}
+              <div class="score-feedback">{{ pd.result.feedback }}</div>
+            {% endif %}
+            {% if pd.flagged_sentences %}
+              <ol class="score-sentences">
+                {% for s in pd.flagged_sentences %}
+                  <li>{{ s.text }}</li>
+                {% endfor %}
+              </ol>
+            {% endif %}
+          {% endif %}
         </div>
-      {% elif pd.result %}
-        <div class="card">
-          <span style="font-size:0.85rem;color:#6b7280;">
-            Page {{ pd.page.page_number }} — {{ pd.result.fake_percentage|floatformat:1 }}% AI, no individual sentences flagged
-          </span>
-        </div>
-      {% endif %}
-    {% endfor %}
+      {% empty %}
+        <p class="empty-note">No pages found.</p>
+      {% endfor %}
+    </div>
 
-  {% else %}
-    <p style="color:#9ca3af;margin-bottom:1rem;font-size:0.9rem;">
-      No AI detection results for this report yet. Queue an AI detection job from the
-      <a href="{% url 'reports:analysis_dashboard' %}" style="color:#f59e0b;">dashboard</a>.
-    </p>
-    <div id="pdf-loading">Loading PDF…</div>
-    <div id="pdf-viewer"></div>
-  {% endif %}
+  </div>
 
-  <!-- Floating tooltip (shared, moved by JS) -->
   <div id="chunk-tooltip"></div>
 {% endblock %}
 
@@ -346,45 +422,59 @@
     (chunksByPage[chunk.page_number] ??= []).push(chunk);
   }
 
-  // Tooltip element
+  // ── Tooltip ────────────────────────────────────────────────────────────────
+
   const tooltip = document.getElementById('chunk-tooltip');
 
+  function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   function showTooltip(sentences, x, y) {
-    tooltip.innerHTML = sentences.map(s => {
-      const prob = s.probability !== null && s.probability !== undefined
-        ? ` <span class="tooltip-prob">(${Math.round(s.probability)}% AI)</span>`
-        : '';
-      return `<div class="tooltip-sentence">${escapeHtml(s.text)}${prob}</div>`;
-    }).join('');
+    tooltip.innerHTML = sentences
+      .map(s => `<div class="tooltip-sentence">${escapeHtml(s.text)}</div>`)
+      .join('');
     tooltip.style.display = 'block';
     moveTooltip(x, y);
   }
 
   function moveTooltip(x, y) {
-    const tw = tooltip.offsetWidth;
-    const th = tooltip.offsetHeight;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const offset = 14;
-    let left = x + offset;
-    let top  = y + offset;
-    if (left + tw > vw - 8) left = x - tw - offset;
-    if (top + th > vh - 8)  top  = y - th - offset;
+    const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const off = 14;
+    let left = x + off, top = y + off;
+    if (left + tw > vw - 8) left = x - tw - off;
+    if (top  + th > vh - 8) top  = y - th - off;
     tooltip.style.left = left + 'px';
     tooltip.style.top  = top  + 'px';
   }
 
-  function hideTooltip() {
-    tooltip.style.display = 'none';
+  function hideTooltip() { tooltip.style.display = 'none'; }
+
+  // ── Sidebar active-page tracking ───────────────────────────────────────────
+
+  const sidebar = document.getElementById('score-sidebar');
+
+  function setActiveCard(pageNum) {
+    sidebar.querySelectorAll('.score-card.active').forEach(el => el.classList.remove('active'));
+    const card = document.getElementById(`score-card-${pageNum}`);
+    if (card) {
+      card.classList.add('active');
+      // Scroll card into view within the sidebar.
+      card.scrollIntoView({ block: 'nearest' });
+    }
   }
 
-  function escapeHtml(str) {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
+  // Sidebar cards → scroll PDF to that page on click.
+  sidebar.querySelectorAll('.score-card[data-page]').forEach(card => {
+    card.addEventListener('click', () => {
+      const pageNum = parseInt(card.dataset.page, 10);
+      const wrap = document.getElementById(`page-wrap-${pageNum}`);
+      if (wrap) wrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  // ── PDF rendering ──────────────────────────────────────────────────────────
 
   async function renderAllPages() {
     const viewer    = document.getElementById('pdf-viewer');
@@ -394,6 +484,18 @@
     const pdf      = await pdfjsLib.getDocument(pdfUrl).promise;
     const numPages = pdf.numPages;
 
+    // IntersectionObserver: track which PDF page is most visible.
+    const observer = new IntersectionObserver(entries => {
+      let best = null, bestRatio = 0;
+      entries.forEach(e => {
+        if (e.intersectionRatio > bestRatio) { bestRatio = e.intersectionRatio; best = e.target; }
+      });
+      if (best) {
+        const pageNum = parseInt(best.dataset.page, 10);
+        setActiveCard(pageNum);
+      }
+    }, { threshold: [0, 0.1, 0.25, 0.5, 0.75, 1.0] });
+
     for (let pageNum = 1; pageNum <= numPages; pageNum++) {
       const page = await pdf.getPage(pageNum);
 
@@ -402,8 +504,9 @@
       const viewport  = page.getViewport({ scale });
 
       const wrap = document.createElement('div');
-      wrap.id        = `page-wrap-${pageNum}`;
-      wrap.className = 'pdf-page-wrap';
+      wrap.id          = `page-wrap-${pageNum}`;
+      wrap.className   = 'pdf-page-wrap';
+      wrap.dataset.page = pageNum;
 
       const canvas    = document.createElement('canvas');
       canvas.width    = viewport.width;
@@ -416,10 +519,11 @@
       wrap.appendChild(label);
 
       viewer.appendChild(wrap);
+      observer.observe(wrap);
 
       await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
 
-      // Add chunk overlays
+      // Chunk overlays
       for (const chunk of (chunksByPage[pageNum] ?? [])) {
         const div       = document.createElement('div');
         div.id          = chunk.id;

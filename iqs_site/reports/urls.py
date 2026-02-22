@@ -17,5 +17,6 @@ urlpatterns = [
     path("extracted/<int:report_id>/", views.report_extracted, name="report_extracted"),
     path("page-match/<int:page_match_id>/", views.page_match_detail, name="page_match_detail"),
     path("ai-detection/<int:report_id>/", views.report_ai_detection, name="report_ai_detection"),
+    path("ai-detection/<int:report_id>/run/", views.retrigger_ai_detection, name="retrigger_ai_detection"),
     path("<int:report_id>", views.report_download, name="report_download"),
 ]

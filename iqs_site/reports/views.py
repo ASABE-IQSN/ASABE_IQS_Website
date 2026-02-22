@@ -816,6 +816,33 @@ def page_match_detail(request, page_match_id):
     })
 
 
+# ── Retrigger AI detection for a single report ────────────────────────────────
+
+def retrigger_ai_detection(request, report_id):
+    _require_staff(request)
+    if request.method != "POST":
+        raise Http404()
+
+    report = get_object_or_404(
+        Report.objects.select_related("event_team__team", "event_team__event"),
+        pk=report_id,
+    )
+
+    api_key = getattr(settings, "ZEROGPT_API_KEY", "")
+    if not api_key:
+        messages.error(request, "ZEROGPT_API_KEY is not configured — cannot queue AI detection.")
+        return redirect("reports:report_ai_detection", report_id=report_id)
+
+    from .tasks import run_ai_detection_report
+    run_ai_detection_report.delay(report.pk)
+    messages.success(
+        request,
+        f"AI detection queued for {report.event_team.team.team_name} "
+        f"({report.event_team.event.event_name}). Refresh in a moment to see updated results.",
+    )
+    return redirect("reports:report_ai_detection", report_id=report_id)
+
+
 # ── AI Detection report ───────────────────────────────────────────────────────
 
 def report_ai_detection(request, report_id):
