@@ -1,0 +1,289 @@
+{% extends "base.html" %}
+
+{% block title %}Report Overview — {{ report_type_label }}{% endblock %}
+
+{% block extra_styles %}
+  .breadcrumb {
+    font-size: 0.85rem;
+    color: #9ca3af;
+    margin-bottom: 1rem;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.25rem;
+  }
+
+  .page-header h1 { margin: 0; }
+
+  .btn-sm {
+    background: #6687fc;
+    border: 1px solid #6687fc;
+    color: #020617;
+    border-radius: 999px;
+    padding: 0.25rem 0.7rem;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  /* ── Stats bar ─────────────────────────────────────────────── */
+
+  .stats-bar {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 0.7rem 1.2rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.88rem;
+  }
+
+  .stat-item { display: flex; flex-direction: column; gap: 0.1rem; }
+
+  .stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+  }
+
+  .stat-value { font-size: 1rem; font-weight: 600; color: #f3f6e7; }
+
+  /* ── Analysis cards ─────────────────────────────────────────── */
+
+  .cards-section-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #4b5563;
+    margin-bottom: 0.6rem;
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .analysis-card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
+  .card-title {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    font-weight: 600;
+    margin-bottom: 0.1rem;
+  }
+
+  .card-stat {
+    font-size: 1.55rem;
+    font-weight: 700;
+    line-height: 1.1;
+  }
+
+  .card-detail {
+    font-size: 0.78rem;
+    color: #6b7280;
+    flex: 1;
+  }
+
+  .card-link {
+    display: inline-block;
+    margin-top: 0.6rem;
+    border: 1px solid currentColor;
+    border-radius: 999px;
+    padding: 0.2rem 0.65rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    align-self: flex-start;
+  }
+
+  .card-link:hover { opacity: 0.8; }
+
+  .card-unanalyzed { color: #374151; }
+
+  /* colour accents per card type */
+  .card-text  { border-color: rgba(52,211,153,0.3); }
+  .card-text  .card-title { color: #34d399; }
+  .card-text  .card-link  { color: #34d399; border-color: rgba(52,211,153,0.4); }
+
+  .card-image { border-color: rgba(56,189,248,0.3); }
+  .card-image .card-title { color: #38bdf8; }
+  .card-image .card-link  { color: #38bdf8; border-color: rgba(56,189,248,0.4); }
+
+  .card-ai    { border-color: rgba(245,158,11,0.3); }
+  .card-ai    .card-title { color: #f59e0b; }
+  .card-ai    .card-link  { color: #f59e0b; border-color: rgba(245,158,11,0.4); }
+
+  .card-extracted { border-color: rgba(167,139,250,0.3); }
+  .card-extracted .card-title { color: #a78bfa; }
+  .card-extracted .card-link  { color: #a78bfa; border-color: rgba(167,139,250,0.4); }
+
+  /* ── OCR note ───────────────────────────────────────────────── */
+
+  .ocr-note {
+    background: rgba(71,85,105,0.12);
+    border: 1px solid #1f2937;
+    border-radius: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.8rem;
+    color: #6b7280;
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+
+  .pct-low  { color: #22c55e; }
+  .pct-mid  { color: #f59e0b; }
+  .pct-high { color: #ef4444; }
+{% endblock %}
+
+{% block content %}
+  <div class="breadcrumb">
+    <a href="{% url 'reports:event_analysis' report.event_team.event.event_id %}?report_type={{ report.report_type }}">← Event Analysis</a>
+  </div>
+
+  <div class="page-header">
+    <h1>Report Overview</h1>
+    <a class="btn-sm" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
+  </div>
+
+  <p style="color:#9ca3af;margin:0 0 1rem;font-size:0.9rem;">
+    <strong style="color:#f3f6e7;">{{ report.event_team.team.team_name }}</strong>
+    &mdash; {{ report_type_label }}
+    ({{ report.event_team.event.event_name }})
+  </p>
+
+  <!-- Stats bar -->
+  {% if page_count %}
+    <div class="stats-bar">
+      <div class="stat-item">
+        <span class="stat-label">Pages</span>
+        <span class="stat-value">{{ page_count }}</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-label">Chunks</span>
+        <span class="stat-value">{{ chunk_count }}</span>
+      </div>
+      {% if image_count %}
+        <div class="stat-item">
+          <span class="stat-label">Embedded images</span>
+          <span class="stat-value">{{ image_count }}</span>
+        </div>
+      {% endif %}
+      {% if total_text_words %}
+        <div class="stat-item">
+          <span class="stat-label">Words (extracted)</span>
+          <span class="stat-value">{{ total_text_words|floatformat:"0" }}</span>
+        </div>
+      {% endif %}
+    </div>
+  {% else %}
+    <p style="color:#6b7280;font-size:0.88rem;margin-bottom:1rem;">
+      This report has not been extracted yet. Run an extraction from the
+      <a href="{% url 'reports:analysis_dashboard' %}" style="color:#6687fc;">Analysis Dashboard</a>.
+    </p>
+  {% endif %}
+
+  <!-- Analysis cards -->
+  <p class="cards-section-title">Analysis</p>
+  <div class="cards-grid">
+
+    <!-- Text similarity -->
+    <div class="analysis-card card-text">
+      <span class="card-title">Text Similarity</span>
+      {% if best_text_sim is not None %}
+        <span class="card-stat {% if best_text_sim < 40 %}pct-low{% elif best_text_sim < 70 %}pct-mid{% else %}pct-high{% endif %}">
+          {{ best_text_sim }}%
+        </span>
+        <span class="card-detail">
+          Best matching page &mdash; {{ text_match_count }} page match{{ text_match_count|pluralize }} total
+        </span>
+      {% else %}
+        <span class="card-stat card-unanalyzed">&mdash;</span>
+        <span class="card-detail">No similarity data yet</span>
+      {% endif %}
+      <a class="card-link" href="{% url 'reports:report_matches' report.report_id %}">Text Matches &rarr;</a>
+    </div>
+
+    <!-- Image similarity -->
+    <div class="analysis-card card-image">
+      <span class="card-title">Image Similarity</span>
+      {% if best_image_sim is not None %}
+        <span class="card-stat {% if best_image_sim < 40 %}pct-low{% elif best_image_sim < 70 %}pct-mid{% else %}pct-high{% endif %}">
+          {{ best_image_sim }}%
+        </span>
+        <span class="card-detail">
+          Best matching image &mdash; {{ image_match_count }} image match{{ image_match_count|pluralize }} total
+        </span>
+      {% else %}
+        <span class="card-stat card-unanalyzed">&mdash;</span>
+        <span class="card-detail">No image match data yet</span>
+      {% endif %}
+      <a class="card-link" href="{% url 'reports:report_image_matches' report.report_id %}">Image Matches &rarr;</a>
+    </div>
+
+    <!-- AI detection -->
+    <div class="analysis-card card-ai">
+      <span class="card-title">AI Detection</span>
+      {% if avg_ai_pct is not None %}
+        <span class="card-stat {% if avg_ai_pct < 20 %}pct-low{% elif avg_ai_pct < 60 %}pct-mid{% else %}pct-high{% endif %}">
+          {{ avg_ai_pct }}%
+        </span>
+        <span class="card-detail">
+          Average across {{ ai_analyzed_count }} of {{ page_count }} page{{ page_count|pluralize }} analyzed
+        </span>
+      {% else %}
+        <span class="card-stat card-unanalyzed">&mdash;</span>
+        <span class="card-detail">
+          {% if can_run_ai_detection %}Not yet analyzed{% else %}Not yet analyzed{% endif %}
+        </span>
+      {% endif %}
+      <a class="card-link" href="{% url 'reports:report_ai_detection' report.report_id %}">AI Detection &rarr;</a>
+    </div>
+
+    <!-- Extracted content -->
+    <div class="analysis-card card-extracted">
+      <span class="card-title">Extracted Content</span>
+      {% if page_count %}
+        <span class="card-stat" style="color:#a78bfa;">{{ page_count }}p</span>
+        <span class="card-detail">
+          Raw text and layout data extracted from the PDF
+        </span>
+      {% else %}
+        <span class="card-stat card-unanalyzed">&mdash;</span>
+        <span class="card-detail">Run extraction first</span>
+      {% endif %}
+      <a class="card-link" href="{% url 'reports:report_extracted' report.report_id %}">Extracted Content &rarr;</a>
+    </div>
+
+  </div>
+
+  <!-- OCR note -->
+  <div class="ocr-note">
+    <span style="flex-shrink:0;">&#9432;</span>
+    <span>
+      <strong style="color:#9ca3af;">OCR tracking not yet implemented.</strong>
+      Word counts reflect text extracted directly from the PDF.
+      Pages that consist of scanned images may not contribute to the word count.
+    </span>
+  </div>
+{% endblock %}

@@ -296,7 +296,7 @@
 
 {% block content %}
   <div class="breadcrumb">
-    <a href="{% url 'reports:event_analysis' report.event_team.event.event_id %}?report_type={{ report.report_type }}">← Event Analysis</a>
+    <a href="{% url 'reports:report_overview' report.report_id %}">← Report Overview</a>
   </div>
 
   <div class="page-header">
@@ -306,13 +306,36 @@
       <a class="btn-sm-ghost" href="{% url 'reports:report_matches' report.report_id %}">Text Matches &rarr;</a>
       <a class="btn-sm-ghost" href="{% url 'reports:report_image_matches' report.report_id %}">Image Matches &rarr;</a>
       <a class="btn-sm" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
+      {% if can_run_ai_detection %}
       <form method="post" action="{% url 'reports:retrigger_ai_detection' report.report_id %}" style="display:inline;">
         {% csrf_token %}
         <button type="submit" class="btn-sm-ghost" style="border-color:#f59e0b;color:#f59e0b;cursor:pointer;">
           Re-run AI Detection
         </button>
       </form>
+      {% endif %}
     </div>
+  </div>
+
+  <div style="
+    background: rgba(245,158,11,0.08);
+    border: 1px solid rgba(245,158,11,0.35);
+    border-radius: 0.6rem;
+    padding: 0.65rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.82rem;
+    color: #fbbf24;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+  ">
+    <span style="font-size:1rem;flex-shrink:0;margin-top:0.05rem;">&#9888;</span>
+    <span>
+      <strong>Experimental feature.</strong>
+      AI detection is powered by <strong>ZeroGPT</strong> — report text is sent to their API for analysis.
+      This tool is an <em>indicator only</em>: the model cannot determine with certainty that a team used AI to write their report.
+      A high score should prompt closer review, not be treated as conclusive evidence.
+    </span>
   </div>
 
   {% if messages %}

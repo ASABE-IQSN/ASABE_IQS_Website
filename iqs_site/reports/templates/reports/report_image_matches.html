@@ -126,7 +126,7 @@
 
 {% block content %}
   <div class="breadcrumb">
-    <a href="{% url 'reports:event_analysis' report.event_team.event.event_id %}?report_type={{ report.report_type }}">← Event Analysis</a>
+    <a href="{% url 'reports:report_overview' report.report_id %}">← Report Overview</a>
   </div>
 
   <div style="display:flex;align-items:baseline;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:0.25rem;">
@@ -171,7 +171,7 @@
           </thead>
           <tbody>
             {% for pair in group.image_pairs %}
-              <tr>
+              <tr id="page-{{ pair.this_img.page_number }}">
                 <td>
                   <div class="img-cell">
                     <img class="img-thumb"

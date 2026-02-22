@@ -157,6 +157,7 @@
           {% endfor %}
         </select>
       </label>
+      {% if can_run_ai_detection %}
       <label>
         Event <span style="color:#4b5563;font-size:0.75rem;">(AI detection only)</span>
         <select name="event_id">
@@ -166,6 +167,7 @@
           {% endfor %}
         </select>
       </label>
+      {% endif %}
       <button type="submit" name="job_type" value="extraction" class="btn-secondary">
         Queue extraction
       </button>
@@ -175,15 +177,17 @@
       <button type="submit" name="job_type" value="full">
         Queue full analysis
       </button>
+      {% if can_run_ai_detection %}
       <button type="submit" name="job_type" value="ai_detection" class="btn-secondary" style="border-color:#f59e0b;color:#f59e0b;">
         Queue AI detection
       </button>
+      {% endif %}
     </div>
     <p style="margin:0.6rem 0 0;font-size:0.78rem;color:#9ca3af;">
       <strong style="color:#a78bfa;">Extraction</strong> — downloads &amp; parses every PDF in parallel (one worker per report).
       <strong style="color:#34d399;">Similarity</strong> — MinHash page comparison (sequential) then image comparison in parallel chunks; requires extraction to have run first.
       <strong style="color:#6687fc;">Full analysis</strong> — extraction + similarity in one job (sequential).
-      <strong style="color:#f59e0b;">AI detection</strong> — sends each page's text to ZeroGPT to check for AI-generated content. Requires an event to be selected (billed per word).
+      {% if can_run_ai_detection %}<strong style="color:#f59e0b;">AI detection</strong> — sends each page's text to ZeroGPT to check for AI-generated content. Requires an event to be selected (billed per word).{% endif %}
     </p>
   </form>
 

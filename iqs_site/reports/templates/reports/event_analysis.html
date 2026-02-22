@@ -120,12 +120,12 @@
     border-right: 1px solid #1f2937;
   }
 
-  .ai-third {
+  .text-half, .img-half, .ai-third {
     text-decoration: none;
     color: inherit;
   }
 
-  .ai-third:hover {
+  .text-half:hover, .img-half:hover, .ai-third:hover {
     opacity: 0.85;
   }
 
@@ -198,7 +198,7 @@
             <th>Page</th>
             {% for rd in report_data %}
               <th class="th-team" title="{{ rd.report.event_team.team.team_name }}">
-                <a href="{% url 'reports:report_matches' rd.report.report_id %}">
+                <a href="{% url 'reports:report_overview' rd.report.report_id %}">
                   {{ rd.report.event_team.team.team_abbreviation|default:rd.report.event_team.team.team_name }}
                 </a>
                 <div class="th-stats">{{ rd.page_count }}p · {{ rd.chunk_count }}ch{% if rd.image_match_count %} · {{ rd.image_match_count }} img{% endif %}</div>
@@ -216,17 +216,21 @@
                 {% else %}
                   <td class="sim-cell">
                     <div class="cell-halves">
-                      <span class="half text-half"
-                            data-sim="{{ cell.sim_pct }}">
+                      <a class="half text-half"
+                         href="{% url 'reports:report_matches' cell.report_id %}#page-{{ row.page_number }}"
+                         title="View text matches for page {{ row.page_number }}"
+                         data-sim="{{ cell.sim_pct }}">
                         {% if cell.sim_pct %}{{ cell.sim_pct }}%{% else %}—{% endif %}
-                      </span>
-                      <span class="half img-half"
-                            {% if cell.img_sim_pct %}data-img-sim="{{ cell.img_sim_pct }}"{% endif %}>
+                      </a>
+                      <a class="half img-half"
+                         href="{% url 'reports:report_image_matches' cell.report_id %}#page-{{ row.page_number }}"
+                         title="View image matches for page {{ row.page_number }}"
+                         {% if cell.img_sim_pct %}data-img-sim="{{ cell.img_sim_pct }}"{% endif %}>
                         {% if cell.img_sim_pct %}{{ cell.img_sim_pct }}%{% else %}—{% endif %}
-                      </span>
+                      </a>
                       <a class="half ai-third"
-                         href="{% url 'reports:report_ai_detection' cell.report_id %}"
-                         title="View AI detection details"
+                         href="{% url 'reports:report_ai_detection' cell.report_id %}#score-card-{{ row.page_number }}"
+                         title="View AI detection for page {{ row.page_number }}"
                          {% if cell.ai_pct is not None %}data-ai-pct="{{ cell.ai_pct }}"{% endif %}>
                         {% if cell.ai_pct is not None %}{{ cell.ai_pct }}%{% else %}—{% endif %}
                       </a>

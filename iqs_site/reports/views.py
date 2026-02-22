@@ -4,7 +4,7 @@ import json
 from django.core.cache import cache
 from django.conf import settings
 from django.contrib import messages
-from django.db.models import Count, Max, Min, Q
+from django.db.models import Avg, Count, Max, Min, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -127,6 +127,8 @@ def analysis_dashboard(request):
             run_similarity_analysis.delay(job.pk)
             messages.success(request, f"Similarity job #{job.pk} queued.")
         elif job_type == "ai_detection":
+            if not request.user.has_perm("reports.can_run_ai_detection"):
+                raise Http404()
             raw_event = request.POST.get("event_id", "").strip()
             event_id = int(raw_event) if raw_event.isdigit() else None
             if not event_id:
@@ -172,6 +174,7 @@ def analysis_dashboard(request):
         "active_job_ids_json": json.dumps(active_job_ids),
         "report_type_choices": report_type_choices,
         "events": events,
+        "can_run_ai_detection": request.user.has_perm("reports.can_run_ai_detection"),
     })
 
 
@@ -186,6 +189,61 @@ def analysis_job_status(request, job_id):
         "reports_processed": job.reports_processed,
         "pages_processed": job.pages_processed,
         "error_message": job.error_message or "",
+    })
+
+
+# ── Report overview ────────────────────────────────────────────────────────────
+
+def report_overview(request, report_id):
+    _require_staff(request)
+
+    report = get_object_or_404(
+        Report.objects.select_related("event_team__team", "event_team__event"),
+        pk=report_id,
+    )
+
+    page_count  = ReportPage.objects.filter(report=report).count()
+    chunk_count = ReportChunk.objects.filter(page__report=report).count()
+    image_count = ReportImage.objects.filter(report=report).count()
+
+    # Word count from extracted chunk text
+    chunk_texts = ReportChunk.objects.filter(page__report=report).values_list("text", flat=True)
+    total_text_words = sum(len(t.split()) for t in chunk_texts)
+
+    # AI detection summary
+    ai_results = AIDetectionResult.objects.filter(page__report=report)
+    ai_analyzed_count = ai_results.count()
+    avg_ai_pct = None
+    if ai_analyzed_count:
+        agg = ai_results.aggregate(avg=Avg("fake_percentage"))
+        avg_ai_pct = round(agg["avg"], 1)
+
+    # Text similarity summary
+    text_matches = PageMatch.objects.filter(Q(page_a__report=report) | Q(page_b__report=report))
+    text_match_count = text_matches.count()
+    best_text_sim_raw = text_matches.order_by("-similarity").values_list("similarity", flat=True).first()
+    best_text_sim = round(best_text_sim_raw * 100, 1) if best_text_sim_raw is not None else None
+
+    # Image similarity summary
+    image_matches = ImageMatch.objects.filter(Q(image_a__report=report) | Q(image_b__report=report))
+    image_match_count = image_matches.count()
+    best_hamming = image_matches.order_by("hamming_distance").values_list("hamming_distance", flat=True).first()
+    best_image_sim = round((1 - best_hamming / 64) * 100, 1) if best_hamming is not None else None
+
+    return render(request, "reports/report_overview.html", {
+        "report": report,
+        "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
+        "page_count": page_count,
+        "chunk_count": chunk_count,
+        "image_count": image_count,
+        "total_text_words": total_text_words,
+        "ai_analyzed_count": ai_analyzed_count,
+        "avg_ai_pct": avg_ai_pct,
+        "text_match_count": text_match_count,
+        "best_text_sim": best_text_sim,
+        "image_match_count": image_match_count,
+        "best_image_sim": best_image_sim,
+        "can_run_ai_detection": request.user.has_perm("reports.can_run_ai_detection"),
     })
 
 
@@ -820,6 +878,8 @@ def page_match_detail(request, page_match_id):
 
 def retrigger_ai_detection(request, report_id):
     _require_staff(request)
+    if not request.user.has_perm("reports.can_run_ai_detection"):
+        raise Http404()
     if request.method != "POST":
         raise Http404()
 
@@ -926,4 +986,5 @@ def report_ai_detection(request, report_id):
         "total_ai_words": total_ai_words,
         "total_text_words": total_text_words,
         "chunk_data_json": json.dumps(chunk_data),
+        "can_run_ai_detection": request.user.has_perm("reports.can_run_ai_detection"),
     })

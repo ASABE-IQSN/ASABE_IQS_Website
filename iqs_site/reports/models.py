@@ -194,6 +194,9 @@ class AnalysisJob(models.Model):
 
     class Meta:
         ordering = ["-created_at"]
+        permissions = [
+            ("can_run_ai_detection", "Can trigger AI detection runs"),
+        ]
 
     def __str__(self):
         rtype = f"type={self.report_type}" if self.report_type is not None else "all types"
