@@ -307,6 +307,41 @@
     </div>
 
   </div>
+
+  {% if last_page_a or last_page_b %}
+    <h2 style="margin:1.75rem 0 0.25rem;font-size:1rem;color:#9ca3af;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;">Citations (last page)</h2>
+    <p style="font-size:0.8rem;color:#4b5563;margin:0 0 0.75rem;">The final page of each report — check whether the matched content is cited.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+      <div>
+        {% if last_page_a %}
+          <p style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:#9ca3af;margin:0 0 0.4rem;">
+            <strong style="color:#fbbf24;">{{ team_a }}</strong> &mdash; pg. {{ last_page_a }}
+            <a href="{% url 'reports:report_download' pm.page_a.report.report_id %}#page={{ last_page_a }}"
+               target="_blank"
+               style="margin-left:0.5rem;font-size:0.72rem;color:#6687fc;text-decoration:none;">open &rarr;</a>
+          </p>
+          <div class="pdf-wrap" id="wrap-cite-left">
+            <canvas id="canvas-cite-left"></canvas>
+            <div class="pdf-status" id="status-cite-left">Loading&hellip;</div>
+          </div>
+        {% endif %}
+      </div>
+      <div>
+        {% if last_page_b %}
+          <p style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:#9ca3af;margin:0 0 0.4rem;">
+            <strong style="color:#22c55e;">{{ team_b }}</strong> &mdash; pg. {{ last_page_b }}
+            <a href="{% url 'reports:report_download' pm.page_b.report.report_id %}#page={{ last_page_b }}"
+               target="_blank"
+               style="margin-left:0.5rem;font-size:0.72rem;color:#6687fc;text-decoration:none;">open &rarr;</a>
+          </p>
+          <div class="pdf-wrap" id="wrap-cite-right">
+            <canvas id="canvas-cite-right"></canvas>
+            <div class="pdf-status" id="status-cite-right">Loading&hellip;</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
 {% endblock %}
 
 {% block extra_scripts %}
@@ -447,5 +482,45 @@
     document.getElementById('status-right'),
     rightChunkData, 'hl-b'
   );
+
+  // ── Plain render for citation pages (no chunk overlays) ──────────
+  async function renderPagePlain(pdfUrl, pageNum, canvasEl, wrapEl, statusEl) {
+    try {
+      const pdf  = await pdfjsLib.getDocument(pdfUrl).promise;
+      const page = await pdf.getPage(pageNum);
+
+      const naturalVp  = page.getViewport({ scale: 1 });
+      const containerW = wrapEl.clientWidth || 480;
+      const scale      = containerW / naturalVp.width;
+      const viewport   = page.getViewport({ scale });
+
+      canvasEl.width  = viewport.width;
+      canvasEl.height = viewport.height;
+
+      await page.render({ canvasContext: canvasEl.getContext('2d'), viewport }).promise;
+      statusEl.style.display = 'none';
+    } catch (err) {
+      statusEl.textContent = 'Could not load PDF.';
+      console.error(err);
+    }
+  }
+
+  {% if last_page_a %}
+  renderPagePlain(
+    leftPdfUrl, {{ last_page_a }},
+    document.getElementById('canvas-cite-left'),
+    document.getElementById('wrap-cite-left'),
+    document.getElementById('status-cite-left'),
+  );
+  {% endif %}
+
+  {% if last_page_b %}
+  renderPagePlain(
+    rightPdfUrl, {{ last_page_b }},
+    document.getElementById('canvas-cite-right'),
+    document.getElementById('wrap-cite-right'),
+    document.getElementById('status-cite-right'),
+  );
+  {% endif %}
 </script>
 {% endblock %}

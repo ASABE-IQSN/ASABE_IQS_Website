@@ -215,6 +215,33 @@
       </div>
     </div>
   </div>
+
+  {% if last_page_a or last_page_b %}
+    <h2 style="margin:1.75rem 0 0.25rem;font-size:1rem;color:#9ca3af;font-weight:500;text-transform:uppercase;letter-spacing:0.07em;">Citations (last page)</h2>
+    <p style="font-size:0.8rem;color:#4b5563;margin:0 0 0.75rem;">The final page of each report — check whether the matched content is cited.</p>
+    <div class="compare-grid">
+      {% if last_page_a %}
+        <div class="img-card">
+          <p class="page-label">{{ team_a }} &mdash; pg. {{ last_page_a }}</p>
+          <a class="btn-report" href="{% url 'reports:report_download' im.image_a.report.report_id %}#page={{ last_page_a }}" target="_blank">Open in report &rarr;</a>
+          <div class="pdf-wrap" id="wrap-cite-left" style="margin-top:0.75rem;">
+            <canvas id="canvas-cite-left"></canvas>
+            <div class="pdf-status" id="status-cite-left">Loading&hellip;</div>
+          </div>
+        </div>
+      {% endif %}
+      {% if last_page_b %}
+        <div class="img-card">
+          <p class="page-label">{{ team_b }} &mdash; pg. {{ last_page_b }}</p>
+          <a class="btn-report" href="{% url 'reports:report_download' im.image_b.report.report_id %}#page={{ last_page_b }}" target="_blank">Open in report &rarr;</a>
+          <div class="pdf-wrap" id="wrap-cite-right" style="margin-top:0.75rem;">
+            <canvas id="canvas-cite-right"></canvas>
+            <div class="pdf-status" id="status-cite-right">Loading&hellip;</div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  {% endif %}
 {% endblock %}
 
 {% block extra_scripts %}
@@ -262,5 +289,23 @@
     document.getElementById('wrap-right'),
     document.getElementById('status-right'),
   );
+
+  {% if last_page_a %}
+  renderPage(
+    leftPdfUrl, {{ last_page_a }},
+    document.getElementById('canvas-cite-left'),
+    document.getElementById('wrap-cite-left'),
+    document.getElementById('status-cite-left'),
+  );
+  {% endif %}
+
+  {% if last_page_b %}
+  renderPage(
+    rightPdfUrl, {{ last_page_b }},
+    document.getElementById('canvas-cite-right'),
+    document.getElementById('wrap-cite-right'),
+    document.getElementById('status-cite-right'),
+  );
+  {% endif %}
 </script>
 {% endblock %}

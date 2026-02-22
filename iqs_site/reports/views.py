@@ -737,12 +737,23 @@ def image_match_detail(request, image_match_id):
         back_report_id = im.image_a.report_id
         back_team = team_a
 
+    last_page_a = (
+        ReportPage.objects.filter(report=im.image_a.report)
+        .order_by("-page_number").values_list("page_number", flat=True).first()
+    )
+    last_page_b = (
+        ReportPage.objects.filter(report=im.image_b.report)
+        .order_by("-page_number").values_list("page_number", flat=True).first()
+    )
+
     return render(request, "reports/image_match_detail.html", {
         "im": im,
         "team_a": team_a,
         "team_b": team_b,
         "back_report_id": back_report_id,
         "back_team": back_team,
+        "last_page_a": last_page_a,
+        "last_page_b": last_page_b,
     })
 
 
@@ -861,6 +872,15 @@ def page_match_detail(request, page_match_id):
         back_report_id = pm.page_a.report_id
         back_team = team_a
 
+    last_page_a = (
+        ReportPage.objects.filter(report=pm.page_a.report)
+        .order_by("-page_number").values_list("page_number", flat=True).first()
+    )
+    last_page_b = (
+        ReportPage.objects.filter(report=pm.page_b.report)
+        .order_by("-page_number").values_list("page_number", flat=True).first()
+    )
+
     return render(request, "reports/page_match_detail.html", {
         "pm": pm,
         "team_a": team_a,
@@ -871,6 +891,8 @@ def page_match_detail(request, page_match_id):
         "chunk_links_json": json.dumps(chunk_links),
         "left_chunk_data_json": _chunk_data(a_chunks, matched_a_ids),
         "right_chunk_data_json": _chunk_data(b_chunks, matched_b_ids),
+        "last_page_a": last_page_a,
+        "last_page_b": last_page_b,
     })
 
 
