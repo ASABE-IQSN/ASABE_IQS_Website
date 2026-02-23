@@ -512,6 +512,36 @@
         <div id="median-b" class="meta-strip" style="margin-top:0.4rem;font-family:monospace;color:#6b7280;"></div>
       </div>
     </div>
+
+    <!-- ── Reconstruction comparison ── -->
+    <p class="explain" style="margin-top:1.1rem;">
+      To visualise exactly what is discarded, we can zero out every coefficient
+      <em>outside</em> the 8&times;8 block and invert the DCT back to pixel space.
+      The bottom image below is what the hash is actually built from — only the coarse
+      low-frequency shape survives; edges, texture, and fine detail are gone.
+    </p>
+    <div class="two-col">
+      <div>
+        <div class="col-label">{{ team_a }} — information lost by the 8&times;8 cut</div>
+        <div style="font-size:0.65rem;color:#6b7280;margin-bottom:0.25rem;">full 32&times;32 grayscale</div>
+        <div class="canvas-box" id="box-orig-a"><span class="canvas-loading">Loading&hellip;</span></div>
+        <div style="font-size:0.65rem;color:#6b7280;margin:0.5rem 0 0.25rem;">8&times;8 DCT reconstruction</div>
+        <div class="canvas-box" id="box-recon-a"><span class="canvas-loading">Loading&hellip;</span></div>
+      </div>
+      <div>
+        <div class="col-label">{{ team_b }} — information lost by the 8&times;8 cut</div>
+        <div style="font-size:0.65rem;color:#6b7280;margin-bottom:0.25rem;">full 32&times;32 grayscale</div>
+        <div class="canvas-box" id="box-orig-b"><span class="canvas-loading">Loading&hellip;</span></div>
+        <div style="font-size:0.65rem;color:#6b7280;margin:0.5rem 0 0.25rem;">8&times;8 DCT reconstruction</div>
+        <div class="canvas-box" id="box-recon-b"><span class="canvas-loading">Loading&hellip;</span></div>
+      </div>
+    </div>
+    <div class="callout">
+      Only 64 of the original 1,024 DCT coefficients survive the cut — the blurry
+      reconstruction is the entire information the hash encodes.
+      This is why pHash stays stable across JPEG re-compression, minor resizing,
+      and brightness shifts: those changes affect high-frequency coefficients that were already discarded.
+    </div>
   </div>
 
   <!-- ─────────────────────────────────────────────────────────────────── -->
@@ -1134,6 +1164,67 @@ function bitsToHex(bits2d) {
   return h.padStart(16,'0');
 }
 
+/* ── Inverse DCT ─────────────────────────────────────────────── */
+/*
+ * Inverse of our unnormalized DCT-II:
+ *   x[n] = X[0]/(2N)  +  (1/N) * Σ_{k=1}^{N-1} X[k] * cos(π·k·(2n+1)/(2N))
+ */
+function idct1d(X) {
+  const N = X.length;
+  const out = new Float64Array(N);
+  for (let n = 0; n < N; n++) {
+    out[n] = X[0] / (2 * N);
+    for (let k = 1; k < N; k++) {
+      out[n] += X[k] * Math.cos(Math.PI * k * (2*n+1) / (2*N)) / N;
+    }
+  }
+  return out;
+}
+
+function idct2d(dct) {
+  const N = dct.length;
+  // Inverse along columns first (undo the column pass of dct2d)
+  const tmp = Array.from({length: N}, () => new Float64Array(N));
+  for (let x = 0; x < N; x++) {
+    const col = Float64Array.from({length: N}, (_, y) => dct[y][x]);
+    const inv = idct1d(col);
+    for (let y = 0; y < N; y++) tmp[y][x] = inv[y];
+  }
+  // Then inverse along rows
+  const out = Array.from({length: N}, () => new Float64Array(N));
+  for (let y = 0; y < N; y++) {
+    const inv = idct1d(tmp[y]);
+    for (let x = 0; x < N; x++) out[y][x] = inv[x];
+  }
+  return out;
+}
+
+/* ── Render a grayscale matrix as a pixel-grid canvas ───────── */
+
+function renderGrayGrid(mat, boxId) {
+  const N = mat.length, CELL = 10;
+  const c = document.createElement('canvas');
+  c.width = N * CELL; c.height = N * CELL;
+  const ctx = c.getContext('2d');
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    const v = Math.max(0, Math.min(255, Math.round(mat[y][x])));
+    ctx.fillStyle = `rgb(${v},${v},${v})`;
+    ctx.fillRect(x * CELL, y * CELL, CELL, CELL);
+  }
+  setBox(boxId, c);
+}
+
+/* ── Reconstruct image from only the 8×8 top-left DCT block ─── */
+
+function renderReconstructed(dct, boxId) {
+  const N = dct.length;
+  // Zero out every coefficient outside the 8×8 region
+  const masked = Array.from({length: N}, (_, y) =>
+    Float64Array.from({length: N}, (_, x) => (y < 8 && x < 8) ? dct[y][x] : 0)
+  );
+  renderGrayGrid(idct2d(masked), boxId);
+}
+
 /* ── Main ────────────────────────────────────────────────────── */
 
 async function runPipeline() {
@@ -1169,6 +1260,10 @@ async function runPipeline() {
 
     const medEl = document.getElementById(`median-${s}`);
     if (medEl) medEl.textContent = `median = ${med.toFixed(2)}`;
+
+    // Step 4 continued: original grayscale vs 8×8 reconstruction
+    renderGrayGrid(mat, `box-orig-${s}`);
+    renderReconstructed(dct, `box-recon-${s}`);
 
     // Step 5: threshold → hash
     const bits = block.map(row => row.map(v => v > med ? 1 : 0));
