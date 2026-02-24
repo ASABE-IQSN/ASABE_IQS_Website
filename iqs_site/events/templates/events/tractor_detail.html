@@ -1,7 +1,11 @@
 {% extends "base.html" %}
 {% load static %}
 
-{% block title %}Tractor {{ tractor.tractor_id }} – Details{% endblock %}
+{% block title %}{{ tractor.display_name|default:tractor.tractor_name|default:"Tractor" }} – IQS Connect{% endblock %}
+{% block og_title %}{{ tractor.display_name|default:tractor.tractor_name|default:"Tractor" }} – IQS Connect{% endblock %}
+{% block meta_description %}{% if bio %}{{ bio.info|truncatechars:160 }}{% else %}{{ tractor.display_name|default:tractor.tractor_name|default:"Tractor" }} is an ASABE International Quarter Scale competition entry. View pull results, event history, and team info.{% endif %}{% endblock %}
+{% block og_description %}{% if bio %}{{ bio.info|truncatechars:160 }}{% else %}{{ tractor.display_name|default:tractor.tractor_name|default:"Tractor" }} is an ASABE IQS competition entry. View pull results, event history, and team info.{% endif %}{% endblock %}
+{% block og_image %}{% if tractor.primary_photo %}https://iqsconnect.org/static/{{ tractor.primary_photo }}{% else %}https://iqsconnect.org{% static 'events/images/ASABE-IQS-logo-white.png' %}{% endif %}{% endblock %}
 
 {% block extra_styles %}
   .breadcrumbs {
@@ -236,6 +240,33 @@
       right: 0.5rem;
     }
   }
+
+  .profile-nudge {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1.1rem;
+    margin-bottom: 1.5rem;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 0.75rem;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .nudge-text { color: #9ca3af; }
+  .nudge-text strong { color: #f3f6e7; }
+
+  .nudge-link {
+    white-space: nowrap;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #6687fc;
+    text-decoration: none;
+  }
+
+  .nudge-link:hover { text-decoration: underline; }
 {% endblock %}
 
 {% block content %}
@@ -287,6 +318,16 @@
       {% endif %}
     </div>
   </section>
+
+  {% if not bio %}
+  <div class="profile-nudge">
+    <div class="nudge-text">
+      <strong>This tractor's profile is incomplete.</strong>
+      Are you a team member who built or drove this tractor? Log in to add a bio, specs, and photos.
+    </div>
+    <a href="{% url 'events:contribute' %}" class="nudge-link">Learn how &rarr;</a>
+  </div>
+  {% endif %}
 
   <!-- Pulls -->
   <section>

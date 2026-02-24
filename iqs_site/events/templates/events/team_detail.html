@@ -3,6 +3,10 @@
 {% load static %}
 
 {% block title %}{{ team.team_name }} – Team Profile{% endblock %}
+{% block og_title %}{{ team.team_name }} – IQS Connect{% endblock %}
+{% block meta_description %}{% if bio %}{{ bio.info|truncatechars:160 }}{% else %}{{ team.team_name }} competes in the ASABE International Quarter Scale Tractor Competition. View their tractors, event history, and results.{% endif %}{% endblock %}
+{% block og_description %}{% if bio %}{{ bio.info|truncatechars:160 }}{% else %}{{ team.team_name }} competes in the ASABE International Quarter Scale Tractor Competition. View their tractors, event history, and results.{% endif %}{% endblock %}
+{% block og_image %}{% if hero_photo %}https://iqsconnect.org/media/{{ hero_photo.photo_path }}{% else %}https://iqsconnect.org{% static 'events/images/ASABE-IQS-logo-white.png' %}{% endif %}{% endblock %}
 
 {% block extra_head %}
   <!-- Chart.js for scores plot -->
@@ -293,6 +297,33 @@
       right: 0.5rem;
     }
   }
+
+  .profile-nudge {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1.1rem;
+    margin-bottom: 1.5rem;
+    background: #0f172a;
+    border: 1px solid #334155;
+    border-radius: 0.75rem;
+    font-size: 0.85rem;
+    flex-wrap: wrap;
+  }
+
+  .nudge-text { color: #9ca3af; }
+  .nudge-text strong { color: #f3f6e7; }
+
+  .nudge-link {
+    white-space: nowrap;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #6687fc;
+    text-decoration: none;
+  }
+
+  .nudge-link:hover { text-decoration: underline; }
 {% endblock %}
 
 {% block content %}
@@ -374,13 +405,23 @@
       <div class="hero-bio">
         {% if bio %}
         <span style="color:#9ca3af;">{{ bio.info }}</span>
-          
+
         {% else %}
           <span style="color:#9ca3af;">Team bio coming soon.</span>
         {% endif %}
       </div>
     </div>
   </section>
+
+  {% if not bio %}
+  <div class="profile-nudge">
+    <div class="nudge-text">
+      <strong>This team's profile is incomplete.</strong>
+      Are you a member of {{ team.team_name }}? Log in to add a bio, social links, and photos.
+    </div>
+    <a href="{% url 'events:contribute' %}" class="nudge-link">Learn how &rarr;</a>
+  </div>
+  {% endif %}
 
   <!-- Events + Scores layout -->
   <section class="grid">

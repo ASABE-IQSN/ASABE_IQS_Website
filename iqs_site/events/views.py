@@ -117,7 +117,28 @@ def landing(request):
         .first()
     )
 
-    return render(request, "landing.html", {"next_event": next_event,"active_event":active_event,"active_page": "landing",})
+    slideshow_photos = list(
+        EventTeamPhoto.objects
+        .filter(approved=True)
+        .select_related("event_team__team", "event_team__event")
+        .order_by("?")[:10]
+    )
+    slideshow_data = [
+        {
+            "src": f"/media/{p.photo_path}",
+            "caption": p.caption or "",
+            "team": p.event_team.team.team_name if p.event_team and p.event_team.team else "",
+            "event": p.event_team.event.event_name if p.event_team and p.event_team.event else "",
+        }
+        for p in slideshow_photos
+    ]
+
+    return render(request, "landing.html", {
+        "next_event": next_event,
+        "active_event": active_event,
+        "active_page": "landing",
+        "slideshow_photos": slideshow_data,
+    })
 
 
 @log_view

@@ -1,6 +1,9 @@
 {% extends "base.html" %}
 
-{% block title %}{{ event.event_name }} – Event Overview{% endblock %}
+{% block title %}{{ event.event_name }} – IQS Connect{% endblock %}
+{% block og_title %}{{ event.event_name }} – IQS Connect{% endblock %}
+{% block meta_description %}Results and team entries for {{ event.event_name }}. View pull results, durability, maneuverability, and full team standings from this ASABE IQS competition.{% endblock %}
+{% block og_description %}Results and team entries for {{ event.event_name }}. View pull results, durability, maneuverability, and full team standings from this ASABE IQS competition.{% endblock %}
 
 {% block extra_styles %}
   .hero {

@@ -2,8 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  {% load static %}
   <title>{% block title %}International Quarter Scale{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="{% block meta_description %}Live results and real-time updates for the ASABE International Quarter Scale Tractor Competition.{% endblock %}">
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="IQS Connect">
+  <meta property="og:title" content="{% block og_title %}IQS Connect – Live{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}Live results and real-time updates for the ASABE International Quarter Scale Tractor Competition.{% endblock %}">
+  <meta property="og:url" content="{{ request.build_absolute_uri }}">
+  <meta property="og:image" content="{% block og_image %}https://iqsconnect.org{% static 'events/images/ASABE-IQS-logo-white.png' %}{% endblock %}">
+  <meta name="twitter:card" content="summary_large_image">
 
   <style>
     body {
