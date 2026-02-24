@@ -11,10 +11,9 @@
     padding: 2rem 1.5rem;
   }
 
+  /* Landing page uses its own layout — lift the default 1000px wrap */
   .wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
+    max-width: none;
   }
 
   .hero {
@@ -151,11 +150,27 @@
   width: 100%;
 }
 
+.landing-body {
+  display: flex;
+  gap: 2rem;
+  width: 100%;
+  align-items: flex-start;
+}
+
+.landing-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 /* Feature section */
 .feature-section {
-  width: 100%;
-  max-width: 1000px;
-  margin-top: 3rem;
+  width: 340px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 1.5rem;
 }
 
 .feature-section-title {
@@ -175,8 +190,24 @@
 
 .feature-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: 1fr;
   gap: 1.25rem;
+}
+
+@media (max-width: 960px) {
+  .landing-body {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .feature-section {
+    width: 100%;
+    max-width: 1000px;
+  }
+
+  .feature-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 @media (max-width: 720px) {
@@ -278,7 +309,7 @@
 .slideshow {
   position: relative;
   width: 100%;
-  aspect-ratio: 16 / 7;
+  aspect-ratio: 4 / 3;
   border-radius: 1rem;
   overflow: hidden;
   background: #0f172a;
@@ -342,6 +373,9 @@
 
 {% block content %}
   <div class="landing-stack">
+    <div class="landing-body">
+      <div class="landing-left">
+
     <div class="announcement-card" id="survey-announcement">
       <div class="announcement-text">
         <strong>Please give us your thoughts!</strong><br>
@@ -357,7 +391,6 @@
           Take the Survey
         </a>
       </div>
-      
     </div>
 
     <section class="hero">
@@ -430,7 +463,9 @@
     </div>
     {% endif %}
 
-    <div class="feature-section">
+      </div><!-- /.landing-left -->
+
+      <div class="feature-section">
       <h2 class="feature-section-title">Explore the Site</h2>
       <p class="feature-section-sub">Everything you need to follow the International Quarter Scale competition.</p>
 
@@ -516,10 +551,10 @@
           </div>
         </div>
 
-      </div>
-    </div>
+      </div><!-- /.feature-section -->
+    </div><!-- /.landing-body -->
 
-  </div>
+  </div><!-- /.landing-stack -->
 {% endblock %}
 
 
