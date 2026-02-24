@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Contribute — IQS Connect{% endblock %}
+
+{% block extra_styles %}
+.contribute-page {
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.contribute-header {
+  margin-bottom: 2.5rem;
+}
+
+.contribute-header h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #f3f6e7;
+  margin-bottom: 0.5rem;
+}
+
+.contribute-header p {
+  color: #9ca3af;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.step {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.step-number {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6687FC, #0ea5e9);
+  color: #0b1120;
+  font-weight: 700;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.step-body {
+  flex: 1;
+}
+
+.step-title {
+  font-weight: 700;
+  font-size: 1rem;
+  color: #f3f6e7;
+  margin-bottom: 0.4rem;
+}
+
+.step-desc {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  line-height: 1.6;
+  margin-bottom: 0.75rem;
+}
+
+.step-action {
+  display: inline-block;
+  padding: 0.4rem 1rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #6687FC, #0ea5e9);
+  color: #0b1120;
+  text-decoration: none;
+}
+
+.step-action:hover {
+  opacity: 0.9;
+  text-decoration: none;
+}
+
+.step-action.secondary {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #6687fc;
+}
+
+.step-action.secondary:hover {
+  background: #1a2744;
+}
+
+.contribute-note {
+  margin-top: 2rem;
+  padding: 1rem 1.25rem;
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  font-size: 0.85rem;
+  color: #9ca3af;
+  line-height: 1.6;
+}
+
+.contribute-note strong {
+  color: #f3f6e7;
+}
+{% endblock %}
+
+{% block content %}
+<div class="contribute-page">
+
+  <div class="contribute-header">
+    <h1>Contribute to IQS Connect</h1>
+    <p>
+      This site is a living record of the IQS competition — and the teams make it what it is.
+      If your team's profile is missing a bio, photos, or social links, here's how to get it updated.
+    </p>
+  </div>
+
+  <div class="steps">
+
+    <div class="step">
+      <div class="step-number">1</div>
+      <div class="step-body">
+        <div class="step-title">Create an account</div>
+        <div class="step-desc">
+          Sign up for a free account using your school email. You'll receive a verification
+          email to confirm your address before you can log in.
+        </div>
+        <a href="{% url 'users:signup' %}" class="step-action">Sign Up</a>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">2</div>
+      <div class="step-body">
+        <div class="step-title">Find your team and request access</div>
+        <div class="step-desc">
+          Browse the teams list and open your school's team page. From there you can
+          request to be added as a team member. A current team member or admin will
+          need to approve your request.
+        </div>
+        <a href="{% url 'events:team_list' %}" class="step-action secondary">Browse Teams</a>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">3</div>
+      <div class="step-body">
+        <div class="step-title">Update your team profile</div>
+        <div class="step-desc">
+          Once you're a member, you can edit your team's profile — add a bio, links to
+          your teams website, Instagram, YouTube, and more. Keep it current so
+          fans and judges can learn about your program.
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">4</div>
+      <div class="step-body">
+        <div class="step-title">Add photos</div>
+        <div class="step-desc">
+          Photos can be uploaded directly from event pages and run detail pages.
+          Visit the event your team competed in, open your team's entry for that event,
+          and use the upload button to add photos from the competition.
+        </div>
+        <a href="{% url 'events:event_list' %}" class="step-action secondary">Browse Events</a>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-number">5</div>
+      <div class="step-body">
+        <div class="step-title">Update your tractor</div>
+        <div class="step-desc">
+          Each tractor has its own profile page with specs and build details.
+          If your tractor's info is incomplete or out of date, you can edit it
+          from the tractor's detail page while logged in as a team member.
+        </div>
+        <a href="{% url 'events:tractor_list' %}" class="step-action secondary">Browse Tractors</a>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="contribute-note">
+    <strong>Questions or issues?</strong>
+    If you're having trouble getting access or something isn't working,
+    reach out to us at
+    <a href="mailto:asabeiqswebsite@gmail.com">asabeiqswebsite@gmail.com</a>.
+  </div>
+
+</div>
+{% endblock %}

@@ -1,20 +1,17 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}IQS Connect{% endblock %}
 
 {% block extra_styles %}
-  /* Center the hero vertically on this page */
   main {
-    display: flex;
-    align-items: center;
-    justify-content: center;
     padding: 2rem 1.5rem;
   }
 
-  /* Make the inner wrapper center its content */
   .wrap {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
   }
 
   .hero {
@@ -142,12 +139,122 @@
     text-align: center;
   }
 }
+
 /* Stack announcement above hero inside centered main */
 .landing-stack {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
+}
+
+/* Feature section */
+.feature-section {
+  width: 100%;
+  max-width: 1000px;
+  margin-top: 3rem;
+}
+
+.feature-section-title {
+  text-align: center;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f3f6e7;
+  margin-bottom: 0.4rem;
+}
+
+.feature-section-sub {
+  text-align: center;
+  color: #9ca3af;
+  font-size: 0.9rem;
+  margin-bottom: 2rem;
+}
+
+.feature-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+@media (max-width: 720px) {
+  .feature-cards {
+    grid-template-columns: 1fr;
+  }
+}
+
+.feature-card {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 1rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.feature-card-screenshot {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #1e293b;
+  border-bottom: 1px solid #1f2937;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.feature-card-screenshot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  display: block;
+}
+
+.feature-card-screenshot .placeholder-label {
+  font-size: 0.75rem;
+  color: #4b5563;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.feature-card-body {
+  padding: 1rem 1.1rem 1.25rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.feature-card-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f3f6e7;
+}
+
+.feature-card-desc {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  line-height: 1.5;
+  flex: 1;
+}
+
+.feature-card-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.45rem 1rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #6687fc;
+  text-decoration: none;
+  align-self: flex-start;
+}
+
+.feature-card-link:hover {
+  background: #1a2744;
+  text-decoration: none;
 }
 {% endblock %}
 
@@ -216,6 +323,96 @@
         {% endif %}
       </div>
     </section>
+
+    <div class="feature-section">
+      <h2 class="feature-section-title">Explore the Site</h2>
+      <p class="feature-section-sub">Everything you need to follow the International Quarter Scale competition.</p>
+
+      <div class="feature-cards">
+
+        <div class="feature-card">
+          <div class="feature-card-screenshot">
+            <img src="{% static 'events/images/screenshot_events.png' %}"
+                 alt="Events page screenshot"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="placeholder-label" style="display:none;">Screenshot coming soon</span>
+          </div>
+          <div class="feature-card-body">
+            <div class="feature-card-title">Events</div>
+            <div class="feature-card-desc">
+              Browse past and upcoming competitions. Each event page includes schedules, registered teams, and full results across all contest disciplines.
+            </div>
+            <a href="{% url 'events:event_list' %}" class="feature-card-link">View Events &rarr;</a>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-card-screenshot">
+            <img src="{% static 'events/images/screenshot_teams.png' %}"
+                 alt="Teams page screenshot"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="placeholder-label" style="display:none;">Screenshot coming soon</span>
+          </div>
+          <div class="feature-card-body">
+            <div class="feature-card-title">Teams</div>
+            <div class="feature-card-desc">
+              Explore competing university teams from around the world. View team profiles, their tractor builds, event history, and performance records.
+            </div>
+            <a href="{% url 'events:team_list' %}" class="feature-card-link">View Teams &rarr;</a>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-card-screenshot">
+            <img src="{% static 'events/images/screenshot_tractors.png' %}"
+                 alt="Tractors page screenshot"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="placeholder-label" style="display:none;">Screenshot coming soon</span>
+          </div>
+          <div class="feature-card-body">
+            <div class="feature-card-title">Tractors</div>
+            <div class="feature-card-desc">
+              Dig into the machines. Each tractor entry includes specs, the team behind it, and a full breakdown of how it performed across pull, durability, and maneuverability tests.
+            </div>
+            <a href="{% url 'events:tractor_list' %}" class="feature-card-link">View Tractors &rarr;</a>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-card-screenshot">
+            <img src="{% static 'events/images/screenshot_photos.png' %}"
+                 alt="Photos page screenshot"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="placeholder-label" style="display:none;">Screenshot coming soon</span>
+          </div>
+          <div class="feature-card-body">
+            <div class="feature-card-title">Photos</div>
+            <div class="feature-card-desc">
+              Browse photos from across all events — pulls, durability runs, maneuverability courses, and team moments captured throughout the competition.
+            </div>
+            <a href="{% url 'events:photos' %}" class="feature-card-link">Browse Photos &rarr;</a>
+          </div>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-card-screenshot">
+            <img src="{% static 'events/images/screenshot_contribute.png' %}"
+                 alt="Team profile screenshot"
+                 onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+            <span class="placeholder-label" style="display:none;">Screenshot coming soon</span>
+          </div>
+          <div class="feature-card-body">
+            <div class="feature-card-title">Update Your Team</div>
+            <div class="feature-card-desc">
+              Is your team's info out of date? Log in and update your profile — add a bio, social links, photos, and more. Help others find and follow your team.
+            </div>
+            <a href="{% url 'events:contribute' %}" class="feature-card-link">Learn How &rarr;</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 {% endblock %}
 

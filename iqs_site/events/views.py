@@ -214,6 +214,12 @@ def tractor_list(request):
     return render(request, "events/tractor_list.html", context)
 
 @log_view
+def contribute(request):
+    return render(request, "events/contribute.html", {
+        "active_page": None,
+    })
+
+@log_view
 @cache_page(300)
 def privacy(request):
     return render(request, "events/privacy.html", {
