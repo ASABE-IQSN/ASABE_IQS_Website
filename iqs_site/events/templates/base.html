@@ -139,6 +139,20 @@
 
     gtag('config', 'G-Y1M9QRZMRZ');
     </script>
+    <script>
+    document.addEventListener('click', function(e) {
+      const link = e.target.closest('a[href]');
+      if (!link) return;
+      const href = link.getAttribute('href');
+      if (href && href.startsWith('http') && !href.includes(window.location.hostname)) {
+        gtag('event', 'outbound_click', {
+          event_category: 'outbound',
+          event_label: href,
+          transport_type: 'beacon'
+        });
+      }
+    });
+    </script>
 
 <div class="page">
   <header>
