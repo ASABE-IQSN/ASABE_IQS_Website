@@ -162,6 +162,35 @@
     color: #F3F6E7;
   }
 
+  .lightbox-goto {
+    position: absolute;
+    top: -0.5rem;
+    left: -0.5rem;
+    background: #111827;
+    border-radius: 999px;
+    height: 32px;
+    padding: 0 0.75rem;
+    border: 1px solid #374151;
+    display: none;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6687fc;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .lightbox-goto.visible {
+    display: flex;
+  }
+
+  .lightbox-goto:hover {
+    background: #1a2744;
+    text-decoration: none;
+    color: #6687fc;
+  }
+
   .lightbox-arrow {
     position: absolute;
     top: 50%;
@@ -251,6 +280,10 @@
         <button class="lightbox-close" type="button" id="lightboxClose" aria-label="Close">
           &times;
         </button>
+
+        <a class="lightbox-goto" id="lightboxGoto" href="#" target="_blank" rel="noopener" aria-label="Go to source page">
+          &#8599; View page
+        </a>
       </div>
     </div>
   {% else %}
@@ -269,6 +302,7 @@
       const captionEl = document.getElementById('lightboxCaption');
       const sourceEl = document.getElementById('lightboxSource');
       const closeBtn = document.getElementById('lightboxClose');
+      const gotoLink = document.getElementById('lightboxGoto');
       const prevBtn = document.getElementById('lightboxPrev');
       const nextBtn = document.getElementById('lightboxNext');
 
@@ -296,6 +330,15 @@
         imgEl.alt = photo.caption || photo.sourceName;
         captionEl.textContent = photo.caption || '';
         sourceEl.textContent = photo.sourceType + ': ' + photo.sourceName;
+
+        if (photo.url) {
+          gotoLink.href = photo.url;
+          gotoLink.classList.add('visible');
+        } else {
+          gotoLink.href = '#';
+          gotoLink.classList.remove('visible');
+        }
+
         overlay.classList.add('open');
       }
 

@@ -1403,7 +1403,7 @@ def all_photos(request):
             "source_type": "Event Team",
             "source_name": f"{photo.event_team.team.team_name} at {photo.event_team.event.event_name}" if photo.event_team and photo.event_team.team and photo.event_team.event else "Unknown",
             "created_at": photo.created_at,
-            "url": f"/event/{photo.event_team.event_id}/team/{photo.event_team.team_id}" if photo.event_team else None,
+            "url": reverse("events:team_event_detail", args=[photo.event_team.event_id, photo.event_team.team_id]) if photo.event_team else None,
         })
 
     # Get all approved tractor media (images only)
@@ -1421,7 +1421,7 @@ def all_photos(request):
             "source_type": "Tractor",
             "source_name": photo.tractor.tractor_name if photo.tractor else "Unknown Tractor",
             "created_at": photo.created_at,
-            "url": f"/tractor/{photo.tractor.tractor_id}" if photo.tractor else None,
+            "url": reverse("events:tractor_detail", args=[photo.tractor.tractor_id]) if photo.tractor else None,
         })
 
     # Get all approved performance event media (images only)
