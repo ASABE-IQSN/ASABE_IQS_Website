@@ -4,7 +4,7 @@ import ipaddress
 import json
 import urllib.request
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date, datetime as dt_datetime, timedelta, timezone as dt_tz
 from typing import Dict, List
 
 from django.contrib.admin.models import LogEntry
@@ -100,6 +100,25 @@ def resolve_geo(ips: list) -> dict:
     return result
 
 
+def _get_tz_offset(request) -> int:
+    """Return browser's getTimezoneOffset() value from cookie (minutes to add to local → UTC)."""
+    try:
+        return int(request.COOKIES.get('tz_offset', '0'))
+    except (ValueError, TypeError):
+        return 0
+
+
+def _get_day_bounds(selected_date: date, tz_offset: int):
+    """Return (day_start, day_end) as UTC-aware datetimes bounding the user's local day."""
+    # local midnight in UTC = naive UTC midnight + offset minutes
+    # (getTimezoneOffset returns minutes such that UTC = local + offset)
+    day_start = dt_datetime(
+        selected_date.year, selected_date.month, selected_date.day,
+        tzinfo=dt_tz.utc,
+    ) + timedelta(minutes=tz_offset)
+    return day_start, day_start + timedelta(days=1)
+
+
 AVAILABLE_METRICS = [
     ("speed", "Speed (ft/s)"),
     ("force", "Force (lbf)"),
@@ -119,24 +138,26 @@ def daily_activity(request):
 
     prev_date = selected_date - timedelta(days=1)
     next_date = selected_date + timedelta(days=1)
-    is_today = selected_date == timezone.localdate()
+    tz_offset = _get_tz_offset(request)
+    day_start, day_end = _get_day_bounds(selected_date, tz_offset)
+    is_today = selected_date == (timezone.now() - timedelta(minutes=tz_offset)).date()
 
     # --- New accounts ---
     new_accounts = list(
-        User.objects.filter(date_joined__date=selected_date)
+        User.objects.filter(date_joined__gte=day_start, date_joined__lt=day_end)
         .order_by("-date_joined")
         .values("id", "username", "email", "date_joined", "first_name", "last_name")
     )
 
     # --- Logins (last_login on this date) ---
     logins = list(
-        User.objects.filter(last_login__date=selected_date)
+        User.objects.filter(last_login__gte=day_start, last_login__lt=day_end)
         .order_by("-last_login")
         .values("id", "username", "email", "last_login")
     )
 
     # --- Page views ---
-    page_views = PageView.objects.filter(time__date=selected_date)
+    page_views = PageView.objects.filter(time__gte=day_start, time__lt=day_end)
     page_view_total = page_views.count()
     top_urls = list(
         page_views.values("url")
@@ -229,7 +250,7 @@ def daily_activity(request):
 
     # --- Edit logs (team/tractor field changes) ---
     edit_logs = list(
-        EditLog.objects.filter(timestamp__date=selected_date)
+        EditLog.objects.filter(timestamp__gte=day_start, timestamp__lt=day_end)
         .select_related("user", "team", "tractor")
         .order_by("-timestamp")
         .values(
@@ -241,7 +262,7 @@ def daily_activity(request):
 
     # --- Enrollment requests submitted today ---
     enrollment_requests = list(
-        TeamEnrollmentRequest.objects.filter(requested_at__date=selected_date)
+        TeamEnrollmentRequest.objects.filter(requested_at__gte=day_start, requested_at__lt=day_end)
         .select_related("user", "team", "reviewed_by")
         .order_by("-requested_at")
         .values(

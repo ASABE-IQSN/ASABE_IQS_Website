@@ -174,6 +174,26 @@ tr:hover td {
 .overflow-x { overflow-x: auto; }
 {% endblock %}
 
+{% block extra_head %}
+<script>
+(function () {
+  function localDateStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+  window._localDate = localDateStr();
+  document.cookie = 'tz_offset=' + new Date().getTimezoneOffset() + '; path=/; SameSite=Lax';
+  var p = new URLSearchParams(window.location.search);
+  if (!p.has('date')) {
+    p.set('date', window._localDate);
+    window.location.replace(window.location.pathname + '?' + p.toString());
+  }
+})();
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="dashboard-header">
   <h1>Daily Activity</h1>
@@ -186,7 +206,7 @@ tr:hover td {
     {% if not is_today %}
       <a href="?date={{ next_date|date:'Y-m-d' }}">&#8594;</a>
     {% endif %}
-    <a href="?">Today</a>
+    <a class="today-nav-link" href="?">Today</a>
   </form>
 </div>
 
@@ -247,7 +267,7 @@ tr:hover td {
             {% endif %}
           </td>
           <td class="mono">{{ u.email }}</td>
-          <td class="ts">{{ u.date_joined|time:"H:i:s" }}</td>
+          <td class="ts"><time data-utc="{{ u.date_joined|date:'c' }}">{{ u.date_joined|time:"H:i:s" }}</time></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -274,7 +294,7 @@ tr:hover td {
         <tr>
           <td><a href="/admin/auth/user/{{ u.id }}/change/">{{ u.username }}</a></td>
           <td class="mono">{{ u.email }}</td>
-          <td class="ts">{{ u.last_login|time:"H:i:s" }}</td>
+          <td class="ts"><time data-utc="{{ u.last_login|date:'c' }}">{{ u.last_login|time:"H:i:s" }}</time></td>
         </tr>
         {% endfor %}
       </tbody>
@@ -443,7 +463,7 @@ tr:hover td {
         <tbody>
           {% for v in recent_views %}
           <tr>
-            <td class="ts">{{ v.time|time:"H:i:s" }}</td>
+            <td class="ts"><time data-utc="{{ v.time|date:'c' }}">{{ v.time|time:"H:i:s" }}</time></td>
             <td>{{ v.user__username|default:"—" }}</td>
             <td class="mono" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ v.url }}">{{ v.url }}</td>
             <td style="color:#9ca3af;white-space:nowrap;font-size:0.78rem;">{{ v.location|default:"—" }}</td>
@@ -491,7 +511,7 @@ tr:hover td {
     <tbody>
       {% for log in edit_logs %}
       <tr>
-        <td class="ts">{{ log.timestamp|time:"H:i:s" }}</td>
+        <td class="ts"><time data-utc="{{ log.timestamp|date:'c' }}">{{ log.timestamp|time:"H:i:s" }}</time></td>
         <td>{{ log.user__username|default:"—" }}</td>
         <td>
           {% if log.entity_type == "team" %}
@@ -536,7 +556,7 @@ tr:hover td {
       <tbody>
         {% for r in enrollment_requests %}
         <tr>
-          <td class="ts">{{ r.requested_at|time:"H:i:s" }}</td>
+          <td class="ts"><time data-utc="{{ r.requested_at|date:'c' }}">{{ r.requested_at|time:"H:i:s" }}</time></td>
           <td>{{ r.user__username }}</td>
           <td>{{ r.team__team_name }}{% if r.team__team_number %} <span style="color:#6b7280">({{ r.team__team_number }})</span>{% endif %}</td>
           <td>
@@ -568,7 +588,7 @@ tr:hover td {
       <tbody>
         {% for r in reviewed_requests %}
         <tr>
-          <td class="ts">{{ r.reviewed_at|time:"H:i:s" }}</td>
+          <td class="ts"><time data-utc="{{ r.reviewed_at|date:'c' }}">{{ r.reviewed_at|time:"H:i:s" }}</time></td>
           <td>{{ r.user__username }}</td>
           <td>{{ r.team__team_name }}</td>
           <td>
@@ -606,7 +626,7 @@ tr:hover td {
     <tbody>
       {% for m in tractor_media %}
       <tr>
-        <td class="ts">{{ m.created_at|time:"H:i:s" }}</td>
+        <td class="ts"><time data-utc="{{ m.created_at|date:'c' }}">{{ m.created_at|time:"H:i:s" }}</time></td>
         <td><span class="pill pill-yellow">Tractor Media</span></td>
         <td>{{ m.uploaded_by__username|default:"—" }}</td>
         <td class="mono" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
@@ -617,7 +637,7 @@ tr:hover td {
       {% endfor %}
       {% for m in event_team_photos %}
       <tr>
-        <td class="ts">{{ m.created_at|time:"H:i:s" }}</td>
+        <td class="ts"><time data-utc="{{ m.created_at|date:'c' }}">{{ m.created_at|time:"H:i:s" }}</time></td>
         <td><span class="pill pill-blue">Team Photo</span></td>
         <td class="mono">{{ m.submitted_from_ip|default:"—" }}</td>
         <td class="mono" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ m.photo_path }}">{{ m.caption|default:m.photo_path }}</td>
@@ -629,7 +649,7 @@ tr:hover td {
       {% endfor %}
       {% for m in perf_media %}
       <tr>
-        <td class="ts">{{ m.created_at|time:"H:i:s" }}</td>
+        <td class="ts"><time data-utc="{{ m.created_at|date:'c' }}">{{ m.created_at|time:"H:i:s" }}</time></td>
         <td><span class="pill pill-gray">Event Media</span></td>
         <td>{{ m.uploaded_by__username|default:"—" }}</td>
         <td class="mono" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ m.caption|default:m.link }}</td>
@@ -662,7 +682,7 @@ tr:hover td {
     <tbody>
       {% for log in admin_logs %}
       <tr>
-        <td class="ts">{{ log.action_time|time:"H:i:s" }}</td>
+        <td class="ts"><time data-utc="{{ log.action_time|date:'c' }}">{{ log.action_time|time:"H:i:s" }}</time></td>
         <td>{{ log.user__username }}</td>
         <td>
           {% if log.action_flag == 1 %}<span class="pill pill-green">add</span>
@@ -682,4 +702,22 @@ tr:hover td {
   <p class="empty-note">No admin actions.</p>
   {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Convert UTC timestamps to browser local time
+  document.querySelectorAll('time[data-utc]').forEach(function (el) {
+    try {
+      var d = new Date(el.dataset.utc);
+      el.textContent = d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false});
+    } catch (e) {}
+  });
+  // Fix "Today" link to use browser's local date
+  document.querySelectorAll('.today-nav-link').forEach(function (a) {
+    var url = new URL(a.href, window.location.href);
+    url.searchParams.set('date', window._localDate);
+    a.href = url.pathname + url.search;
+  });
+});
+</script>
 {% endblock %}
