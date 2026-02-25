@@ -1,11 +1,103 @@
 from __future__ import annotations
 
-from datetime import timedelta
+import ipaddress
+import json
+import urllib.request
+from collections import Counter
+from datetime import date, timedelta
 from typing import Dict, List
 
+from django.contrib.admin.models import LogEntry
+from django.contrib.auth.decorators import user_passes_test
+from iqs_site.utilities import log_view
+from django.contrib.auth.models import User
+from django.db.models import Count
+from django.db.models.functions import TruncDate
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from django.utils import timezone
+
+from events.models import EditLog, EventTeamPhoto, PerformanceEventMedia, TractorMedia
+from stats.models import IPGeoCache
+from users.models import TeamEnrollmentRequest, View as PageView
+
+
+def _is_private_ip(ip_str: str) -> bool:
+    try:
+        return ipaddress.ip_address(ip_str).is_private
+    except ValueError:
+        return False
+
+
+def _fetch_geo_batch(ips: list) -> list:
+    payload = json.dumps([{"query": ip} for ip in ips]).encode()
+    req = urllib.request.Request(
+        "http://ip-api.com/batch"
+        "?fields=status,query,country,countryCode,regionName,city,isp,lat,lon",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return json.loads(resp.read())
+    except Exception:
+        return []
+
+
+def resolve_geo(ips: list) -> dict:
+    """Return mapping of ip -> geo dict, using DB cache and ip-api.com for misses."""
+    result: dict = {}
+    public_ips: list = []
+
+    for ip in ips:
+        if not ip:
+            continue
+        if _is_private_ip(ip):
+            result[ip] = {"country": "Private", "country_code": "", "city": "",
+                          "region": "", "isp": "", "is_private": True}
+        else:
+            public_ips.append(ip)
+
+    if not public_ips:
+        return result
+
+    # Pull from cache
+    cached = {obj.ip: obj for obj in IPGeoCache.objects.filter(ip__in=public_ips)}
+    for ip, obj in cached.items():
+        result[ip] = {
+            "country": obj.country, "country_code": obj.country_code,
+            "city": obj.city, "region": obj.region, "isp": obj.isp,
+            "is_private": False,
+        }
+
+    missing = [ip for ip in public_ips if ip not in cached]
+
+    # Batch-fetch missing IPs (100 per request, ip-api.com limit)
+    new_objs = []
+    for i in range(0, len(missing), 100):
+        for r in _fetch_geo_batch(missing[i:i + 100]):
+            ip = r.get("query", "")
+            if not ip:
+                continue
+            geo = {
+                "country": r.get("country", ""),
+                "country_code": r.get("countryCode", ""),
+                "city": r.get("city", ""),
+                "region": r.get("regionName", ""),
+                "isp": r.get("isp", ""),
+                "is_private": False,
+            }
+            result[ip] = geo
+            new_objs.append(IPGeoCache(
+                ip=ip,
+                country=geo["country"], country_code=geo["country_code"],
+                city=geo["city"], region=geo["region"], isp=geo["isp"],
+            ))
+
+    if new_objs:
+        IPGeoCache.objects.bulk_create(new_objs, ignore_conflicts=True)
+
+    return result
 
 
 AVAILABLE_METRICS = [
@@ -16,6 +108,341 @@ AVAILABLE_METRICS = [
 ]
 
 
+@log_view
+@user_passes_test(lambda u: u.is_staff)
+def daily_activity(request):
+    date_str = request.GET.get("date")
+    try:
+        selected_date = date.fromisoformat(date_str) if date_str else timezone.localdate()
+    except ValueError:
+        selected_date = timezone.localdate()
+
+    prev_date = selected_date - timedelta(days=1)
+    next_date = selected_date + timedelta(days=1)
+    is_today = selected_date == timezone.localdate()
+
+    # --- New accounts ---
+    new_accounts = list(
+        User.objects.filter(date_joined__date=selected_date)
+        .order_by("-date_joined")
+        .values("id", "username", "email", "date_joined", "first_name", "last_name")
+    )
+
+    # --- Logins (last_login on this date) ---
+    logins = list(
+        User.objects.filter(last_login__date=selected_date)
+        .order_by("-last_login")
+        .values("id", "username", "email", "last_login")
+    )
+
+    # --- Page views ---
+    page_views = PageView.objects.filter(time__date=selected_date)
+    page_view_total = page_views.count()
+    top_urls = list(
+        page_views.values("url")
+        .annotate(count=Count("view_id"))
+        .order_by("-count")[:20]
+    )
+    recent_views = list(
+        page_views.select_related("user")
+        .order_by("-time")
+        .values("time", "url", "ip", "response_code", "response_time_s", "user__username")[:100]
+    )
+
+    # --- Geo lookup (unique IPs for the day, by view count) ---
+    ip_view_counts = dict(
+        page_views.values("ip")
+        .annotate(count=Count("view_id"))
+        .values_list("ip", "count")
+    )
+    geo_map = resolve_geo(list(ip_view_counts.keys()))
+
+    # Annotate recent_views with geo location
+    for v in recent_views:
+        geo = geo_map.get(v["ip"], {})
+        if geo.get("is_private"):
+            v["location"] = "Private"
+        elif geo.get("city"):
+            parts = [geo["city"]]
+            if geo.get("region"):
+                parts.append(geo["region"])
+            parts.append(geo.get("country_code", ""))
+            v["location"] = ", ".join(p for p in parts if p)
+        elif geo.get("country"):
+            v["location"] = geo["country"]
+        else:
+            v["location"] = ""
+
+    country_counter: Counter = Counter()
+    city_counts: dict = {}  # (city, region, country_code) -> int
+    for ip, view_count in ip_view_counts.items():
+        geo = geo_map.get(ip, {})
+        if geo.get("is_private"):
+            continue
+        country = geo.get("country") or "Unknown"
+        country_counter[country] += view_count
+        city = geo.get("city", "")
+        region = geo.get("region", "")
+        cc = geo.get("country_code", "")
+        if city:
+            key = (city, region, cc)
+            city_counts[key] = city_counts.get(key, 0) + view_count
+    geo_by_country = [{"name": c, "count": n} for c, n in country_counter.most_common(20)]
+    geo_by_city = sorted(
+        [{"name": ", ".join(p for p in [city, region, cc] if p),
+          "city": city, "region": region, "country_code": cc, "count": n}
+         for (city, region, cc), n in city_counts.items()],
+        key=lambda x: -x["count"],
+    )[:15]
+
+    # --- Geo for auth_status only (real browser sessions, not bots/crawlers) ---
+    auth_ip_counts = dict(
+        page_views.filter(url="/user/auth-status/")
+        .values("ip")
+        .annotate(count=Count("view_id"))
+        .values_list("ip", "count")
+    )
+    # geo_map already covers most of these; resolve_geo handles any new ones
+    auth_geo_map = resolve_geo(list(auth_ip_counts.keys()))
+    auth_country_counter: Counter = Counter()
+    auth_city_counts: dict = {}
+    for ip, view_count in auth_ip_counts.items():
+        geo = auth_geo_map.get(ip, {})
+        if geo.get("is_private"):
+            continue
+        country = geo.get("country") or "Unknown"
+        auth_country_counter[country] += view_count
+        city = geo.get("city", "")
+        region = geo.get("region", "")
+        cc = geo.get("country_code", "")
+        if city:
+            key = (city, region, cc)
+            auth_city_counts[key] = auth_city_counts.get(key, 0) + view_count
+    auth_geo_by_country = [{"name": c, "count": n} for c, n in auth_country_counter.most_common(20)]
+    auth_geo_by_city = sorted(
+        [{"name": ", ".join(p for p in [city, region, cc] if p),
+          "city": city, "region": region, "country_code": cc, "count": n}
+         for (city, region, cc), n in auth_city_counts.items()],
+        key=lambda x: -x["count"],
+    )[:15]
+    auth_status_total = sum(auth_ip_counts.values())
+
+    # --- Edit logs (team/tractor field changes) ---
+    edit_logs = list(
+        EditLog.objects.filter(timestamp__date=selected_date)
+        .select_related("user", "team", "tractor")
+        .order_by("-timestamp")
+        .values(
+            "timestamp", "entity_type", "field_name", "old_value", "new_value",
+            "user__username", "team__team_name", "team__team_number",
+            "tractor__tractor_name",
+        )[:200]
+    )
+
+    # --- Enrollment requests submitted today ---
+    enrollment_requests = list(
+        TeamEnrollmentRequest.objects.filter(requested_at__date=selected_date)
+        .select_related("user", "team", "reviewed_by")
+        .order_by("-requested_at")
+        .values(
+            "request_id", "requested_at", "status", "message",
+            "user__username", "user__email",
+            "team__team_name", "team__team_number",
+        )
+    )
+
+    # --- Enrollment requests reviewed today ---
+    reviewed_requests = list(
+        TeamEnrollmentRequest.objects.filter(reviewed_at__date=selected_date)
+        .select_related("user", "team", "reviewed_by")
+        .order_by("-reviewed_at")
+        .values(
+            "request_id", "reviewed_at", "status",
+            "user__username", "team__team_name", "team__team_number",
+            "reviewed_by__username",
+        )
+    )
+
+    # --- Media uploads ---
+    tractor_media = list(
+        TractorMedia.objects.filter(created_at__date=selected_date)
+        .select_related("uploaded_by", "tractor")
+        .order_by("-created_at")
+        .values(
+            "media_id", "created_at", "media_type", "link",
+            "uploaded_by__username", "tractor__tractor_name",
+        )
+    )
+
+    event_team_photos = list(
+        EventTeamPhoto.objects.filter(created_at__date=selected_date)
+        .order_by("-created_at")
+        .values("event_team_photo_id", "created_at", "photo_path", "caption", "approved",
+                "submitted_from_ip")
+    )
+
+    perf_media = list(
+        PerformanceEventMedia.objects.filter(created_at__date=selected_date)
+        .select_related("uploaded_by")
+        .order_by("-created_at")
+        .values(
+            "media_id", "created_at", "media_type", "link", "caption",
+            "uploaded_by__username", "performance_event_type",
+        )
+    )
+
+    # --- Django admin log entries ---
+    admin_logs = list(
+        LogEntry.objects.filter(action_time__date=selected_date)
+        .select_related("user", "content_type")
+        .order_by("-action_time")
+        .values(
+            "action_time", "action_flag", "object_repr", "change_message",
+            "user__username", "content_type__app_label", "content_type__model",
+        )[:100]
+    )
+
+    return render(request, "stats/daily_activity.html", {
+        "selected_date": selected_date,
+        "prev_date": prev_date,
+        "next_date": next_date,
+        "is_today": is_today,
+        "new_accounts": new_accounts,
+        "logins": logins,
+        "page_view_total": page_view_total,
+        "top_urls": top_urls,
+        "recent_views": recent_views,
+        "geo_by_country": geo_by_country,
+        "geo_by_city": geo_by_city,
+        "auth_geo_by_country": auth_geo_by_country,
+        "auth_geo_by_city": auth_geo_by_city,
+        "auth_status_total": auth_status_total,
+        "edit_logs": edit_logs,
+        "enrollment_requests": enrollment_requests,
+        "reviewed_requests": reviewed_requests,
+        "tractor_media": tractor_media,
+        "event_team_photos": event_team_photos,
+        "perf_media": perf_media,
+        "admin_logs": admin_logs,
+    })
+
+
+@log_view
+@user_passes_test(lambda u: u.is_staff)
+def location_drill(request):
+    city = request.GET.get("city", "").strip()
+    country_code = request.GET.get("country_code", "").strip()
+    country = request.GET.get("country", "").strip()
+    date_str = request.GET.get("date")
+    history_days = int(request.GET.get("days", 30))
+
+    if not city and not country:
+        return redirect("stats:daily_activity")
+
+    try:
+        selected_date = date.fromisoformat(date_str) if date_str else timezone.localdate()
+    except ValueError:
+        selected_date = timezone.localdate()
+
+    prev_date = selected_date - timedelta(days=1)
+    next_date = selected_date + timedelta(days=1)
+    is_today = selected_date == timezone.localdate()
+
+    # Resolve matching IPs from cache
+    if city and country_code:
+        cache_qs = IPGeoCache.objects.filter(city=city, country_code=country_code)
+        matching_ips = list(cache_qs.values_list("ip", flat=True))
+        region = cache_qs.values_list("region", flat=True).first() or ""
+        location_label = ", ".join(p for p in [city, region, country_code] if p)
+    else:
+        matching_ips = list(
+            IPGeoCache.objects.filter(country=country)
+            .values_list("ip", flat=True)
+        )
+        region = ""
+        location_label = country
+
+    base_qs = PageView.objects.filter(ip__in=matching_ips)
+
+    # --- Day view ---
+    day_views = list(
+        base_qs.filter(time__date=selected_date)
+        .select_related("user")
+        .order_by("-time")
+        .values("time", "url", "ip", "response_code", "response_time_s", "user__username")
+    )
+
+    top_urls = list(
+        base_qs.filter(time__date=selected_date)
+        .values("url")
+        .annotate(count=Count("view_id"))
+        .order_by("-count")[:20]
+    )
+
+    # --- Auth-status views (real browser sessions) for this location ---
+    auth_qs = base_qs.filter(url="/user/auth-status/")
+
+    auth_day_views = list(
+        auth_qs.filter(time__date=selected_date)
+        .select_related("user")
+        .order_by("-time")
+        .values("time", "ip", "response_code", "response_time_s", "user__username")
+    )
+
+    # --- History: fill a full date range so days with 0 views show up ---
+    history_start = selected_date - timedelta(days=history_days - 1)
+    raw_history = {
+        row["day"]: row
+        for row in base_qs.filter(
+            time__date__gte=history_start,
+            time__date__lte=selected_date,
+        )
+        .annotate(day=TruncDate("time"))
+        .values("day")
+        .annotate(count=Count("view_id"), unique_ips=Count("ip", distinct=True))
+    }
+    raw_auth_history = {
+        row["day"]: row["count"]
+        for row in auth_qs.filter(
+            time__date__gte=history_start,
+            time__date__lte=selected_date,
+        )
+        .annotate(day=TruncDate("time"))
+        .values("day")
+        .annotate(count=Count("view_id"))
+    }
+    history = []
+    for i in range(history_days):
+        d = history_start + timedelta(days=i)
+        row = raw_history.get(d, {})
+        history.append({
+            "day": d,
+            "count": row.get("count", 0),
+            "unique_ips": row.get("unique_ips", 0),
+            "auth_count": raw_auth_history.get(d, 0),
+        })
+    history_max = max((r["count"] for r in history), default=1) or 1
+
+    return render(request, "stats/location_drill.html", {
+        "location_label": location_label,
+        "city": city,
+        "country_code": country_code,
+        "country": country,
+        "selected_date": selected_date,
+        "prev_date": prev_date,
+        "next_date": next_date,
+        "is_today": is_today,
+        "matching_ip_count": len(matching_ips),
+        "day_views": day_views,
+        "top_urls": top_urls,
+        "auth_day_views": auth_day_views,
+        "history": history,
+        "history_max": history_max,
+        "history_days": history_days,
+    })
+
+
+@log_view
 def plot_page(request):
     return render(
         request,

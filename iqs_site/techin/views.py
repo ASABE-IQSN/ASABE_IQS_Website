@@ -245,6 +245,7 @@ def subcategory_detail(request, event_id, subcategory_id):
     }
     return render(request, "tech_in/subcategory_detail.html", context)
 
+@log_view
 def rule_detail(request, event_id, rule_id):
     """
     Shows a single rule, and for this event, all tractor/team status rows

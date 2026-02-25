@@ -21,9 +21,11 @@ from django.http import JsonResponse
 from django.middleware.csrf import get_token
 from django.views.decorators.cache import cache_control
 from django.views.decorators.vary import vary_on_cookie
+from iqs_site.utilities import log_view
 from django.utils import timezone
 from users.models import GroupProfile, TeamEmail, TeamEnrollmentRequest
 
+@log_view
 @login_required
 def account(request):
     user = request.user
@@ -109,6 +111,7 @@ def is_team_admin(user, team: Team) -> bool:
         return False
     return gp.admins.filter(pk=user.pk).exists()
 
+@log_view
 @login_required
 def manage_team_members(request, team_id):
     team = get_object_or_404(Team, team_id=team_id)
@@ -235,6 +238,7 @@ def manage_team_members(request, team_id):
         "active_page": "my account",
     })
 
+@log_view
 def signup(request):
     if request.method == "POST":
         form = CustomUserCreationForm(request.POST)
@@ -301,6 +305,7 @@ def verify_email(request, uidb64, token):
     else:
         return HttpResponse("Invalid or expired verification link.")
     
+@log_view
 @cache_control(private=True, max_age=30)
 def auth_status(request):
     return JsonResponse({

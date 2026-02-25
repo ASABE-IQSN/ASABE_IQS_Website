@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+
+{% block title %}{{ location_label }} – Location Activity{% endblock %}
+
+{% block extra_styles %}
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f3f6e7;
+}
+.back-link {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+.back-link:hover { color: #9ca3af; }
+
+.date-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+.date-nav a, .date-nav button {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #9ca3af;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.date-nav a:hover { background: #1f2937; color: #f3f6e7; text-decoration: none; }
+.date-nav input[type="date"] {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #f3f6e7;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.stat-card {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+.stat-card .num { font-size: 2rem; font-weight: 700; color: #6687fc; line-height: 1; }
+.stat-card .label { font-size: 0.75rem; color: #9ca3af; margin-top: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.section { margin-bottom: 2.5rem; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 0.5rem;
+}
+.section-header h2 { margin: 0; font-size: 1rem; font-weight: 600; color: #e5e7eb; }
+.badge { background: #1f2937; color: #9ca3af; border-radius: 9999px; padding: 0.1rem 0.55rem; font-size: 0.75rem; font-weight: 600; }
+.badge.highlight { background: #1e3a5f; color: #6687fc; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th { text-align: left; color: #6b7280; font-weight: 600; padding: 0.4rem 0.6rem; border-bottom: 1px solid #1f2937; white-space: nowrap; }
+td { padding: 0.35rem 0.6rem; border-bottom: 1px solid #111827; color: #d1d5db; vertical-align: top; }
+tr:hover td { background: #0f172a; }
+.mono { font-family: monospace; font-size: 0.78rem; }
+.ts { color: #6b7280; white-space: nowrap; }
+.pill { display: inline-block; padding: 0.1rem 0.45rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+.pill-green  { background: #052e16; color: #4ade80; }
+.pill-red    { background: #450a0a; color: #f87171; }
+.pill-yellow { background: #422006; color: #fbbf24; }
+.empty-note { color: #4b5563; font-size: 0.85rem; padding: 0.5rem 0; }
+.overflow-x { overflow-x: auto; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+
+/* History chart */
+.history-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 80px;
+  margin-bottom: 0.75rem;
+}
+.history-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+  cursor: default;
+  position: relative;
+}
+.history-bar-wrap:hover .history-tooltip {
+  display: block;
+}
+.history-bar {
+  width: 100%;
+  background: #6687fc;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+  transition: background 0.1s;
+}
+.history-bar-wrap.selected .history-bar { background: #0ea5e9; }
+.history-bar-wrap:hover .history-bar { background: #93c5fd; }
+.history-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: #4b5563;
+  margin-top: 0.25rem;
+}
+.history-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.35rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  color: #f3f6e7;
+  z-index: 10;
+  pointer-events: none;
+}
+.days-nav {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.days-nav a {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #9ca3af;
+  padding: 0.25rem 0.6rem;
+  border-radius: 0.35rem;
+  font-size: 0.8rem;
+  text-decoration: none;
+}
+.days-nav a.active { background: #1e3a5f; color: #6687fc; border-color: #1e3a5f; }
+.days-nav a:hover { background: #1f2937; color: #f3f6e7; text-decoration: none; }
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div>
+    <a class="back-link" href="{% url 'stats:daily_activity' %}?date={{ selected_date|date:'Y-m-d' }}">← Daily Activity</a>
+    <h1>{{ location_label }}</h1>
+  </div>
+  <form class="date-nav" method="get" action="">
+    {% if city %}<input type="hidden" name="city" value="{{ city }}">{% endif %}
+    {% if country_code %}<input type="hidden" name="country_code" value="{{ country_code }}">{% endif %}
+    {% if country %}<input type="hidden" name="country" value="{{ country }}">{% endif %}
+    <input type="hidden" name="days" value="{{ history_days }}">
+    <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&days={{ history_days }}&date={{ prev_date|date:'Y-m-d' }}">&#8592;</a>
+    <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" onchange="this.form.submit()">
+    {% if not is_today %}
+    <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&days={{ history_days }}&date={{ next_date|date:'Y-m-d' }}">&#8594;</a>
+    {% endif %}
+    <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&days={{ history_days }}">Today</a>
+  </form>
+</div>
+
+<!-- Summary cards -->
+<div class="summary-grid">
+  <div class="stat-card">
+    <div class="num">{{ day_views|length }}</div>
+    <div class="label">Views today</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ auth_day_views|length }}</div>
+    <div class="label">Real sessions</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ matching_ip_count }}</div>
+    <div class="label">Known IPs</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ top_urls|length }}</div>
+    <div class="label">Unique URLs</div>
+  </div>
+</div>
+
+<!-- History chart -->
+<div class="section">
+  <div class="section-header">
+    <h2>View History</h2>
+  </div>
+  <div class="days-nav">
+    <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&date={{ selected_date|date:'Y-m-d' }}&days=14"
+       class="{% if history_days == 14 %}active{% endif %}">14 days</a>
+    <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&date={{ selected_date|date:'Y-m-d' }}&days=30"
+       class="{% if history_days == 30 %}active{% endif %}">30 days</a>
+    <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&date={{ selected_date|date:'Y-m-d' }}&days=90"
+       class="{% if history_days == 90 %}active{% endif %}">90 days</a>
+  </div>
+  <div class="history-chart">
+    {% for row in history %}
+    <div class="history-bar-wrap {% if row.day == selected_date %}selected{% endif %}">
+      <div class="history-tooltip">
+        {{ row.day|date:"M j" }}<br>
+        {{ row.count }} views · {{ row.unique_ips }} IPs<br>
+        {{ row.auth_count }} real sessions
+      </div>
+      <div class="history-bar"
+           style="height:{% widthratio row.count history_max 100 %}%;">
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="history-axis">
+    <span>{{ history.0.day|date:"M j" }}</span>
+    <span>{{ selected_date|date:"M j" }}</span>
+  </div>
+
+  <!-- History table -->
+  <div class="overflow-x" style="max-height:240px;overflow-y:auto;margin-top:1rem;">
+  <table>
+    <thead><tr><th>Date</th><th>Views</th><th>Real Sessions</th><th>Unique IPs</th><th></th></tr></thead>
+    <tbody>
+      {% for row in history reversed %}
+      {% if row.count > 0 %}
+      <tr>
+        <td>
+          <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&days={{ history_days }}&date={{ row.day|date:'Y-m-d' }}">
+            {{ row.day|date:"N j, Y" }}
+          </a>
+          {% if row.day == selected_date %}<span class="badge highlight" style="margin-left:0.4rem;">selected</span>{% endif %}
+        </td>
+        <td><span class="badge highlight">{{ row.count }}</span></td>
+        <td>
+          {% if row.auth_count %}
+            <span class="badge" style="background:#052e16;color:#4ade80;">{{ row.auth_count }}</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ row.unique_ips }}</td>
+        <td>
+          <div style="background:#1f2937;border-radius:3px;height:6px;overflow:hidden;width:120px;">
+            <div style="background:#6687fc;height:100%;width:{% widthratio row.count history_max 100 %}%;"></div>
+          </div>
+        </td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<!-- Day detail -->
+<div class="two-col">
+  <div class="section">
+    <div class="section-header">
+      <h2>Top URLs — {{ selected_date|date:"N j" }}</h2>
+      <span class="badge {% if top_urls %}highlight{% endif %}">{{ top_urls|length }}</span>
+    </div>
+    {% if top_urls %}
+    <table>
+      <thead><tr><th>#</th><th>URL</th><th>Views</th></tr></thead>
+      <tbody>
+        {% for row in top_urls %}
+        <tr>
+          <td class="ts">{{ forloop.counter }}</td>
+          <td class="mono" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ row.url }}">{{ row.url }}</td>
+          <td><span class="badge highlight">{{ row.count }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty-note">No views on this date.</p>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <h2>Recent Views — {{ selected_date|date:"N j" }}</h2>
+      <span class="badge {% if day_views %}highlight{% endif %}">{{ day_views|length }}</span>
+    </div>
+    {% if day_views %}
+    <div class="overflow-x" style="max-height:340px;overflow-y:auto;">
+    <table>
+      <thead>
+        <tr><th>Time</th><th>User</th><th>URL</th><th>Code</th><th>ms</th></tr>
+      </thead>
+      <tbody>
+        {% for v in day_views %}
+        <tr>
+          <td class="ts">{{ v.time|time:"H:i:s" }}</td>
+          <td>{{ v.user__username|default:"—" }}</td>
+          <td class="mono" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ v.url }}">{{ v.url }}</td>
+          <td>
+            {% if v.response_code >= 400 %}<span class="pill pill-red">{{ v.response_code }}</span>
+            {% elif v.response_code >= 300 %}<span class="pill pill-yellow">{{ v.response_code }}</span>
+            {% else %}<span class="pill pill-green">{{ v.response_code }}</span>{% endif %}
+          </td>
+          <td class="ts">{{ v.response_time_s|floatformat:3 }}s</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-note">No views on this date.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

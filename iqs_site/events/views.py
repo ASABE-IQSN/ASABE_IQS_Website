@@ -771,6 +771,7 @@ def maneuverability_run_detail(request, run_id: int):
 
     return render(request, "events/maneuverability_run_detail.html", context)
 
+@log_view
 @login_required
 def pull_export(request):
     if request.method == "POST":
@@ -1014,6 +1015,7 @@ def tractor_detail(request, tractor_id):
     }
     return render(request, "events/tractor_detail.html", context)
 
+@log_view
 def durability_event_results(request, event_id: int):
     event = get_object_or_404(Event, event_id=event_id)
 
@@ -1120,6 +1122,7 @@ def _upsert_teaminfo(team, info_type, value: str, user=None):
         new_value=value or None,
     )
 
+@log_view
 @login_required
 def team_profile_edit(request, team_id: int):
     team = get_object_or_404(Team, team_id=team_id)
@@ -1180,6 +1183,7 @@ def _tractor_upsert(tractor, info_type, value: str, user=None):
         new_value=value or None,
     )
 
+@log_view
 @login_required
 def tractor_profile_edit(request, tractor_id: int):
     tractor = get_object_or_404(Tractor, tractor_id=tractor_id)
@@ -1403,6 +1407,7 @@ def upload_maneuverability_photo(request, run_id):
     )
 
 
+@log_view
 def all_photos(request):
     """
     Compile all photos from event teams, tractors, and performance events into a single gallery.
@@ -1484,6 +1489,7 @@ def _allowed_report(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_REPORT_EXTENSIONS
 
 
+@log_view
 @login_required
 def team_event_edit(request, event_id: int, team_id: int):
     event = get_object_or_404(Event, pk=event_id)
