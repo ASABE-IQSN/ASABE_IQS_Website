@@ -10,7 +10,8 @@ from pathlib import Path
 from urllib.parse import urlencode
 from .models import Event
 from django.conf import settings
-from .models import TeamClass, Team, Report, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, PullExportJob, PullExportJobItem, Tractor, TractorEvent, ScheduleItem, TractorMedia, EditLog
+from .models import TeamClass, Team, Report, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, PullExportJob, PullExportJobItem, Tractor, TractorEvent, TractorMedia, EditLog
+from schedule.models import ScheduleItem
 from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
 from functools import wraps

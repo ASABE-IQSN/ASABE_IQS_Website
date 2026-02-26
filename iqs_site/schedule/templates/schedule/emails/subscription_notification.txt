@@ -1,0 +1,16 @@
+Hi {{ user.first_name|default:user.username }},
+
+{% if created %}A new schedule item has been added{% else %}A schedule item has been updated{% endif %} for {{ item.team.team_name }}:
+
+  {{ item.name }}
+  Date/Time: {{ item.datetime|date:"l, F j, Y \a\t g:i A" }}
+  Type: {{ item.type.name }}
+{% if item.location %}  Location: {{ item.location.name }}{% if item.location.address %} – {{ item.location.address }}{% endif %}
+{% endif %}
+Event: {{ item.event.event_name }}
+
+You are receiving this email because you subscribed to schedule updates for {{ item.team.team_name }}.
+
+Manage your subscriptions at https://iqsconnect.org/schedule/subscriptions/
+
+– IQS Connect

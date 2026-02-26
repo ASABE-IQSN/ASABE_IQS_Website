@@ -13,8 +13,6 @@ from .models import (
     PullData,
     EventTeam,
     EventTeamPhoto,
-    ScheduleItem,
-    ScheduleItemType,
     TractorMedia,
     Report,
 )
@@ -72,20 +70,6 @@ class EventAdmin(admin.ModelAdmin):
         if obj:  # Editing an existing object
             return ("event_id",)
         return ()  # Creating a new object
-
-
-@admin.register(ScheduleItemType)
-class ScheduleItemTypeAdmin(admin.ModelAdmin):
-    list_display = ("schedule_item_type_id", "name")
-    search_fields = ("name",)
-
-
-@admin.register(ScheduleItem)
-class ScheduleItemAdmin(admin.ModelAdmin):
-    list_display = ("schedule_item_id", "name", "datetime", "type", "team", "event")
-    list_filter = ("event", "type", "datetime")
-    search_fields = ("name", "team__team_name", "team__team_number", "event__event_name")
-    date_hierarchy = "datetime"
 
 
 @admin.register(Hook)

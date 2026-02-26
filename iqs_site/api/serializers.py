@@ -2,12 +2,13 @@ from rest_framework import serializers
 from events.models import (
     Event, Team, TeamClass, Tractor, TractorEvent, Hook, Pull, PullData,
     PullMedia, PerformanceEventMedia, TractorMedia, EventTeam,
-    EventTeamPhoto, ScheduleItem, ScheduleItemType,
+    EventTeamPhoto,
     ScoreCategory, ScoreCategoryInstance, ScoreSubCategory,
     ScoreSubCategoryInstance, ScoreSubCategoryScore,
     DurabilityRun, DurabilityData, ManeuverabilityRun,
     TeamInfo, TractorInfo,
 )
+from schedule.models import ScheduleItem, ScheduleItemType
 from techin.models import (
     RuleCategory, RuleSubCategory, Rule, EventTractorRuleStatus,
 )

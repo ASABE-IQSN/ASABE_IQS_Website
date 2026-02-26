@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ team.team_name }} Schedule – {{ event.event_name }}{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}
+
+{% block extra_styles %}
+.page-header {
+  margin-bottom: 1.5rem;
+}
+.page-header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: #f3f6e7;
+}
+.page-header .subtitle {
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+/* team switcher */
+.team-switcher {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.team-btn {
+  padding: 0.35rem 0.85rem;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  background: #111827;
+  color: #9ca3af;
+  border: 1px solid #1f2937;
+  cursor: pointer;
+  text-decoration: none;
+}
+.team-btn.active {
+  background: #6687fc;
+  color: #fff;
+  border-color: #6687fc;
+}
+
+/* notification banner */
+.notif-banner {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 0.85rem 1.1rem;
+  margin-bottom: 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+.notif-banner .badge {
+  background: #6687fc;
+  color: #fff;
+  border-radius: 9999px;
+  padding: 0.15rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.notif-list {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.notif-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  color: #d1d5db;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #1f2937;
+}
+.notif-item:last-child { border-bottom: none; }
+.notif-read-btn {
+  font-size: 0.75rem;
+  color: #6687fc;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+/* map */
+#schedule-map {
+  width: 100%;
+  height: 340px;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #1f2937;
+}
+
+/* schedule table */
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.schedule-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  color: #9ca3af;
+  font-weight: 600;
+  border-bottom: 1px solid #1f2937;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.schedule-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid #111827;
+  color: #d1d5db;
+  vertical-align: top;
+}
+.schedule-table tr:hover td { background: #0d1220; }
+.schedule-table tr.subscribed td { border-left: 3px solid #6687fc; }
+
+.type-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #1f2937;
+  color: #9ca3af;
+}
+.location-pin { font-size: 0.8rem; color: #9ca3af; margin-top: 0.2rem; }
+
+.sub-link {
+  font-size: 0.8rem;
+  color: #6687fc;
+  text-decoration: none;
+}
+.sub-link:hover { text-decoration: underline; }
+{% endblock %}
+
+{% block content %}
+{% if no_team %}
+  <div class="page-header">
+    <h1>{{ event.event_name }} – Team Schedule</h1>
+  </div>
+  <p class="empty">You are not a member of any team. <a href="{% url 'user:account' %}">Join a team</a> to see your schedule.</p>
+{% else %}
+
+<div class="page-header">
+  <h1>{{ event.event_name }}</h1>
+  <div class="subtitle">Team schedule for <strong>{{ team.team_name }}</strong></div>
+</div>
+
+{% if teams|length > 1 %}
+<div class="team-switcher">
+  {% for t in teams %}
+    <a href="?team={{ t.pk }}"
+       class="team-btn {% if t.pk == team.pk %}active{% endif %}">
+      {{ t.team_name }}
+    </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if unread_count > 0 %}
+<div class="notif-banner" id="notif-banner">
+  <div>
+    <span class="badge">{{ unread_count }}</span>
+    unread schedule notification{{ unread_count|pluralize }}
+  </div>
+  <div style="display:flex;gap:0.75rem;align-items:center;">
+    <button class="notif-read-btn" onclick="toggleNotifs()">Show</button>
+    <button class="notif-read-btn" onclick="readAll()">Mark all read</button>
+  </div>
+</div>
+<div class="notif-list" id="notif-list" style="display:none; margin-bottom:1.25rem;">
+  {% for n in unread_notifications %}
+  <div class="notif-item" id="notif-{{ n.notification_id }}">
+    <span>{{ n.message }}</span>
+    <button class="notif-read-btn" onclick="markRead({{ n.notification_id }})">Dismiss</button>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div id="schedule-map"></div>
+
+{% if schedule_items %}
+<table class="schedule-table">
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Event</th>
+      <th>Type</th>
+      <th>Location</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in schedule_items %}
+    <tr class="{% if subscribed_all or item.type_id in subscribed_type_ids %}subscribed{% endif %}">
+      <td style="white-space:nowrap;">{{ item.datetime|date:"D M j" }}<br><strong>{{ item.datetime|time:"g:i A" }}</strong></td>
+      <td>{{ item.name }}</td>
+      <td><span class="type-badge">{{ item.type.name }}</span></td>
+      <td>
+        {% if item.location %}
+          <span>{{ item.location.name }}</span>
+        {% else %}
+          <span style="color:#6b7280;">TBD</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+  <p class="empty">No schedule items for {{ team.team_name }} at this event yet.</p>
+{% endif %}
+
+<div style="margin-top:1.5rem;font-size:0.85rem;color:#9ca3af;">
+  <a class="sub-link" href="{% url 'schedule:subscriptions' %}">Manage my schedule subscriptions →</a>
+</div>
+
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const LOCATIONS = {{ locations_json|safe }};
+const CSRF_TOKEN = "{{ csrf_token }}";
+
+// ── Map ───────────────────────────────────────────────────────────────────────
+const ICON_COLORS = {
+  pull_track:      "#ef4444",
+  durability:      "#f97316",
+  maneuverability: "#eab308",
+  registration:    "#22c55e",
+  camping:         "#3b82f6",
+  other:           "#8b5cf6",
+};
+
+function makeMarkerIcon(color) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+    popupAnchor: [0, -10],
+  });
+}
+
+const mapEl = document.getElementById("schedule-map");
+let map;
+
+if (LOCATIONS.length > 0) {
+  map = L.map("schedule-map");
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(map);
+
+  const bounds = [];
+  LOCATIONS.forEach(loc => {
+    const color = ICON_COLORS[loc.icon_category] || ICON_COLORS.other;
+    const marker = L.marker([loc.lat, loc.lng], { icon: makeMarkerIcon(color) }).addTo(map);
+    const desc = loc.description ? `<br><small style="color:#9ca3af;">${loc.description}</small>` : "";
+    marker.bindPopup(`<strong>${loc.name}</strong><br><em>${loc.icon_label}</em>${desc}`);
+    bounds.push([loc.lat, loc.lng]);
+  });
+  map.fitBounds(bounds, { padding: [40, 40] });
+} else {
+  mapEl.style.display = "none";
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+function toggleNotifs() {
+  const list = document.getElementById("notif-list");
+  list.style.display = list.style.display === "none" ? "flex" : "none";
+}
+
+function markRead(id) {
+  fetch(`{% url 'schedule:mark_read' notif_id=0 %}`.replace("/0/", `/${id}/`), {
+    method: "POST",
+    headers: { "X-CSRFToken": CSRF_TOKEN },
+  }).then(() => {
+    const el = document.getElementById(`notif-${id}`);
+    if (el) el.remove();
+  });
+}
+
+function readAll() {
+  fetch("{% url 'schedule:read_all' %}", {
+    method: "POST",
+    headers: { "X-CSRFToken": CSRF_TOKEN },
+  }).then(() => {
+    const banner = document.getElementById("notif-banner");
+    const list = document.getElementById("notif-list");
+    if (banner) banner.remove();
+    if (list) list.remove();
+  });
+}
+</script>
+{% endblock %}

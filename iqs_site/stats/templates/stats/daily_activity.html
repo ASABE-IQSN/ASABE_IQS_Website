@@ -242,6 +242,10 @@ tr:hover td {
     <div class="num">{{ admin_logs|length }}</div>
     <div class="label">Admin actions</div>
   </div>
+  <div class="stat-card" {% if server_errors %}style="border-color:#7f1d1d;"{% endif %}>
+    <div class="num" style="{% if server_errors %}color:#f87171;{% endif %}">{{ server_errors|length }}</div>
+    <div class="label">500 Errors</div>
+  </div>
 </div>
 
 <!-- New Accounts & Logins -->
@@ -488,6 +492,54 @@ tr:hover td {
     </div>
   </div>
 </div>
+
+<!-- 500 Errors -->
+{% if server_errors %}
+<div class="section">
+  <div class="section-header">
+    <h2>Server Errors (5xx)</h2>
+    <span class="badge" style="background:#450a0a;color:#f87171;">{{ server_errors|length }}</span>
+  </div>
+  <div class="two-col">
+    <div>
+      <div style="font-size:0.8rem;color:#6b7280;margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">By URL</div>
+      <table>
+        <thead><tr><th>URL</th><th>Code</th><th>Count</th></tr></thead>
+        <tbody>
+          {% for row in server_error_urls %}
+          <tr>
+            <td class="mono" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ row.url }}">{{ row.url }}</td>
+            <td><span class="pill pill-red">{{ row.response_code }}</span></td>
+            <td><span class="badge" style="background:#450a0a;color:#f87171;">{{ row.count }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div style="font-size:0.8rem;color:#6b7280;margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Recent (last 200)</div>
+      <div class="overflow-x" style="max-height:340px;overflow-y:auto;">
+      <table>
+        <thead>
+          <tr><th>Time</th><th>Code</th><th>URL</th><th>User</th><th>Location</th></tr>
+        </thead>
+        <tbody>
+          {% for v in server_errors %}
+          <tr>
+            <td class="ts"><time data-utc="{{ v.time|date:'c' }}">{{ v.time|time:"H:i:s" }}</time></td>
+            <td><span class="pill pill-red">{{ v.response_code }}</span></td>
+            <td class="mono" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ v.url }}">{{ v.url }}</td>
+            <td>{{ v.user__username|default:"—" }}</td>
+            <td style="color:#9ca3af;white-space:nowrap;font-size:0.78rem;">{{ v.location|default:"—" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Edit Logs -->
 <div class="section">

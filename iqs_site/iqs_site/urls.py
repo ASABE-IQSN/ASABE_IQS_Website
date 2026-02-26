@@ -48,6 +48,7 @@ urlpatterns = [
     path(root_prefix+"user/", include("users.urls",namespace="user")),
     path(root_prefix+"reports/",include("reports.urls",namespace="reports")),
     path("stats/", include("stats.urls", namespace="stats")),
+    path(root_prefix+"schedule/", include("schedule.urls", namespace="schedule")),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}),
 
 ]

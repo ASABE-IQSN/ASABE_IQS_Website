@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Schedule Subscriptions{% endblock %}
+
+{% block extra_styles %}
+.page-header {
+  margin-bottom: 1.5rem;
+}
+.page-header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: #f3f6e7;
+}
+.page-header .subtitle { color: #9ca3af; font-size: 0.9rem; }
+
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f3f6e7;
+  margin: 1.5rem 0 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #1f2937;
+}
+
+/* subscription grid */
+.sub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.sub-card {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.sub-card .card-title { font-weight: 600; color: #f3f6e7; font-size: 0.9rem; }
+.sub-card .card-type  { font-size: 0.8rem; color: #9ca3af; }
+.sub-card .card-actions { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
+
+.btn-sm {
+  padding: 0.3rem 0.7rem;
+  border-radius: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+}
+.btn-primary { background: #6687fc; color: #fff; }
+.btn-danger  { background: #dc2626; color: #fff; }
+.btn-ghost   { background: #1f2937; color: #9ca3af; }
+
+/* add subscription form */
+.add-form {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+  margin-bottom: 1rem;
+}
+.add-form label { font-size: 0.8rem; color: #9ca3af; display: block; margin-bottom: 0.25rem; }
+.add-form select, .add-form input {
+  background: #0d1220;
+  border: 1px solid #374151;
+  color: #f3f6e7;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.85rem;
+  min-width: 160px;
+}
+
+/* notification history */
+.notif-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.notif-table th {
+  text-align: left;
+  padding: 0.4rem 0.6rem;
+  color: #9ca3af;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #1f2937;
+}
+.notif-table td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid #111827;
+  color: #d1d5db;
+}
+.notif-table tr.unread td { color: #f3f6e7; font-weight: 500; }
+.read-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #6687fc;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Schedule Subscriptions</h1>
+  <div class="subtitle">Get notified when schedule items are added or updated for your teams.</div>
+</div>
+
+{% if not teams %}
+  <p class="empty">You are not a member of any team. <a href="{% url 'user:account' %}">Join a team</a> first.</p>
+{% else %}
+
+<div class="section-title">Add a Subscription</div>
+<form class="add-form" method="post">
+  {% csrf_token %}
+  <input type="hidden" name="action" value="subscribe">
+  <div>
+    <label for="team_id">Team</label>
+    <select name="team_id" id="team_id" required>
+      {% for t in teams %}
+        <option value="{{ t.pk }}">{{ t.team_name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="type_id">Event type (leave blank for all)</label>
+    <select name="type_id" id="type_id">
+      <option value="">All types</option>
+      {% for tp in item_types %}
+        <option value="{{ tp.pk }}">{{ tp.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button type="submit" class="btn-sm btn-primary">Subscribe</button>
+</form>
+
+<div class="section-title">My Subscriptions</div>
+{% if existing_subs %}
+  <div class="sub-grid">
+    {% for sub in existing_subs %}
+    <div class="sub-card">
+      <div class="card-title">{{ sub.team.team_name }}</div>
+      <div class="card-type">
+        {% if sub.schedule_item_type %}
+          {{ sub.schedule_item_type.name }}
+        {% else %}
+          All event types
+        {% endif %}
+      </div>
+      <div class="card-actions">
+        <form method="post" style="margin:0;">
+          {% csrf_token %}
+          <input type="hidden" name="action" value="unsubscribe">
+          <input type="hidden" name="team_id" value="{{ sub.team.pk }}">
+          {% if sub.schedule_item_type %}
+            <input type="hidden" name="type_id" value="{{ sub.schedule_item_type.pk }}">
+          {% endif %}
+          <button type="submit" class="btn-sm btn-danger">Unsubscribe</button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <p class="empty">No subscriptions yet.</p>
+{% endif %}
+
+{% endif %}
+
+{% if recent_notifications %}
+<div class="section-title">Recent Notifications</div>
+<table class="notif-table">
+  <thead>
+    <tr>
+      <th>Message</th>
+      <th>When</th>
+      <th>Status</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for n in recent_notifications %}
+    <tr class="{% if not n.is_read %}unread{% endif %}">
+      <td>
+        {% if not n.is_read %}<span class="read-dot"></span>{% endif %}
+        {{ n.message }}
+      </td>
+      <td style="white-space:nowrap; color:#9ca3af;">{{ n.created_at|date:"M j, g:i A" }}</td>
+      <td>
+        {% if n.is_read %}
+          <span style="color:#6b7280; font-size:0.8rem;">Read</span>
+        {% else %}
+          <button class="btn-sm btn-ghost" onclick="markRead({{ n.notification_id }}, this)">Dismiss</button>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const CSRF = "{{ csrf_token }}";
+function markRead(id, btn) {
+  fetch(`{% url 'schedule:mark_read' notif_id=0 %}`.replace("/0/", `/${id}/`), {
+    method: "POST",
+    headers: { "X-CSRFToken": CSRF },
+  }).then(r => r.json()).then(() => {
+    const row = btn.closest("tr");
+    row.classList.remove("unread");
+    btn.replaceWith(document.createTextNode("Read"));
+  });
+}
+</script>
+{% endblock %}

@@ -12,11 +12,12 @@ from rest_framework.views import APIView
 
 from events.models import (
     Event, Team, TeamClass, Tractor, TractorEvent, Hook, Pull, PullData,
-    EventTeam, EventTeamPhoto, ScheduleItem, TractorMedia, TractorInfo,
+    EventTeam, EventTeamPhoto, TractorMedia, TractorInfo,
     DurabilityRun, DurabilityData, ManeuverabilityRun,
     PerformanceEventMedia, TeamInfo,
     ScoreCategoryInstance, ScoreSubCategoryInstance, ScoreSubCategoryScore,
 )
+from schedule.models import ScheduleItem
 from techin.models import (
     RuleCategory, RuleSubCategory, Rule, EventTractorRuleStatus,
 )

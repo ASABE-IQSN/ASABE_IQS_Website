@@ -16,6 +16,7 @@ from django.db.models.functions import TruncDate
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
+from iqs_site.utilities import log_view
 
 from events.models import EditLog, EventTeamPhoto, PerformanceEventMedia, TractorMedia
 from stats.models import IPGeoCache
@@ -274,7 +275,7 @@ def daily_activity(request):
 
     # --- Enrollment requests reviewed today ---
     reviewed_requests = list(
-        TeamEnrollmentRequest.objects.filter(reviewed_at__date=selected_date)
+        TeamEnrollmentRequest.objects.filter(reviewed_at__gte=day_start, reviewed_at__lt=day_end)
         .select_related("user", "team", "reviewed_by")
         .order_by("-reviewed_at")
         .values(
@@ -286,7 +287,7 @@ def daily_activity(request):
 
     # --- Media uploads ---
     tractor_media = list(
-        TractorMedia.objects.filter(created_at__date=selected_date)
+        TractorMedia.objects.filter(created_at__gte=day_start, created_at__lt=day_end)
         .select_related("uploaded_by", "tractor")
         .order_by("-created_at")
         .values(
@@ -296,14 +297,14 @@ def daily_activity(request):
     )
 
     event_team_photos = list(
-        EventTeamPhoto.objects.filter(created_at__date=selected_date)
+        EventTeamPhoto.objects.filter(created_at__gte=day_start, created_at__lt=day_end)
         .order_by("-created_at")
         .values("event_team_photo_id", "created_at", "photo_path", "caption", "approved",
                 "submitted_from_ip")
     )
 
     perf_media = list(
-        PerformanceEventMedia.objects.filter(created_at__date=selected_date)
+        PerformanceEventMedia.objects.filter(created_at__gte=day_start, created_at__lt=day_end)
         .select_related("uploaded_by")
         .order_by("-created_at")
         .values(
@@ -314,7 +315,7 @@ def daily_activity(request):
 
     # --- Django admin log entries ---
     admin_logs = list(
-        LogEntry.objects.filter(action_time__date=selected_date)
+        LogEntry.objects.filter(action_time__gte=day_start, action_time__lt=day_end)
         .select_related("user", "content_type")
         .order_by("-action_time")
         .values(
@@ -322,6 +323,34 @@ def daily_activity(request):
             "user__username", "content_type__app_label", "content_type__model",
         )[:100]
     )
+
+    # --- 500 errors ---
+    server_errors = list(
+        page_views.filter(response_code__gte=500)
+        .select_related("user")
+        .order_by("-time")
+        .values("time", "url", "ip", "response_code", "response_time_s", "user__username")[:200]
+    )
+    server_error_urls = list(
+        page_views.filter(response_code__gte=500)
+        .values("url", "response_code")
+        .annotate(count=Count("view_id"))
+        .order_by("-count")[:20]
+    )
+    for v in server_errors:
+        geo = geo_map.get(v["ip"], {})
+        if geo.get("is_private"):
+            v["location"] = "Private"
+        elif geo.get("city"):
+            parts = [geo["city"]]
+            if geo.get("region"):
+                parts.append(geo["region"])
+            parts.append(geo.get("country_code", ""))
+            v["location"] = ", ".join(p for p in parts if p)
+        elif geo.get("country"):
+            v["location"] = geo["country"]
+        else:
+            v["location"] = ""
 
     return render(request, "stats/daily_activity.html", {
         "selected_date": selected_date,
@@ -345,6 +374,8 @@ def daily_activity(request):
         "event_team_photos": event_team_photos,
         "perf_media": perf_media,
         "admin_logs": admin_logs,
+        "server_errors": server_errors,
+        "server_error_urls": server_error_urls,
     })
 
 
@@ -367,7 +398,9 @@ def location_drill(request):
 
     prev_date = selected_date - timedelta(days=1)
     next_date = selected_date + timedelta(days=1)
-    is_today = selected_date == timezone.localdate()
+    tz_offset = _get_tz_offset(request)
+    day_start, day_end = _get_day_bounds(selected_date, tz_offset)
+    is_today = selected_date == (timezone.now() - timedelta(minutes=tz_offset)).date()
 
     # Resolve matching IPs from cache
     if city and country_code:
@@ -387,14 +420,14 @@ def location_drill(request):
 
     # --- Day view ---
     day_views = list(
-        base_qs.filter(time__date=selected_date)
+        base_qs.filter(time__gte=day_start, time__lt=day_end)
         .select_related("user")
         .order_by("-time")
         .values("time", "url", "ip", "response_code", "response_time_s", "user__username")
     )
 
     top_urls = list(
-        base_qs.filter(time__date=selected_date)
+        base_qs.filter(time__gte=day_start, time__lt=day_end)
         .values("url")
         .annotate(count=Count("view_id"))
         .order_by("-count")[:20]
@@ -404,7 +437,7 @@ def location_drill(request):
     auth_qs = base_qs.filter(url="/user/auth-status/")
 
     auth_day_views = list(
-        auth_qs.filter(time__date=selected_date)
+        auth_qs.filter(time__gte=day_start, time__lt=day_end)
         .select_related("user")
         .order_by("-time")
         .values("time", "ip", "response_code", "response_time_s", "user__username")

@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Schedule – {{ event.event_name }}{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+{% endblock %}
+
+{% block extra_styles %}
+.page-header {
+  margin-bottom: 1.5rem;
+}
+.page-header h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: #f3f6e7;
+}
+.page-header .subtitle { color: #9ca3af; font-size: 0.9rem; }
+
+#schedule-map {
+  width: 100%;
+  height: 340px;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem;
+  border: 1px solid #1f2937;
+}
+
+.filter-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+.filter-row label { font-size: 0.85rem; color: #9ca3af; }
+.filter-row select {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #f3f6e7;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.85rem;
+}
+
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.schedule-table th {
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  color: #9ca3af;
+  font-weight: 600;
+  border-bottom: 1px solid #1f2937;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.schedule-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid #111827;
+  color: #d1d5db;
+  vertical-align: top;
+}
+.schedule-table tr:hover td { background: #0d1220; }
+.type-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #1f2937;
+  color: #9ca3af;
+}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ event.event_name }} – Full Schedule</h1>
+  <div class="subtitle">All teams • {{ schedule_items|length }} item{{ schedule_items|length|pluralize }}</div>
+</div>
+
+<div id="schedule-map"></div>
+
+<div class="filter-row">
+  <label for="type-filter">Filter by type:</label>
+  <select id="type-filter" onchange="filterTable()">
+    <option value="">All types</option>
+  </select>
+  <label for="team-filter" style="margin-left:0.75rem;">Team:</label>
+  <select id="team-filter" onchange="filterTable()">
+    <option value="">All teams</option>
+  </select>
+</div>
+
+{% if schedule_items %}
+<table class="schedule-table" id="schedule-table">
+  <thead>
+    <tr>
+      <th>Time</th>
+      <th>Event</th>
+      <th>Team</th>
+      <th>Type</th>
+      <th>Location</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for item in schedule_items %}
+    <tr data-type="{{ item.type.name }}" data-team="{{ item.team.team_name }}">
+      <td style="white-space:nowrap;">{{ item.datetime|date:"D M j" }}<br><strong>{{ item.datetime|time:"g:i A" }}</strong></td>
+      <td>{{ item.name }}</td>
+      <td><a href="{% url 'events:team_detail' item.team.pk %}" style="color:#6687fc;">{{ item.team.team_name }}</a></td>
+      <td><span class="type-badge">{{ item.type.name }}</span></td>
+      <td>
+        {% if item.location %}{{ item.location.name }}{% else %}<span style="color:#6b7280;">TBD</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+  <p class="empty">No schedule items published for this event yet.</p>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const LOCATIONS = {{ locations_json|safe }};
+
+// ── Map ───────────────────────────────────────────────────────────────────────
+const ICON_COLORS = {
+  pull_track:      "#ef4444",
+  durability:      "#f97316",
+  maneuverability: "#eab308",
+  registration:    "#22c55e",
+  camping:         "#3b82f6",
+  other:           "#8b5cf6",
+};
+
+function makeMarkerIcon(color) {
+  return L.divIcon({
+    className: "",
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+    popupAnchor: [0, -10],
+  });
+}
+
+const mapEl = document.getElementById("schedule-map");
+
+if (LOCATIONS.length > 0) {
+  const map = L.map("schedule-map");
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a>',
+    maxZoom: 19,
+  }).addTo(map);
+
+  const bounds = [];
+  LOCATIONS.forEach(loc => {
+    const color = ICON_COLORS[loc.icon_category] || ICON_COLORS.other;
+    const marker = L.marker([loc.lat, loc.lng], { icon: makeMarkerIcon(color) }).addTo(map);
+    const desc = loc.description ? `<br><small style="color:#9ca3af;">${loc.description}</small>` : "";
+    marker.bindPopup(`<strong>${loc.name}</strong><br><em>${loc.icon_label}</em>${desc}`);
+    bounds.push([loc.lat, loc.lng]);
+  });
+  map.fitBounds(bounds, { padding: [40, 40] });
+} else {
+  mapEl.style.display = "none";
+}
+
+// ── Filter dropdowns ──────────────────────────────────────────────────────────
+const rows = Array.from(document.querySelectorAll("#schedule-table tbody tr"));
+
+const types = [...new Set(rows.map(r => r.dataset.type))].sort();
+const teams = [...new Set(rows.map(r => r.dataset.team))].sort();
+
+const typeSelect = document.getElementById("type-filter");
+const teamSelect = document.getElementById("team-filter");
+
+types.forEach(t => {
+  const opt = document.createElement("option");
+  opt.value = t; opt.textContent = t;
+  typeSelect.appendChild(opt);
+});
+teams.forEach(t => {
+  const opt = document.createElement("option");
+  opt.value = t; opt.textContent = t;
+  teamSelect.appendChild(opt);
+});
+
+function filterTable() {
+  const typeVal = typeSelect.value;
+  const teamVal = teamSelect.value;
+  rows.forEach(row => {
+    const matchType = !typeVal || row.dataset.type === typeVal;
+    const matchTeam = !teamVal || row.dataset.team === teamVal;
+    row.style.display = matchType && matchTeam ? "" : "none";
+  });
+}
+</script>
+{% endblock %}
