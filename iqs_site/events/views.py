@@ -298,6 +298,14 @@ def team_detail_page(request, team_id):
             labels.append(et.event.event_name)
             scores.append(et.total_score)
     
+    from awards.models import Award as TeamAward
+    team_awards = (
+        TeamAward.objects
+        .select_related('award_type', 'event_team__event')
+        .filter(event_team__team=team)
+        .order_by('-event_team__event__event_datetime', 'display_order')
+    )
+
     context = {
         "team": team,
         "event_teams": event_teams,
@@ -314,7 +322,8 @@ def team_detail_page(request, team_id):
         "bio":bio,
         "youtube":youtube,
         "website":website,
-        "nickname":nickname
+        "nickname":nickname,
+        "team_awards": team_awards,
     }
 
     return render(request, "events/team_detail.html", context)
@@ -411,6 +420,16 @@ def team_event_detail(request, event_id, team_id):
         if not hero_photo:
             hero_photo = event_photos[0] if event_photos else None
 
+    from awards.models import Award as TeamAward
+    event_awards = []
+    if event_team:
+        event_awards = list(
+            TeamAward.objects
+            .select_related('award_type')
+            .filter(event_team=event_team)
+            .order_by('display_order')
+        )
+
     context = {
         "team": team,
         "event": event,
@@ -429,6 +448,7 @@ def team_event_detail(request, event_id, team_id):
         "schedule_items":schedule_items,
         "reports":reports,
         "can_edit": request.user.is_authenticated and can_edit_team(request.user, team),
+        "event_awards": event_awards,
     }
     return render(request, "events/team_event_detail.html", context)
 

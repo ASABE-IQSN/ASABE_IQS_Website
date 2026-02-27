@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ award_type.name }} History – IQS Connect{% endblock %}
+{% block meta_description %}History of the {{ award_type.name }} award at ASABE IQS competitions.{% endblock %}
+
+{% block extra_styles %}
+.page-header {
+  margin-bottom: 1.5rem;
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+.page-header-text h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: #f3f6e7;
+}
+.page-header-text .subtitle {
+  color: #9ca3af;
+  font-size: 0.9rem;
+  max-width: 560px;
+  line-height: 1.5;
+}
+.header-trophy {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  border-radius: 0.75rem;
+  flex-shrink: 0;
+}
+.header-trophy-placeholder {
+  width: 90px;
+  height: 90px;
+  border-radius: 0.75rem;
+  background: #1f2937;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  flex-shrink: 0;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+}
+.history-table th {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  border-bottom: 1px solid #1f2937;
+}
+.history-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #111827;
+  vertical-align: middle;
+}
+.history-table tbody tr:hover {
+  background: #0d1626;
+}
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumbs">
+  <a href="{% url 'awards:award_history' %}">Awards</a>
+  <span>›</span>
+  <span>{{ award_type.short_name }}</span>
+</div>
+
+<div class="page-header">
+  {% if award_type.image_url %}
+    <img class="header-trophy" src="{{ award_type.image_url }}" alt="{{ award_type.name }}">
+  {% else %}
+    <div class="header-trophy-placeholder">🏆</div>
+  {% endif %}
+  <div class="page-header-text">
+    <h1>{{ award_type.name }}</h1>
+    {% if award_type.description %}
+      <p class="subtitle">{{ award_type.description }}</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if awards %}
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th>Year</th>
+        <th>Event</th>
+        <th>Team</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for award in awards %}
+        <tr>
+          <td>
+            {% if award.event_team.event.event_datetime %}
+              {{ award.event_team.event.event_datetime|date:"Y" }}
+            {% else %}
+              —
+            {% endif %}
+          </td>
+          <td>
+            <a href="{% url 'awards:awards_by_event' award.event_team.event_id %}">
+              {{ award.event_team.event.event_name }}
+            </a>
+          </td>
+          <td>
+            <a href="{% url 'events:team_event_detail' award.event_team.event_id award.event_team.team_id %}">
+              {{ award.event_team.team.team_name }}
+            </a>
+          </td>
+          <td style="color: #9ca3af; font-style: italic;">{{ award.notes|default:"" }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p class="empty">No awards have been given for this category yet.</p>
+{% endif %}
+{% endblock %}

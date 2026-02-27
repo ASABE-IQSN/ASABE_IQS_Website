@@ -104,6 +104,7 @@ INSTALLED_APPS = [
     "reports",
     "schedule",
     "django_celery_beat",
+    "awards",
 ]
 
 MIDDLEWARE = [

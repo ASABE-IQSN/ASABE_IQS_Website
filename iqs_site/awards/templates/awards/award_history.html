@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Awards History – IQS Connect{% endblock %}
+{% block meta_description %}Complete history of awards given at ASABE IQS competition events.{% endblock %}
+
+{% block extra_styles %}
+.page-header {
+  margin-bottom: 1.5rem;
+}
+.page-header h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin: 0 0 0.25rem;
+  color: #f3f6e7;
+}
+.page-header .subtitle {
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+.event-block {
+  margin-bottom: 2.5rem;
+}
+.event-block-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 0.5rem;
+}
+.event-block-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: #f3f6e7;
+}
+.event-block-header .event-date {
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+.event-block-header .event-link {
+  margin-left: auto;
+  font-size: 0.8rem;
+  color: #6687fc;
+}
+
+.award-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.award-card {
+  background: #0b1120;
+  border: 1px solid #1f2937;
+  border-radius: 0.9rem;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 160px;
+  gap: 0.5rem;
+}
+.award-card img {
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+.award-card .award-placeholder {
+  width: 90px;
+  height: 90px;
+  border-radius: 0.5rem;
+  background: #1f2937;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+}
+.award-card .award-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #f3f6e7;
+  line-height: 1.3;
+}
+.award-card .award-team {
+  font-size: 0.8rem;
+  color: #6687fc;
+}
+.award-card .award-notes {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumbs">
+  <a href="{% url 'events:event_list' %}">Events</a>
+  <span>›</span>
+  <span>Awards History</span>
+</div>
+
+<div class="page-header">
+  <h1>Awards History</h1>
+  <p class="subtitle">All awards given across IQS competition events.</p>
+</div>
+
+{% if events_with_awards %}
+  {% for event, awards in events_with_awards %}
+    <div class="event-block">
+      <div class="event-block-header">
+        <h2>{{ event.event_name }}</h2>
+        {% if event.event_datetime %}
+          <span class="event-date">{{ event.event_datetime|date:"F Y" }}</span>
+        {% endif %}
+        <a class="event-link" href="{% url 'awards:awards_by_event' event.event_id %}">View event awards →</a>
+      </div>
+      <div class="award-grid">
+        {% for award in awards %}
+          <div class="award-card">
+            {% if award.award_type.image_url %}
+              <img src="{{ award.award_type.image_url }}" alt="{{ award.award_type.name }}">
+            {% else %}
+              <div class="award-placeholder">🏆</div>
+            {% endif %}
+            <a class="award-name" href="{% url 'awards:award_type_history' award.award_type.award_type_id %}">
+              {{ award.award_type.short_name }}
+            </a>
+            <a class="award-team" href="{% url 'events:team_event_detail' event.event_id award.event_team.team_id %}">
+              {{ award.event_team.team.team_name }}
+            </a>
+            {% if award.notes %}
+              <span class="award-notes">{{ award.notes }}</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+{% else %}
+  <p class="empty">No awards have been recorded yet.</p>
+{% endif %}
+{% endblock %}

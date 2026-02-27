@@ -167,11 +167,18 @@
         <strong>{{ event_hooks|length }}</strong>
       </div>
     </div>
-    {% if event.techin_released %}
-    <a href="{% url 'tech_in:overview' event_id=event.event_id %}">
-                          Tech In Progress
-                        </a>
-    {% endif %}
+    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem;">
+      {% if event.techin_released %}
+      <a href="{% url 'tech_in:overview' event_id=event.event_id %}"
+         style="padding: 0.35rem 0.85rem; border-radius: 999px; border: 1px solid #1f2937; background: #111827; color: #f3f6e7; font-size: 0.85rem; text-decoration: none;">
+        Tech In Progress
+      </a>
+      {% endif %}
+      <a href="{% url 'awards:awards_by_event' event.event_id %}"
+         style="padding: 0.35rem 0.85rem; border-radius: 999px; border: 1px solid #1f2937; background: #111827; color: #f3f6e7; font-size: 0.85rem; text-decoration: none;">
+        Awards
+      </a>
+    </div>
   </section>
 
   <!-- Rankings by class -->
