@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Manage Awards – IQS Connect{% endblock %}
+
+{% block extra_styles %}
+.page-header { margin-bottom: 1.5rem; }
+.page-header h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.25rem; }
+.page-header .subtitle { color: #9ca3af; font-size: 0.9rem; }
+
+.event-list { list-style: none; padding: 0; margin: 0; }
+.event-list li {
+  border-bottom: 1px solid #1f2937;
+  padding: 0.75rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.event-list li:last-child { border-bottom: none; }
+.event-list .event-name { font-weight: 500; color: #f3f6e7; }
+.event-list .event-date { font-size: 0.85rem; color: #9ca3af; }
+.btn {
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  border: 1px solid #1f2937;
+  background: #111827;
+  color: #f3f6e7;
+  font-size: 0.85rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.btn:hover { background: #1f2937; text-decoration: none; }
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumbs">
+  <a href="{% url 'awards:award_history' %}">Awards</a>
+  <span>›</span>
+  <span>Manage</span>
+</div>
+
+<div class="page-header">
+  <h1>Manage Awards</h1>
+  <p class="subtitle">Select an event to assign or update its awards.</p>
+</div>
+
+<div class="card" style="padding: 0.5rem 1.25rem;">
+  {% if events %}
+    <ul class="event-list">
+      {% for event in events %}
+        <li>
+          <div>
+            <div class="event-name">{{ event.event_name }}</div>
+            {% if event.event_datetime %}
+              <div class="event-date">{{ event.event_datetime|date:"F Y" }}</div>
+            {% endif %}
+          </div>
+          <a class="btn" href="{% url 'awards:manage_event_awards' event.event_id %}">Manage Awards</a>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="empty">No events found.</p>
+  {% endif %}
+</div>
+{% endblock %}

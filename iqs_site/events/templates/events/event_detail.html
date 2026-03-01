@@ -178,6 +178,12 @@
          style="padding: 0.35rem 0.85rem; border-radius: 999px; border: 1px solid #1f2937; background: #111827; color: #f3f6e7; font-size: 0.85rem; text-decoration: none;">
         Awards
       </a>
+      {% if user.is_staff %}
+      <a href="{% url 'awards:manage_event_awards' event.event_id %}"
+         style="padding: 0.35rem 0.85rem; border-radius: 999px; border: 1px solid #6687fc; background: #111827; color: #6687fc; font-size: 0.85rem; text-decoration: none;">
+        Manage Awards
+      </a>
+      {% endif %}
     </div>
   </section>
 

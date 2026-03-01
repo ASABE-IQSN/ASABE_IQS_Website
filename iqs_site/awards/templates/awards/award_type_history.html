@@ -65,6 +65,16 @@
 .history-table tbody tr:hover {
   background: #0d1626;
 }
+.placement-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+}
+.placement-1 { background: rgba(245,158,11,0.15); color: #f59e0b; }
+.placement-2 { background: rgba(156,163,175,0.15); color: #9ca3af; }
+.placement-3 { background: rgba(180,83,9,0.15); color: #b45309; }
 {% endblock %}
 
 {% block content %}
@@ -82,6 +92,9 @@
   {% endif %}
   <div class="page-header-text">
     <h1>{{ award_type.name }}</h1>
+    {% if award_type.team_class %}
+      <span style="font-size: 0.8rem; color: #6b7280; background: #1f2937; padding: 0.15rem 0.5rem; border-radius: 4px; display: inline-block; margin-bottom: 0.4rem;">{{ award_type.team_class.name }}</span>
+    {% endif %}
     {% if award_type.description %}
       <p class="subtitle">{{ award_type.description }}</p>
     {% endif %}
@@ -95,6 +108,7 @@
         <th>Year</th>
         <th>Event</th>
         <th>Team</th>
+        <th>Place</th>
         <th>Notes</th>
       </tr>
     </thead>
@@ -117,6 +131,13 @@
             <a href="{% url 'events:team_event_detail' award.event_team.event_id award.event_team.team_id %}">
               {{ award.event_team.team.team_name }}
             </a>
+          </td>
+          <td>
+            {% if award.placement %}
+              <span class="placement-badge placement-{{ award.placement }}">{{ award.get_placement_display }}</span>
+            {% else %}
+              <span style="color: #9ca3af;">—</span>
+            {% endif %}
           </td>
           <td style="color: #9ca3af; font-style: italic;">{{ award.notes|default:"" }}</td>
         </tr>

@@ -95,6 +95,16 @@
   color: #9ca3af;
   font-style: italic;
 }
+.placement-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  letter-spacing: 0.03em;
+}
+.placement-1 { background: rgba(245,158,11,0.15); color: #f59e0b; }
+.placement-2 { background: rgba(156,163,175,0.15); color: #9ca3af; }
+.placement-3 { background: rgba(180,83,9,0.15); color: #b45309; }
 {% endblock %}
 
 {% block content %}
@@ -122,14 +132,20 @@
       <div class="award-grid">
         {% for award in awards %}
           <div class="award-card">
-            {% if award.award_type.image_url %}
-              <img src="{{ award.award_type.image_url }}" alt="{{ award.award_type.name }}">
+            {% if award.team_photo_path %}
+              <img src="/media/{{ award.team_photo_path }}" alt="{{ award.event_team.team.team_name }}" style="object-fit: cover;">
             {% else %}
               <div class="award-placeholder">🏆</div>
             {% endif %}
             <a class="award-name" href="{% url 'awards:award_type_history' award.award_type.award_type_id %}">
               {{ award.award_type.short_name }}
             </a>
+            {% if award.award_type.team_class %}
+              <span style="font-size: 0.7rem; color: #6b7280; background: #1f2937; padding: 0.1rem 0.4rem; border-radius: 4px;">{{ award.award_type.team_class.name }}</span>
+            {% endif %}
+            {% if award.placement %}
+              <span class="placement-badge placement-{{ award.placement }}">{{ award.get_placement_display }}</span>
+            {% endif %}
             <a class="award-team" href="{% url 'events:team_event_detail' event.event_id award.event_team.team_id %}">
               {{ award.event_team.team.team_name }}
             </a>

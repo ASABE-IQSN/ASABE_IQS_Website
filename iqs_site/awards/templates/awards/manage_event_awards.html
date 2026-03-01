@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Manage Awards – {{ event.event_name }} – IQS Connect{% endblock %}
+
+{% block extra_styles %}
+.page-header { margin-bottom: 1.5rem; }
+.page-header h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.25rem; }
+.page-header .subtitle { color: #9ca3af; font-size: 0.9rem; max-width: 600px; line-height: 1.5; }
+
+.class-section { margin-bottom: 2rem; }
+.class-section-header {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9ca3af;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.award-block {
+  background: #0b1120;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+.award-block-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+.award-block-header img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.award-block-header .trophy-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  background: #1f2937;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+.award-block-header .award-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: #f3f6e7;
+}
+.award-block-header .award-category {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  margin-top: 0.1rem;
+}
+
+/* Placement rows */
+.placement-rows { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 0.75rem; }
+.placement-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.placement-select {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #f3f6e7;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  padding-right: 1.75rem;
+  cursor: pointer;
+  min-width: 130px;
+  flex-shrink: 0;
+}
+.placement-select:focus { outline: none; border-color: #6687fc; }
+
+.team-select {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #f3f6e7;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.85rem;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.55rem center;
+  padding-right: 1.75rem;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+.team-select:focus { outline: none; border-color: #6687fc; }
+
+.btn-remove {
+  background: none;
+  border: 1px solid #374151;
+  color: #6b7280;
+  border-radius: 0.4rem;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-remove:hover { border-color: #ef4444; color: #ef4444; }
+
+.btn-add-row {
+  background: none;
+  border: 1px dashed #374151;
+  color: #6b7280;
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-add-row:hover { border-color: #6687fc; color: #6687fc; }
+
+.messages { margin-bottom: 1rem; }
+.message-error {
+  background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.3);
+  color: #f87171;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+}
+.message-success {
+  background: rgba(34,197,94,0.1);
+  border: 1px solid rgba(34,197,94,0.3);
+  color: #4ade80;
+  border-radius: 0.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+}
+
+.save-bar {
+  position: sticky;
+  bottom: 1rem;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+.btn-save {
+  background: #6687fc;
+  color: #020617;
+  font-weight: 700;
+  border: none;
+  border-radius: 999px;
+  padding: 0.6rem 1.75rem;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(102,135,252,0.3);
+}
+.btn-save:hover { background: #7c9aff; }
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumbs">
+  <a href="{% url 'awards:award_history' %}">Awards</a>
+  <span>›</span>
+  <a href="{% url 'awards:manage_event_list' %}">Manage</a>
+  <span>›</span>
+  <span>{{ event.event_name }}</span>
+</div>
+
+<div class="page-header">
+  <h1>{{ event.event_name }}</h1>
+  <p class="subtitle">
+    For each award, add placement rows and select a team. Use the same placement on two rows to record a tie.
+  </p>
+</div>
+
+{% if messages %}
+  <div class="messages">
+    {% for msg in messages %}
+      <div class="message-{% if msg.tags == 'error' %}error{% else %}success{% endif %}">{{ msg }}</div>
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if class_groups %}
+  <form method="post" id="awards-form">
+    {% csrf_token %}
+
+    {% for group in class_groups %}
+      <div class="class-section">
+        <div class="class-section-header">{{ group.label }}</div>
+
+        {% for row in group.award_rows %}
+          {% with at=row.award_type at_id=row.award_type.award_type_id %}
+          <div class="award-block">
+            <div class="award-block-header">
+              {% if row.award_type.image_url %}
+                <img src="{{ row.award_type.image_url }}" alt="{{ row.award_type.name }}">
+              {% else %}
+                <div class="trophy-placeholder">🏆</div>
+              {% endif %}
+              <div>
+                <div class="award-name">{{ row.award_type.name }}</div>
+                <div class="award-category">{{ row.award_type.get_category_display }}</div>
+              </div>
+            </div>
+
+            <!-- Rendered initial rows -->
+            <div class="placement-rows" id="rows-{{ at_id }}">
+              {% for ir in row.initial_rows %}
+                <div class="placement-row">
+                  <select name="p_{{ at_id }}_{{ forloop.counter0 }}" class="placement-select">
+                    {% for val, label in placement_choices %}
+                      <option value="{{ val }}" {% if val == ir.placement %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                  <select name="t_{{ at_id }}_{{ forloop.counter0 }}" class="team-select">
+                    <option value="">— Select team —</option>
+                    {% for et in row.team_options %}
+                      <option value="{{ et.event_team_id }}"
+                        {% if et.event_team_id == ir.event_team_id %}selected{% endif %}>
+                        {{ et.team.team_name }}{% if et.team.team_number %} (#{{ et.team.team_number }}){% endif %}
+                      </option>
+                    {% endfor %}
+                  </select>
+                  <button type="button" class="btn-remove" onclick="removeRow(this)" aria-label="Remove">×</button>
+                </div>
+              {% endfor %}
+            </div>
+
+            <input type="hidden" name="row_count_{{ at_id }}" id="count-{{ at_id }}" value="{{ row.initial_rows|length }}">
+
+            <!-- Hidden template for dynamically added rows -->
+            <template id="tmpl-{{ at_id }}">
+              <div class="placement-row">
+                <select data-fname="p_{{ at_id }}_IDX" class="placement-select">
+                  {% for val, label in placement_choices %}
+                    <option value="{{ val }}">{{ label }}</option>
+                  {% endfor %}
+                </select>
+                <select data-fname="t_{{ at_id }}_IDX" class="team-select">
+                  <option value="">— Select team —</option>
+                  {% for et in row.team_options %}
+                    <option value="{{ et.event_team_id }}">
+                      {{ et.team.team_name }}{% if et.team.team_number %} (#{{ et.team.team_number }}){% endif %}
+                    </option>
+                  {% endfor %}
+                </select>
+                <button type="button" class="btn-remove" onclick="removeRow(this)" aria-label="Remove">×</button>
+              </div>
+            </template>
+
+            <button type="button" class="btn-add-row" onclick="addRow({{ at_id }})">+ Add Placement</button>
+          </div>
+          {% endwith %}
+        {% endfor %}
+      </div>
+    {% endfor %}
+
+    <div class="save-bar">
+      <button type="submit" class="btn-save">Save Awards</button>
+    </div>
+  </form>
+{% else %}
+  <p class="empty">No award types have been configured yet. Add some in the <a href="{% url 'admin:awards_awardtype_changelist' %}">admin</a>.</p>
+{% endif %}
+
+<script>
+function addRow(atId) {
+  const container = document.getElementById('rows-' + atId);
+  const countInput = document.getElementById('count-' + atId);
+  const template = document.getElementById('tmpl-' + atId);
+  const idx = parseInt(countInput.value);
+
+  const clone = template.content.cloneNode(true);
+
+  // Replace IDX placeholder in data-fname, then set as actual name attribute
+  clone.querySelectorAll('[data-fname]').forEach(function(el) {
+    el.name = el.getAttribute('data-fname').replace('IDX', idx);
+    el.removeAttribute('data-fname');
+  });
+
+  // Auto-select next placement (current max + 1, capped at 5)
+  var existingSelects = container.querySelectorAll('.placement-select');
+  var maxPlacement = 0;
+  existingSelects.forEach(function(s) {
+    var val = parseInt(s.value);
+    if (!isNaN(val) && val > maxPlacement) maxPlacement = val;
+  });
+  var nextPlacement = Math.min(maxPlacement + 1, 5);
+  clone.querySelector('.placement-select').value = nextPlacement;
+
+  container.appendChild(clone);
+  countInput.value = idx + 1;
+}
+
+function removeRow(btn) {
+  btn.closest('.placement-row').remove();
+}
+</script>
+{% endblock %}

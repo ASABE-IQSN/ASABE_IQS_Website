@@ -5,11 +5,11 @@ from .models import AwardType, Award
 
 @admin.register(AwardType)
 class AwardTypeAdmin(admin.ModelAdmin):
-    list_display = ('award_type_id', 'name', 'short_name', 'category', 'display_order', 'image_preview')
+    list_display = ('award_type_id', 'name', 'short_name', 'category', 'team_class', 'display_order', 'image_preview')
     list_editable = ('display_order',)
-    list_filter = ('category',)
+    list_filter = ('category', 'team_class')
     readonly_fields = ('image_preview',)
-    fields = ('name', 'short_name', 'description', 'image', 'category', 'display_order', 'image_preview')
+    fields = ('name', 'short_name', 'description', 'image', 'category', 'team_class', 'display_order', 'image_preview')
 
     def image_preview(self, obj):
         url = obj.image_url
@@ -21,7 +21,7 @@ class AwardTypeAdmin(admin.ModelAdmin):
 
 @admin.register(Award)
 class AwardAdmin(admin.ModelAdmin):
-    list_display = ('award_id', 'award_type', 'get_event', 'get_team', 'notes', 'display_order')
+    list_display = ('award_id', 'award_type', 'get_event', 'get_team', 'placement', 'notes', 'display_order')
     list_filter = ('award_type__category', 'award_type', 'event_team__event')
     search_fields = ('event_team__team__team_name', 'award_type__name')
     raw_id_fields = ('event_team',)

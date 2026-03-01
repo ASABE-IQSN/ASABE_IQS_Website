@@ -1,7 +1,8 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
 from django.views.decorators.cache import cache_page
-from django.db.models import Prefetch
+from django.db.models import Prefetch, OuterRef, Subquery
+from django.db.models.functions import Coalesce
 from collections import OrderedDict
 from collections import defaultdict
 import json
@@ -299,10 +300,17 @@ def team_detail_page(request, team_id):
             scores.append(et.total_score)
     
     from awards.models import Award as TeamAward
+    _official_photo = EventTeamPhoto.objects.filter(
+        event_team=OuterRef('event_team'), official=True, approved=True
+    ).order_by('event_team_photo_id').values('photo_path')[:1]
+    _any_photo = EventTeamPhoto.objects.filter(
+        event_team=OuterRef('event_team'), approved=True
+    ).order_by('event_team_photo_id').values('photo_path')[:1]
     team_awards = (
         TeamAward.objects
-        .select_related('award_type', 'event_team__event')
+        .select_related('award_type__team_class', 'event_team__event')
         .filter(event_team__team=team)
+        .annotate(team_photo_path=Coalesce(Subquery(_official_photo), Subquery(_any_photo)))
         .order_by('-event_team__event__event_datetime', 'display_order')
     )
 
@@ -423,10 +431,17 @@ def team_event_detail(request, event_id, team_id):
     from awards.models import Award as TeamAward
     event_awards = []
     if event_team:
+        _official_photo = EventTeamPhoto.objects.filter(
+            event_team=OuterRef('event_team'), official=True, approved=True
+        ).order_by('event_team_photo_id').values('photo_path')[:1]
+        _any_photo = EventTeamPhoto.objects.filter(
+            event_team=OuterRef('event_team'), approved=True
+        ).order_by('event_team_photo_id').values('photo_path')[:1]
         event_awards = list(
             TeamAward.objects
-            .select_related('award_type')
+            .select_related('award_type__team_class')
             .filter(event_team=event_team)
+            .annotate(team_photo_path=Coalesce(Subquery(_official_photo), Subquery(_any_photo)))
             .order_by('display_order')
         )
 

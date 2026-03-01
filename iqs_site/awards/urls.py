@@ -7,4 +7,6 @@ urlpatterns = [
     path('', views.award_history, name='award_history'),
     path('event/<int:event_id>/', views.awards_by_event, name='awards_by_event'),
     path('type/<int:award_type_id>/', views.award_type_history, name='award_type_history'),
+    path('manage/', views.manage_event_list, name='manage_event_list'),
+    path('manage/event/<int:event_id>/', views.manage_event_awards, name='manage_event_awards'),
 ]
