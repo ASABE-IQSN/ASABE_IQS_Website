@@ -14,6 +14,36 @@
 ">
     <h1 style="margin-top: 0; margin-bottom: 1rem;">Login</h1>
 
+    {% if next %}
+    <div style="background: #1e293b; border-left: 4px solid #38bdf8; padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 0.25rem; font-size: 0.9rem; color: #bae6fd;">
+        {% if "/awards/manage/" in next %}
+            You need to log in to manage awards.
+        {% elif "upload-report" in next %}
+            You need to log in to upload your team report.
+        {% elif "upload-photo" in next %}
+            You need to log in to upload a photo.
+        {% elif "/team-event/" in next and "/edit/" in next %}
+            You need to log in to edit your team event information.
+        {% elif "/teams/" in next and "/edit/" in next %}
+            You need to log in to edit your team profile.
+        {% elif "/tractor/" in next and "/edit/" in next %}
+            You need to log in to edit your tractor profile.
+        {% elif "/pulls/export" in next %}
+            You need to log in to export pull results.
+        {% elif "/user/teams/" in next and "/members/" in next %}
+            You need to log in to manage your team members.
+        {% elif "/user/account" in next %}
+            You need to log in to view your account.
+        {% elif "/schedule/subscriptions/" in next %}
+            You need to log in to manage your notification subscriptions.
+        {% elif "/schedule/event/" in next %}
+            You need to log in to view your team's schedule.
+        {% else %}
+            You need to log in to access this page.
+        {% endif %}
+    </div>
+    {% endif %}
+
     {% if form.errors %}
         <p style="color: #f87171;">Your username or password was incorrect.</p>
     {% endif %}

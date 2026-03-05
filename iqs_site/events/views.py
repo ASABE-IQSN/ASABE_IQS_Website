@@ -188,7 +188,7 @@ def event_list(request):
 @cache_page(300)
 def team_list(request):
     # Prefetch teams per class, sorted by name
-    team_qs = Team.objects.order_by("team_name")
+    team_qs = Team.objects.order_by("team_number","team_name")
 
     team_classes = (
         TeamClass.objects
