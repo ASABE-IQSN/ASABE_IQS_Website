@@ -56,6 +56,7 @@
 
 {% block content %}
   <h1>My Account</h1>
+  <p style="color: #6b7280; margin-top: -0.5rem;">{{ user.username }}</p>
 
   {% if user.is_staff %}
     <div class="staff-card">
