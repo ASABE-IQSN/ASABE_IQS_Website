@@ -336,6 +336,10 @@ def team_detail_page(request, team_id):
 
     return render(request, "events/team_detail.html", context)
 
+def team_name_redirect(request, team_name):
+    team = get_object_or_404(Team, team_name__iexact=team_name)
+    return redirect("events:team_detail", team_id=team.team_id)
+
 @log_view
 @cache_page(300)
 def team_event_detail(request, event_id, team_id):

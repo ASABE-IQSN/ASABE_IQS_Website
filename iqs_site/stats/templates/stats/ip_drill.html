@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ location_label }} – Location Activity{% endblock %}
+{% block title %}{{ ip }} – IP Activity{% endblock %}
 
 {% block extra_styles %}
 .dashboard-header {
@@ -15,6 +15,7 @@
   font-size: 1.4rem;
   font-weight: 700;
   color: #f3f6e7;
+  font-family: monospace;
 }
 .back-link {
   font-size: 0.85rem;
@@ -48,6 +49,34 @@
   font-size: 0.85rem;
 }
 
+.geo-card {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+.geo-field label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.2rem;
+}
+.geo-field span {
+  font-size: 0.9rem;
+  color: #e5e7eb;
+}
+.geo-field span.mono {
+  font-family: monospace;
+  font-size: 0.82rem;
+}
+
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -63,6 +92,7 @@
 }
 .stat-card .num { font-size: 2rem; font-weight: 700; color: #6687fc; line-height: 1; }
 .stat-card .label { font-size: 0.75rem; color: #9ca3af; margin-top: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-card .sub { font-size: 0.72rem; color: #4b5563; margin-top: 0.2rem; font-family: monospace; }
 
 .section { margin-bottom: 2.5rem; }
 .section-header {
@@ -110,15 +140,12 @@ tr:hover td { background: #0f172a; }
   cursor: default;
   position: relative;
 }
-.history-bar-wrap:hover .history-tooltip {
-  display: block;
-}
+.history-bar-wrap:hover .history-tooltip { display: block; }
 .history-bar {
   width: 100%;
   background: #6687fc;
   border-radius: 2px 2px 0 0;
   min-height: 2px;
-  transition: background 0.1s;
 }
 .history-bar-wrap.selected .history-bar { background: #0ea5e9; }
 .history-bar-wrap:hover .history-bar { background: #93c5fd; }
@@ -187,40 +214,97 @@ tr:hover td { background: #0f172a; }
 <div class="dashboard-header">
   <div>
     <a class="back-link" href="{% url 'stats:daily_activity' %}?date={{ selected_date|date:'Y-m-d' }}">← Daily Activity</a>
-    <h1>{{ location_label }}</h1>
+    <h1>{{ ip }}</h1>
   </div>
   <form class="date-nav" method="get" action="">
-    {% if city %}<input type="hidden" name="city" value="{{ city }}">{% endif %}
-    {% if country_code %}<input type="hidden" name="country_code" value="{{ country_code }}">{% endif %}
-    {% if country %}<input type="hidden" name="country" value="{{ country }}">{% endif %}
+    <input type="hidden" name="ip" value="{{ ip }}">
     <input type="hidden" name="days" value="{{ history_days }}">
-    <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&days={{ history_days }}&date={{ prev_date|date:'Y-m-d' }}">&#8592;</a>
+    <a href="?ip={{ ip|urlencode }}&days={{ history_days }}&date={{ prev_date|date:'Y-m-d' }}">&#8592;</a>
     <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" onchange="this.form.submit()">
     {% if not is_today %}
-    <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&days={{ history_days }}&date={{ next_date|date:'Y-m-d' }}">&#8594;</a>
+    <a href="?ip={{ ip|urlencode }}&days={{ history_days }}&date={{ next_date|date:'Y-m-d' }}">&#8594;</a>
     {% endif %}
-    <a class="today-nav-link" href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&days={{ history_days }}">Today</a>
+    <a class="today-nav-link" href="?ip={{ ip|urlencode }}&days={{ history_days }}">Today</a>
   </form>
+</div>
+
+<!-- Geo Info -->
+<div class="geo-card">
+  {% if geo.is_private %}
+  <div class="geo-field">
+    <label>Type</label>
+    <span><span class="pill" style="background:#1f2937;color:#9ca3af;">Private / Internal</span></span>
+  </div>
+  {% else %}
+  <div class="geo-field">
+    <label>Country</label>
+    <span>{{ geo.country|default:"—" }}{% if geo.country_code %} <span style="color:#6b7280;">({{ geo.country_code }})</span>{% endif %}</span>
+  </div>
+  <div class="geo-field">
+    <label>Region</label>
+    <span>{{ geo.region|default:"—" }}</span>
+  </div>
+  <div class="geo-field">
+    <label>City</label>
+    <span>{{ geo.city|default:"—" }}</span>
+  </div>
+  <div class="geo-field">
+    <label>ISP</label>
+    <span>{{ geo.isp|default:"—" }}</span>
+  </div>
+  {% if geo_cache and geo_cache.lat and geo_cache.lon %}
+  <div class="geo-field">
+    <label>Coordinates</label>
+    <span class="mono">{{ geo_cache.lat|floatformat:4 }}, {{ geo_cache.lon|floatformat:4 }}</span>
+  </div>
+  {% endif %}
+  {% if geo_cache %}
+  <div class="geo-field">
+    <label>Cached at</label>
+    <span class="mono"><time data-utc="{{ geo_cache.cached_at|date:'c' }}">{{ geo_cache.cached_at|date:"Y-m-d H:i" }}</time></span>
+  </div>
+  {% endif %}
+  {% if not geo and not geo.country %}
+  <div class="geo-field">
+    <label>Geo Data</label>
+    <span style="color:#4b5563;">Not available</span>
+  </div>
+  {% endif %}
+  {% endif %}
 </div>
 
 <!-- Summary cards -->
 <div class="summary-grid">
   <div class="stat-card">
-    <div class="num">{{ day_views|length }}</div>
-    <div class="label">Views today</div>
+    <div class="num">{{ total_views }}</div>
+    <div class="label">Total Views</div>
   </div>
   <div class="stat-card">
-    <div class="num">{{ auth_day_views|length }}</div>
-    <div class="label">Real sessions</div>
-  </div>
-  <div class="stat-card" style="cursor:pointer;" onclick="window.location='{% url 'stats:ip_list' %}?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&date={{ selected_date|date:'Y-m-d' }}'">
-    <div class="num">{{ matching_ip_count }}</div>
-    <div class="label">Known IPs ↗</div>
+    <div class="num">{{ day_views|length }}</div>
+    <div class="label">Views Today</div>
   </div>
   <div class="stat-card">
     <div class="num">{{ top_urls|length }}</div>
     <div class="label">Unique URLs</div>
   </div>
+  {% if first_seen %}
+  <div class="stat-card">
+    <div class="num" style="font-size:1rem;padding-top:0.4rem;">
+      <time data-utc="{{ first_seen|date:'c' }}">{{ first_seen|date:"M j" }}</time>
+    </div>
+    <div class="label">First Seen</div>
+    <div class="sub"><time data-utc="{{ first_seen|date:'c' }}" data-fmt="date">{{ first_seen|date:"Y-m-d" }}</time></div>
+  </div>
+  {% endif %}
+  {% if last_seen %}
+  <div class="stat-card">
+    <div class="num" style="font-size:1rem;padding-top:0.4rem;">
+      <time data-utc="{{ last_seen|date:'c' }}">{{ last_seen|date:"M j" }}</time>
+    </div>
+    <div class="label">Last Seen</div>
+    <div class="sub"><time data-utc="{{ last_seen|date:'c' }}" data-fmt="date">{{ last_seen|date:"Y-m-d" }}</time></div>
+  </div>
+  {% endif %}
 </div>
 
 <!-- History chart -->
@@ -229,11 +313,11 @@ tr:hover td { background: #0f172a; }
     <h2>View History</h2>
   </div>
   <div class="days-nav">
-    <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&date={{ selected_date|date:'Y-m-d' }}&days=14"
+    <a href="?ip={{ ip|urlencode }}&date={{ selected_date|date:'Y-m-d' }}&days=14"
        class="{% if history_days == 14 %}active{% endif %}">14 days</a>
-    <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&date={{ selected_date|date:'Y-m-d' }}&days=30"
+    <a href="?ip={{ ip|urlencode }}&date={{ selected_date|date:'Y-m-d' }}&days=30"
        class="{% if history_days == 30 %}active{% endif %}">30 days</a>
-    <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&date={{ selected_date|date:'Y-m-d' }}&days=90"
+    <a href="?ip={{ ip|urlencode }}&date={{ selected_date|date:'Y-m-d' }}&days=90"
        class="{% if history_days == 90 %}active{% endif %}">90 days</a>
   </div>
   <div class="history-chart">
@@ -241,8 +325,7 @@ tr:hover td { background: #0f172a; }
     <div class="history-bar-wrap {% if row.day == selected_date %}selected{% endif %}">
       <div class="history-tooltip">
         {{ row.day|date:"M j" }}<br>
-        {{ row.count }} views · {{ row.unique_ips }} IPs<br>
-        {{ row.auth_count }} real sessions
+        {{ row.count }} views
       </div>
       <div class="history-bar"
            style="height:{% widthratio row.count history_max 100 %}%;">
@@ -255,27 +338,20 @@ tr:hover td { background: #0f172a; }
     <span>{{ selected_date|date:"M j" }}</span>
   </div>
 
-  <!-- History table -->
   <div class="overflow-x" style="max-height:240px;overflow-y:auto;margin-top:1rem;">
   <table>
-    <thead><tr><th>Date</th><th>Views</th><th>Real Sessions</th><th>Unique IPs</th><th></th></tr></thead>
+    <thead><tr><th>Date</th><th>Views</th><th></th></tr></thead>
     <tbody>
       {% for row in history reversed %}
       {% if row.count > 0 %}
       <tr>
         <td>
-          <a href="?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&days={{ history_days }}&date={{ row.day|date:'Y-m-d' }}">
+          <a href="?ip={{ ip|urlencode }}&days={{ history_days }}&date={{ row.day|date:'Y-m-d' }}">
             {{ row.day|date:"N j, Y" }}
           </a>
           {% if row.day == selected_date %}<span class="badge highlight" style="margin-left:0.4rem;">selected</span>{% endif %}
         </td>
         <td><span class="badge highlight">{{ row.count }}</span></td>
-        <td>
-          {% if row.auth_count %}
-            <span class="badge" style="background:#052e16;color:#4ade80;">{{ row.auth_count }}</span>
-          {% else %}—{% endif %}
-        </td>
-        <td>{{ row.unique_ips }}</td>
         <td>
           <div style="background:#1f2937;border-radius:3px;height:6px;overflow:hidden;width:120px;">
             <div style="background:#6687fc;height:100%;width:{% widthratio row.count history_max 100 %}%;"></div>
@@ -323,14 +399,13 @@ tr:hover td { background: #0f172a; }
     <div class="overflow-x" style="max-height:340px;overflow-y:auto;">
     <table>
       <thead>
-        <tr><th>Time</th><th>User</th><th>IP</th><th>URL</th><th>Code</th><th>ms</th></tr>
+        <tr><th>Time</th><th>User</th><th>URL</th><th>Code</th><th>ms</th></tr>
       </thead>
       <tbody>
         {% for v in day_views %}
         <tr>
           <td class="ts"><time data-utc="{{ v.time|date:'c' }}">{{ v.time|time:"H:i:s" }}</time></td>
           <td>{{ v.user__username|default:"—" }}</td>
-          <td class="mono" style="white-space:nowrap;"><a href="{% url 'stats:ip_drill' %}?ip={{ v.ip|urlencode }}&date={{ selected_date|date:'Y-m-d' }}" style="color:#9ca3af;">{{ v.ip }}</a></td>
           <td class="mono" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ v.url }}">{{ v.url }}</td>
           <td>
             {% if v.response_code >= 400 %}<span class="pill pill-red">{{ v.response_code }}</span>
@@ -351,14 +426,16 @@ tr:hover td { background: #0f172a; }
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-  // Convert UTC timestamps to browser local time
   document.querySelectorAll('time[data-utc]').forEach(function (el) {
     try {
       var d = new Date(el.dataset.utc);
-      el.textContent = d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false});
+      if (el.dataset.fmt === 'date') {
+        el.textContent = d.toLocaleDateString([], {year: 'numeric', month: 'short', day: 'numeric'});
+      } else {
+        el.textContent = d.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false});
+      }
     } catch (e) {}
   });
-  // Fix "Today" link to use browser's local date
   document.querySelectorAll('.today-nav-link').forEach(function (a) {
     var url = new URL(a.href, window.location.href);
     url.searchParams.set('date', window._localDate);

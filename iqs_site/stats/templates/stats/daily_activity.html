@@ -462,13 +462,14 @@ tr:hover td {
       <div class="overflow-x" style="max-height:340px;overflow-y:auto;">
       <table>
         <thead>
-          <tr><th>Time</th><th>User</th><th>URL</th><th>Location</th><th>Code</th><th>ms</th></tr>
+          <tr><th>Time</th><th>User</th><th>IP</th><th>URL</th><th>Location</th><th>Code</th><th>ms</th></tr>
         </thead>
         <tbody>
           {% for v in recent_views %}
           <tr>
             <td class="ts"><time data-utc="{{ v.time|date:'c' }}">{{ v.time|time:"H:i:s" }}</time></td>
             <td>{{ v.user__username|default:"—" }}</td>
+            <td class="mono" style="white-space:nowrap;"><a href="{% url 'stats:ip_drill' %}?ip={{ v.ip|urlencode }}&date={{ selected_date|date:'Y-m-d' }}" style="color:#9ca3af;">{{ v.ip }}</a></td>
             <td class="mono" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ v.url }}">{{ v.url }}</td>
             <td style="color:#9ca3af;white-space:nowrap;font-size:0.78rem;">{{ v.location|default:"—" }}</td>
             <td>
@@ -521,7 +522,7 @@ tr:hover td {
       <div class="overflow-x" style="max-height:340px;overflow-y:auto;">
       <table>
         <thead>
-          <tr><th>Time</th><th>Code</th><th>URL</th><th>User</th><th>Location</th></tr>
+          <tr><th>Time</th><th>Code</th><th>URL</th><th>User</th><th>IP</th><th>Location</th></tr>
         </thead>
         <tbody>
           {% for v in server_errors %}
@@ -530,6 +531,7 @@ tr:hover td {
             <td><span class="pill pill-red">{{ v.response_code }}</span></td>
             <td class="mono" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ v.url }}">{{ v.url }}</td>
             <td>{{ v.user__username|default:"—" }}</td>
+            <td class="mono" style="white-space:nowrap;"><a href="{% url 'stats:ip_drill' %}?ip={{ v.ip|urlencode }}&date={{ selected_date|date:'Y-m-d' }}" style="color:#9ca3af;">{{ v.ip }}</a></td>
             <td style="color:#9ca3af;white-space:nowrap;font-size:0.78rem;">{{ v.location|default:"—" }}</td>
           </tr>
           {% endfor %}

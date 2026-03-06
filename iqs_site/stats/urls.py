@@ -8,4 +8,6 @@ urlpatterns = [
     path("api/test-series/", views.test_series_api, name="test_series_api"),
     path("daily/", views.daily_activity, name="daily_activity"),
     path("location/", views.location_drill, name="location_drill"),
+    path("ip/", views.ip_drill, name="ip_drill"),
+    path("ips/", views.ip_list, name="ip_list"),
 ]

@@ -9,6 +9,7 @@ urlpatterns = [
     path("events/<int:event_id>/", views.event_detail, name="event_detail"),
     path("teams/", views.team_list, name="team_list"),
     path("teams/<int:team_id>/", views.team_detail_page, name="team_detail"),
+    path("teams/<str:team_name>/", views.team_name_redirect, name="team_name_redirect"),
     path("team-event/<int:event_id>/<int:team_id>/upload-photo/", views.upload_team_photo, name="upload_team_photo"),
     path("pulls/<int:pull_id>/", views.pull_detail, name="pull_detail"),  # stub for Charts/Data link
     path("pulls/export/", views.pull_export, name="pull_export"),

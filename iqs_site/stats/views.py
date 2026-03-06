@@ -11,7 +11,7 @@ from django.contrib.admin.models import LogEntry
 from django.contrib.auth.decorators import user_passes_test
 from iqs_site.utilities import log_view
 from django.contrib.auth.models import User
-from django.db.models import Count
+from django.db.models import Count, Max, Min
 from django.db.models.functions import TruncDate
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -493,6 +493,164 @@ def location_drill(request):
         "history": history,
         "history_max": history_max,
         "history_days": history_days,
+    })
+
+
+@log_view
+@user_passes_test(lambda u: u.is_staff)
+def ip_list(request):
+    city = request.GET.get("city", "").strip()
+    country_code = request.GET.get("country_code", "").strip()
+    country = request.GET.get("country", "").strip()
+
+    if not city and not country:
+        return redirect("stats:daily_activity")
+
+    date_str = request.GET.get("date")
+    tz_offset = _get_tz_offset(request)
+    try:
+        selected_date = date.fromisoformat(date_str) if date_str else timezone.localdate()
+    except ValueError:
+        selected_date = timezone.localdate()
+    day_start, day_end = _get_day_bounds(selected_date, tz_offset)
+
+    if city and country_code:
+        cache_qs = IPGeoCache.objects.filter(city=city, country_code=country_code)
+        region = cache_qs.values_list("region", flat=True).first() or ""
+        location_label = ", ".join(p for p in [city, region, country_code] if p)
+    else:
+        cache_qs = IPGeoCache.objects.filter(country=country)
+        region = ""
+        location_label = country
+
+    geo_entries = list(cache_qs.values("ip", "isp", "city", "region", "country", "country_code"))
+    matching_ips = [e["ip"] for e in geo_entries]
+
+    total_counts = dict(
+        PageView.objects.filter(ip__in=matching_ips)
+        .values("ip").annotate(n=Count("view_id")).values_list("ip", "n")
+    )
+    day_counts = dict(
+        PageView.objects.filter(ip__in=matching_ips, time__gte=day_start, time__lt=day_end)
+        .values("ip").annotate(n=Count("view_id")).values_list("ip", "n")
+    )
+    first_seen_map = dict(
+        PageView.objects.filter(ip__in=matching_ips)
+        .values("ip").annotate(t=Min("time")).values_list("ip", "t")
+    )
+    last_seen_map = dict(
+        PageView.objects.filter(ip__in=matching_ips)
+        .values("ip").annotate(t=Max("time")).values_list("ip", "t")
+    )
+
+    ip_rows = sorted(
+        [
+            {
+                "ip": e["ip"],
+                "isp": e["isp"],
+                "total_views": total_counts.get(e["ip"], 0),
+                "day_views": day_counts.get(e["ip"], 0),
+                "first_seen": first_seen_map.get(e["ip"]),
+                "last_seen": last_seen_map.get(e["ip"]),
+            }
+            for e in geo_entries
+        ],
+        key=lambda x: -x["total_views"],
+    )
+
+    return render(request, "stats/ip_list.html", {
+        "location_label": location_label,
+        "city": city,
+        "country_code": country_code,
+        "country": country,
+        "region": region,
+        "selected_date": selected_date,
+        "ip_rows": ip_rows,
+    })
+
+
+@log_view
+@user_passes_test(lambda u: u.is_staff)
+def ip_drill(request):
+    ip = request.GET.get("ip", "").strip()
+    if not ip:
+        return redirect("stats:daily_activity")
+
+    date_str = request.GET.get("date")
+    history_days = int(request.GET.get("days", 30))
+    try:
+        selected_date = date.fromisoformat(date_str) if date_str else timezone.localdate()
+    except ValueError:
+        selected_date = timezone.localdate()
+
+    prev_date = selected_date - timedelta(days=1)
+    next_date = selected_date + timedelta(days=1)
+    tz_offset = _get_tz_offset(request)
+    day_start, day_end = _get_day_bounds(selected_date, tz_offset)
+    is_today = selected_date == (timezone.now() - timedelta(minutes=tz_offset)).date()
+
+    # Resolve geo for this IP
+    geo_map = resolve_geo([ip])
+    geo = geo_map.get(ip, {})
+    try:
+        geo_cache = IPGeoCache.objects.get(ip=ip)
+    except IPGeoCache.DoesNotExist:
+        geo_cache = None
+
+    base_qs = PageView.objects.filter(ip=ip)
+
+    day_views = list(
+        base_qs.filter(time__gte=day_start, time__lt=day_end)
+        .select_related("user")
+        .order_by("-time")
+        .values("time", "url", "response_code", "response_time_s", "user__username")
+    )
+
+    top_urls = list(
+        base_qs.filter(time__gte=day_start, time__lt=day_end)
+        .values("url")
+        .annotate(count=Count("view_id"))
+        .order_by("-count")[:20]
+    )
+
+    history_start = selected_date - timedelta(days=history_days - 1)
+    raw_history = {
+        row["day"]: row["count"]
+        for row in base_qs.filter(
+            time__date__gte=history_start,
+            time__date__lte=selected_date,
+        )
+        .annotate(day=TruncDate("time"))
+        .values("day")
+        .annotate(count=Count("view_id"))
+    }
+    history = [
+        {"day": history_start + timedelta(days=i),
+         "count": raw_history.get(history_start + timedelta(days=i), 0)}
+        for i in range(history_days)
+    ]
+    history_max = max((r["count"] for r in history), default=1) or 1
+
+    total_views = base_qs.count()
+    first_seen = base_qs.order_by("time").values_list("time", flat=True).first()
+    last_seen = base_qs.order_by("-time").values_list("time", flat=True).first()
+
+    return render(request, "stats/ip_drill.html", {
+        "ip": ip,
+        "geo": geo,
+        "geo_cache": geo_cache,
+        "selected_date": selected_date,
+        "prev_date": prev_date,
+        "next_date": next_date,
+        "is_today": is_today,
+        "day_views": day_views,
+        "top_urls": top_urls,
+        "history": history,
+        "history_max": history_max,
+        "history_days": history_days,
+        "total_views": total_views,
+        "first_seen": first_seen,
+        "last_seen": last_seen,
     })
 
 

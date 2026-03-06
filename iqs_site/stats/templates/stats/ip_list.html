@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block title %}IPs — {{ location_label }}{% endblock %}
+
+{% block extra_styles %}
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f3f6e7;
+}
+.back-link { font-size: 0.85rem; color: #6b7280; }
+.back-link:hover { color: #9ca3af; }
+
+.section { margin-bottom: 2.5rem; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 0.5rem;
+}
+.section-header h2 { margin: 0; font-size: 1rem; font-weight: 600; color: #e5e7eb; }
+.badge { background: #1f2937; color: #9ca3af; border-radius: 9999px; padding: 0.1rem 0.55rem; font-size: 0.75rem; font-weight: 600; }
+.badge.highlight { background: #1e3a5f; color: #6687fc; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th { text-align: left; color: #6b7280; font-weight: 600; padding: 0.4rem 0.6rem; border-bottom: 1px solid #1f2937; white-space: nowrap; cursor: pointer; user-select: none; }
+th:hover { color: #9ca3af; }
+th.sorted-asc::after { content: " ▲"; font-size: 0.65rem; }
+th.sorted-desc::after { content: " ▼"; font-size: 0.65rem; }
+td { padding: 0.35rem 0.6rem; border-bottom: 1px solid #111827; color: #d1d5db; vertical-align: middle; }
+tr:hover td { background: #0f172a; }
+.mono { font-family: monospace; font-size: 0.78rem; }
+.ts { color: #6b7280; white-space: nowrap; font-size: 0.78rem; }
+.overflow-x { overflow-x: auto; }
+.empty-note { color: #4b5563; font-size: 0.85rem; padding: 0.5rem 0; }
+
+/* ISP grouping indicator */
+.isp-bar {
+  display: inline-block;
+  height: 6px;
+  border-radius: 3px;
+  background: #6687fc;
+  vertical-align: middle;
+  margin-left: 0.5rem;
+}
+.day-badge {
+  background: #1e3a5f;
+  color: #6687fc;
+  border-radius: 9999px;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+{% endblock %}
+
+{% block extra_head %}
+<script>
+(function () {
+  function localDateStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+  window._localDate = localDateStr();
+  document.cookie = 'tz_offset=' + new Date().getTimezoneOffset() + '; path=/; SameSite=Lax';
+  var p = new URLSearchParams(window.location.search);
+  if (!p.has('date')) {
+    p.set('date', window._localDate);
+    window.location.replace(window.location.pathname + '?' + p.toString());
+  }
+})();
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div>
+    <a class="back-link" href="{% url 'stats:location_drill' %}?{% if city %}city={{ city|urlencode }}&country_code={{ country_code|urlencode }}{% else %}country={{ country|urlencode }}{% endif %}&date={{ selected_date|date:'Y-m-d' }}">← {{ location_label }}</a>
+    <h1>IPs — {{ location_label }}</h1>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <h2>Known IP Addresses</h2>
+    <span class="badge {% if ip_rows %}highlight{% endif %}">{{ ip_rows|length }}</span>
+    <span style="font-size:0.75rem;color:#4b5563;margin-left:auto;">
+      sorted by total views · click IP to drill down · click headers to sort
+    </span>
+  </div>
+
+  {% if ip_rows %}
+  <div class="overflow-x">
+  <table id="ip-table">
+    <thead>
+      <tr>
+        <th data-col="ip">IP</th>
+        <th data-col="isp">ISP</th>
+        <th data-col="total" class="sorted-desc">Total Views</th>
+        <th data-col="day">Views {{ selected_date|date:"M j" }}</th>
+        <th data-col="first">First Seen</th>
+        <th data-col="last">Last Seen</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% with max_views=ip_rows.0.total_views %}
+      {% for row in ip_rows %}
+      <tr
+        data-ip="{{ row.ip }}"
+        data-isp="{{ row.isp }}"
+        data-total="{{ row.total_views }}"
+        data-day="{{ row.day_views }}"
+        data-first="{{ row.first_seen|date:'U'|default:'0' }}"
+        data-last="{{ row.last_seen|date:'U'|default:'0' }}"
+      >
+        <td class="mono">
+          <a href="{% url 'stats:ip_drill' %}?ip={{ row.ip|urlencode }}&date={{ selected_date|date:'Y-m-d' }}" style="color:#6687fc;">{{ row.ip }}</a>
+        </td>
+        <td style="color:#e5e7eb;">
+          {{ row.isp|default:"—" }}
+        </td>
+        <td>
+          <span class="badge highlight">{{ row.total_views }}</span>
+          {% if max_views %}
+          <span class="isp-bar" style="width:{% widthratio row.total_views max_views 80 %}px;"></span>
+          {% endif %}
+        </td>
+        <td>
+          {% if row.day_views %}
+            <span class="day-badge">{{ row.day_views }}</span>
+          {% else %}
+            <span style="color:#4b5563;">—</span>
+          {% endif %}
+        </td>
+        <td class="ts">
+          {% if row.first_seen %}
+            <time data-utc="{{ row.first_seen|date:'c' }}">{{ row.first_seen|date:"M j, Y" }}</time>
+          {% else %}—{% endif %}
+        </td>
+        <td class="ts">
+          {% if row.last_seen %}
+            <time data-utc="{{ row.last_seen|date:'c' }}">{{ row.last_seen|date:"M j, Y" }}</time>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+      {% endwith %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty-note">No IPs found for this location.</p>
+  {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  // Convert UTC timestamps to local dates
+  document.querySelectorAll('time[data-utc]').forEach(function (el) {
+    try {
+      var d = new Date(el.dataset.utc);
+      el.textContent = d.toLocaleDateString([], {year: 'numeric', month: 'short', day: 'numeric'});
+    } catch (e) {}
+  });
+
+  // Client-side sortable table
+  var table = document.getElementById('ip-table');
+  if (!table) return;
+  var tbody = table.querySelector('tbody');
+  var currentCol = 'total';
+  var currentDir = -1; // -1 = desc, 1 = asc
+
+  function getVal(row, col) {
+    if (col === 'ip') return row.dataset.ip || '';
+    if (col === 'isp') return (row.dataset.isp || '').toLowerCase();
+    if (col === 'total') return parseInt(row.dataset.total) || 0;
+    if (col === 'day') return parseInt(row.dataset.day) || 0;
+    if (col === 'first') return parseInt(row.dataset.first) || 0;
+    if (col === 'last') return parseInt(row.dataset.last) || 0;
+    return '';
+  }
+
+  function sortTable(col) {
+    if (col === currentCol) {
+      currentDir *= -1;
+    } else {
+      currentCol = col;
+      currentDir = (col === 'ip' || col === 'isp') ? 1 : -1;
+    }
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort(function (a, b) {
+      var va = getVal(a, col);
+      var vb = getVal(b, col);
+      if (va < vb) return -1 * currentDir;
+      if (va > vb) return 1 * currentDir;
+      return 0;
+    });
+    rows.forEach(function (r) { tbody.appendChild(r); });
+
+    table.querySelectorAll('th').forEach(function (th) {
+      th.classList.remove('sorted-asc', 'sorted-desc');
+      if (th.dataset.col === currentCol) {
+        th.classList.add(currentDir === 1 ? 'sorted-asc' : 'sorted-desc');
+      }
+    });
+  }
+
+  table.querySelectorAll('th[data-col]').forEach(function (th) {
+    th.addEventListener('click', function () { sortTable(th.dataset.col); });
+  });
+});
+</script>
+{% endblock %}
