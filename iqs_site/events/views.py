@@ -1,5 +1,6 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.cache import cache_page
 from django.db.models import Prefetch, OuterRef, Subquery
 from django.db.models.functions import Coalesce
@@ -337,7 +338,10 @@ def team_detail_page(request, team_id):
     return render(request, "events/team_detail.html", context)
 
 def team_name_redirect(request, team_name):
-    team = get_object_or_404(Team, team_name__iexact=team_name)
+    teams = Team.objects.all()
+    team = next((t for t in teams if slugify(t.team_name) == slugify(team_name)), None)
+    if team is None:
+        raise Http404
     return redirect("events:team_detail", team_id=team.team_id)
 
 @log_view
