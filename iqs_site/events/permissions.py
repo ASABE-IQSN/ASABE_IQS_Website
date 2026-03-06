@@ -9,7 +9,7 @@ def can_edit_team(user, team):
     if not user.is_authenticated:
         return False
     
-    if user.groups.filter(name="Admin").exists():
+    if user.groups.filter(name="Admin").exists() or user.has_perm("events.can_edit_any_team"):
         return True
 
     if user.profile.role==UserProfile.Role.ALUMNI and user.profile.team==team:
@@ -35,7 +35,7 @@ def can_edit_tractor(user, tractor) -> bool:
         return True
 
     # Your existing admin group pattern
-    if user.groups.filter(name="Admin").exists():
+    if user.groups.filter(name="Admin").exists() or user.has_perm("events.can_edit_any_team"):
         return True
 
     # If tractors should be editable by the owning/original team group:

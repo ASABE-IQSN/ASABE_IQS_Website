@@ -69,6 +69,9 @@ class Team(models.Model):
     class Meta:
         managed = False
         db_table = "teams"
+        permissions = [
+            ("can_edit_any_team", "Can edit any team"),
+        ]
 
     def __str__(self):
         return f"{self.team_name} ({self.team_number})"
