@@ -112,6 +112,7 @@
         {% for tractor in tractors %}
           <tr class="tractor-row"
               data-tractor-name="{{ tractor.tractor_name|default:'Unnamed Tractor'|lower }}"
+              data-tractor-nickname="{{ tractor.nickname_info|default:tractor.tractor_name|lower }}"
               {% if tractor.original_team %}
                 data-team-name="{{ tractor.original_team.team_name|lower }}"
               {% else %}
@@ -172,11 +173,13 @@
 
       rows.forEach(row => {
         const name = row.getAttribute('data-tractor-name') || '';
+        const nickname = row.getAttribute('data-tractor-nickname') || '';
         const team = row.getAttribute('data-team-name') || '';
 
         const match =
           !query ||
           name.includes(query) ||
+          nickname.includes(query) ||
           team.includes(query);
 
         row.style.display = match ? '' : 'none';
