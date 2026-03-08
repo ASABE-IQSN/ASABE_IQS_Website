@@ -726,7 +726,7 @@ def _build_announcer_team_payload(team, event, event_team, rank, tractor, photo_
                 "questions": questions,
             })
 
-        for r in Report.objects.filter(event_team=event_team, released=True):
+        for r in Report.objects.filter(event_team=event_team):
             reports_data.append({
                 "report_id": r.report_id,
                 "label": REPORT_TYPE_LABELS.get(r.report_type, f"Report {r.report_id}"),
