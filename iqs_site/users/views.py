@@ -1,4 +1,5 @@
-from events.models import Team
+from events.models import Team, EventTeam
+from compforms.models import EventForm, FormResponse
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404, render, redirect
@@ -94,12 +95,43 @@ def account(request):
         status='pending'
     ).select_related('team')
 
+    # Build list of open event forms relevant to the user's teams
+    open_event_forms = (
+        EventForm.objects.filter(
+            is_open=True,
+            event__event_teams__team__in=teams_member,
+        )
+        .select_related('form', 'event')
+        .distinct()
+    )
+
+    team_form_statuses = []
+    for event_form in open_event_forms:
+        for team in teams_member:
+            event_team = EventTeam.objects.filter(
+                event=event_form.event,
+                team=team,
+            ).first()
+            if event_team is None:
+                continue
+            response = FormResponse.objects.filter(
+                event_form=event_form,
+                event_team=event_team,
+            ).first()
+            team_form_statuses.append({
+                'event_form': event_form,
+                'team': team,
+                'submitted': response is not None,
+                'response_id': response.response_id if response else None,
+            })
+
     return render(request, "account.html", {
         "user": user,
         "teams_member": teams_member,
         "teams_admin": teams_admin,
         "available_teams": available_teams,
         "pending_requests": pending_requests,
+        "team_form_statuses": team_form_statuses,
         "active_page": "my account",
     })
 

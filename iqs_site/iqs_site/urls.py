@@ -50,6 +50,7 @@ urlpatterns = [
     path("stats/", include("stats.urls", namespace="stats")),
     path(root_prefix+"schedule/", include("schedule.urls", namespace="schedule")),
     path(root_prefix+"awards/", include("awards.urls", namespace="awards")),
+    path(root_prefix+"forms/", include("compforms.urls", namespace="compforms")),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}),
 
 ]

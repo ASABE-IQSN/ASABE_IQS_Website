@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event_form.form.name }} Responses – {{ event_form.event }} – IQS Connect{% endblock %}
+
+{% block extra_styles %}
+.page-header { margin-bottom: 1.5rem; }
+.page-header h1 { font-size: 1.4rem; font-weight: 700; margin: 0 0 0.25rem; }
+.page-header .subtitle { color: #9ca3af; font-size: 0.9rem; }
+
+.stats-bar {
+  background: #0b1120;
+  border: 1px solid #1f2937;
+  border-radius: 0.7rem;
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  color: #9ca3af;
+}
+.stats-bar strong { color: #e2e8f0; }
+
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+}
+
+table.response-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 800px;
+  font-size: 0.82rem;
+}
+
+table.response-table th,
+table.response-table td {
+  border: 1px solid #1f2937;
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  vertical-align: top;
+  max-width: 200px;
+}
+
+table.response-table th {
+  background: #0b1120;
+  color: #9ca3af;
+  font-weight: 600;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+table.response-table th:first-child,
+table.response-table td:first-child {
+  position: sticky;
+  left: 0;
+  background: #0b1120;
+  z-index: 2;
+  min-width: 160px;
+}
+
+table.response-table th:first-child { z-index: 3; }
+
+table.response-table tr:nth-child(even) td { background: #080e1a; }
+table.response-table tr:nth-child(even) td:first-child { background: #080e1a; }
+
+table.response-table td { color: #cbd5e1; }
+
+.empty-cell { color: #374151; font-style: italic; }
+
+.answer-cell {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  max-width: 200px;
+  word-break: break-word;
+}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ event_form.form.name }} — {{ event_form.event }}</h1>
+  <div class="subtitle">Response overview (staff view)</div>
+</div>
+
+<div class="stats-bar">
+  <strong>{{ submitted_count }}</strong> of <strong>{{ total_teams }}</strong> teams submitted
+  {% if not event_form.is_open %} &mdash; <span style="color:#fde68a;">Form is closed</span>{% endif %}
+</div>
+
+{% if response_matrix %}
+  <div class="table-wrap">
+    <table class="response-table">
+      <thead>
+        <tr>
+          <th>Team</th>
+          {% for q in questions %}
+            <th title="{{ q.question_text }}">Q{{ forloop.counter }}: {{ q.question_text|truncatechars:40 }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in response_matrix %}
+          <tr>
+            <td>
+              <strong>{{ row.team.team_name }}</strong><br>
+              <span style="color:#6b7280;font-size:0.78rem;">{{ row.team.team_number }}</span>
+            </td>
+            {% for answer in row.answers %}
+              <td>
+                {% if answer %}
+                  <div class="answer-cell" title="{{ answer }}">{{ answer|truncatechars:100 }}</div>
+                {% else %}
+                  <span class="empty-cell">&mdash;</span>
+                {% endif %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% else %}
+  <p style="color:#6b7280;">No responses submitted yet.</p>
+{% endif %}
+{% endblock %}

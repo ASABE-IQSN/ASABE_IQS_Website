@@ -119,6 +119,25 @@
     </ul>
   {% endif %}
 
+  <!-- SECTION: Forms to Fill Out -->
+  {% if team_form_statuses %}
+    <h2>Forms to Fill Out</h2>
+    <ul>
+      {% for item in team_form_statuses %}
+        <li>
+          {{ item.event_form.form.name }} &mdash; {{ item.event_form.event }}
+          for <strong>{{ item.team.team_name }}</strong>
+          &mdash;
+          {% if item.submitted %}
+            <a href="{% url 'compforms:submit_form' item.event_form.event_form_id item.team.team_id %}">Submitted ✓ (edit)</a>
+          {% else %}
+            <a href="{% url 'compforms:submit_form' item.event_form.event_form_id item.team.team_id %}">Fill Out &rarr;</a>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
   <!-- NEW SECTION: Request to Join a Team -->
   <h2>Request to Join a Team</h2>
   {% if available_teams %}

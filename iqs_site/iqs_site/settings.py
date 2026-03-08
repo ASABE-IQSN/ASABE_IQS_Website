@@ -105,6 +105,7 @@ INSTALLED_APPS = [
     "schedule",
     "django_celery_beat",
     "awards",
+    "compforms",
 ]
 
 MIDDLEWARE = [
@@ -135,7 +136,8 @@ CORS_ALLOWED_ORIGINS = env_list(
         "http://127.0.0.1:9000",
         "https://api.internationalquarterscale.com",
         "https://api.iqsconnect.org",
-        "https://iqsconnect.org"
+        "https://iqsconnect.org",
+        "http://localhost:8080"
         
     ],
 )
@@ -143,7 +145,8 @@ CORS_ALLOWED_ORIGINS = env_list(
 CSRF_TRUSTED_ORIGINS = [
     "https://testing.internationalquarterscale.com",
     "https://internationalquarterscale.com",
-    "https://iqsconnect.org"
+    "https://iqsconnect.org",
+    "http://localhost:8080"
     # add others if you post from them, e.g.
     # "https://internationalquarterscale.com",
 ]

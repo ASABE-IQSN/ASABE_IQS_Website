@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}{{ event_form.form.name }} – {{ event_form.event }} – IQS Connect{% endblock %}
+
+{% block extra_styles %}
+.breadcrumb {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-bottom: 1.25rem;
+}
+.breadcrumb a { color: #6687fc; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+.form-card {
+  background: #0b1120;
+  border: 1px solid #1f2937;
+  border-radius: 0.9rem;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.form-notice {
+  background: #0f2235;
+  border: 1px solid #1e4060;
+  border-radius: 0.6rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  color: #93c5fd;
+}
+
+.form-notice.error {
+  background: #1a0a0a;
+  border-color: #4b1515;
+  color: #fca5a5;
+}
+
+.form-notice.closed {
+  background: #1a1a0a;
+  border-color: #4b4515;
+  color: #fde68a;
+}
+
+.question-block { margin-bottom: 1.5rem; }
+
+.question-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 0.4rem;
+}
+
+.question-label .req { color: #f87171; margin-left: 0.2rem; }
+
+.question-input,
+.question-textarea {
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  color: #e2e8f0;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.question-input:focus,
+.question-textarea:focus { outline: none; border-color: #6687fc; }
+.question-textarea { resize: vertical; min-height: 80px; }
+
+.submit-btn {
+  background: #6687fc;
+  color: #020617;
+  border: none;
+  border-radius: 0.6rem;
+  padding: 0.65rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.submit-btn:hover { background: #7c9dfd; }
+
+.read-only-answer {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  color: #9ca3af;
+  min-height: 2.2rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{% url 'users:account' %}">My Account</a>
+  &rsaquo; {{ event_form.form.name }} ({{ event_form.event }})
+</div>
+
+<h1>{{ event_form.form.name }}</h1>
+<p style="color:#6b7280; margin-top:-0.5rem;">{{ event_form.event }} &mdash; {{ team.team_name }}</p>
+
+{% for message in messages %}
+  <div class="form-notice {% if 'error' in message.tags %}error{% endif %}">{{ message }}</div>
+{% endfor %}
+
+{% if not event_form.is_open %}
+  <div class="form-notice closed">This form is closed. Answers are read-only.</div>
+{% elif existing_response %}
+  <div class="form-notice">
+    Last saved: {{ existing_response.updated_at|date:"M d, Y g:i A" }}. You can update your answers and save again.
+  </div>
+{% endif %}
+
+<div class="form-card">
+  {% if event_form.is_open %}
+    <form method="post">
+      {% csrf_token %}
+      {% for fq, current_answer in question_rows %}
+        <div class="question-block">
+          <label class="question-label" for="q{{ fq.question.question_id }}">
+            {{ fq.order }}. {{ fq.question.question_text }}
+            {% if fq.required %}<span class="req">*</span>{% endif %}
+          </label>
+          {% if fq.question.question_type == 'SHORT_TEXT' %}
+            <input
+              type="text"
+              class="question-input"
+              id="q{{ fq.question.question_id }}"
+              name="question_{{ fq.question.question_id }}"
+              value="{{ current_answer }}"
+              {% if fq.required %}required{% endif %}
+            >
+          {% else %}
+            <textarea
+              class="question-textarea"
+              id="q{{ fq.question.question_id }}"
+              name="question_{{ fq.question.question_id }}"
+              rows="4"
+              {% if fq.required %}required{% endif %}
+            >{{ current_answer }}</textarea>
+          {% endif %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="submit-btn">Save Answers</button>
+    </form>
+  {% else %}
+    {% for fq, current_answer in question_rows %}
+      <div class="question-block">
+        <span class="question-label">{{ fq.order }}. {{ fq.question.question_text }}</span>
+        <div class="read-only-answer">
+          {% if current_answer %}{{ current_answer }}{% else %}<em style="color:#4b5563;">No answer provided</em>{% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}
