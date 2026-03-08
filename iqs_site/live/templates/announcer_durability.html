@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Announcer – Durability | IQS{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'live/css/announcer.css' %}">
+{% endblock %}
+
+{% block content %}
+<script>
+  window.IQS = { apiUrl: "{{ api_url }}" };
+</script>
+<script defer src="{% static 'live/js/announcer_durability.js' %}"></script>
+
+<div class="live-page">
+
+  <!-- Header -->
+  <div class="announcer-header">
+    <h1 data-field="team_name">Waiting for team&hellip;</h1>
+    <div class="header-meta">
+      <span class="muted">#<span data-field="team_number">&mdash;</span></span>
+      <span class="chip chip-class" data-field="team_class" style="display:none"></span>
+      <span class="chip" id="sseStatus">SSE</span>
+    </div>
+  </div>
+
+  <!-- Waiting placeholder -->
+  <div id="waitingMsg" class="panel">
+    <div class="waiting-overlay">
+      <span>&#9201;</span>
+      <span>Waiting for active run&hellip;</span>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div id="mainContent" style="display:none">
+    <div class="announcer-grid">
+
+      <!-- Left column -->
+      <div class="left-col">
+
+        <!-- Tractor photo -->
+        <div class="panel" style="padding:0;overflow:hidden">
+          <img id="tractorPhoto" class="tractor-photo" src="" alt="Tractor photo" style="display:none">
+          <div id="tractorPhotoPlaceholder" class="tractor-photo-placeholder">No photo available</div>
+        </div>
+
+        <!-- Identity -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">Team Identity</h2>
+          </div>
+          <div class="panel-body">
+            <div class="identity-grid">
+              <div class="identity-row">
+                <span class="k">Nickname</span>
+                <strong data-field="nickname">&mdash;</strong>
+              </div>
+              <div class="identity-row">
+                <span class="k">Tractor</span>
+                <strong data-field="tractor_name">&mdash;</strong>
+                <span class="muted" data-field="tractor_year"></span>
+              </div>
+              <div class="identity-row">
+                <span class="k">Number</span>
+                <span data-field="team_number_id">&mdash;</span>
+              </div>
+            </div>
+            <p class="bio-text" data-field="bio"></p>
+            <div class="social-links" id="socialLinks"></div>
+          </div>
+        </div>
+
+        <!-- Event standing -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">Event Standing</h2>
+          </div>
+          <div class="panel-body">
+            <div class="standing-grid">
+              <div class="standing-stat">
+                <div class="standing-value" data-field="rank">&mdash;</div>
+                <div class="standing-label">Rank</div>
+              </div>
+              <div class="standing-stat">
+                <div class="standing-value" data-field="total_score">&mdash;</div>
+                <div class="standing-label">Total Score</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /left-col -->
+
+      <!-- Right column -->
+      <div class="right-col">
+
+        <!-- Run info -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">Run Information</h2>
+          </div>
+          <div class="panel-body">
+            <div class="run-info-grid">
+              <div class="live-stat">
+                <span class="live-label">State</span>
+                <span class="live-value" data-field="run_state">&mdash;</span>
+              </div>
+              <div class="live-stat">
+                <span class="live-label">Total Laps</span>
+                <span class="live-value" data-field="total_laps">&mdash;</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Form responses -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">Form Responses</h2>
+          </div>
+          <div class="panel-body" id="formResponsesBody">
+            <div class="empty">No form responses submitted.</div>
+          </div>
+        </div>
+
+        <!-- Reports -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2 class="panel-title">Reports</h2>
+          </div>
+          <div class="panel-body" id="reportsBody">
+            <div class="empty">No reports uploaded.</div>
+          </div>
+        </div>
+
+      </div><!-- /right-col -->
+    </div><!-- /announcer-grid -->
+  </div><!-- /mainContent -->
+
+</div><!-- /live-page -->
+{% endblock %}

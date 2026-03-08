@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -690,3 +690,172 @@ def auth_register(request):
         {"detail": "Account created. Check your email to verify."},
         status=status.HTTP_201_CREATED,
     )
+
+
+# ── Announcer ─────────────────────────────────────────────────────────
+
+REPORT_TYPE_LABELS = {1: "Design Report", 2: "Cost Report", 3: "Design Log"}
+
+
+def _build_announcer_team_payload(team, event, event_team, rank, tractor, photo_url):
+    from compforms.models import FormResponse
+
+    team_infos = TeamInfo.objects.filter(team=team)
+    info_map = {ti.info_type: ti.info for ti in team_infos}
+
+    form_responses_data = []
+    reports_data = []
+
+    if event_team:
+        form_responses = (
+            FormResponse.objects
+            .filter(event_form__event=event, event_team=event_team)
+            .select_related("event_form__form")
+            .prefetch_related("answers__question", "event_form__form__form_questions__question")
+        )
+        for fr in form_responses:
+            questions = []
+            for fq in fr.event_form.form.form_questions.order_by("order"):
+                answer_obj = fr.answers.filter(question=fq.question).first()
+                questions.append({
+                    "question": fq.question.question_text,
+                    "answer": answer_obj.answer if answer_obj else "",
+                })
+            form_responses_data.append({
+                "form_name": fr.event_form.form.name,
+                "questions": questions,
+            })
+
+        for r in Report.objects.filter(event_team=event_team, released=True):
+            reports_data.append({
+                "report_id": r.report_id,
+                "label": REPORT_TYPE_LABELS.get(r.report_type, f"Report {r.report_id}"),
+                "url": f"/reports/{r.report_id}",
+            })
+
+    return {
+        "team": {
+            "team_id": team.team_id,
+            "team_name": team.team_name,
+            "team_number": team.team_number,
+            "team_abbreviation": team.team_abbreviation,
+            "team_class": team.team_class.name if team.team_class else None,
+            "info": {
+                "bio": info_map.get(TeamInfo.InfoTypes.BIO),
+                "instagram": info_map.get(TeamInfo.InfoTypes.INSTAGRAM),
+                "website": info_map.get(TeamInfo.InfoTypes.WEBSITE),
+                "nickname": info_map.get(TeamInfo.InfoTypes.NICKNAME),
+                "youtube": info_map.get(TeamInfo.InfoTypes.YOUTUBE),
+            },
+        },
+        "tractor": {
+            "tractor_id": tractor.tractor_id,
+            "tractor_name": tractor.tractor_name,
+            "year": tractor.year,
+            "photo_url": photo_url,
+        } if tractor else None,
+        "event_standing": {
+            "total_score": event_team.total_score if event_team else None,
+            "rank": rank,
+        },
+        "form_responses": form_responses_data,
+        "reports": reports_data,
+    }
+
+
+def _resolve_event_team(event, team):
+    """Return (event_team, rank) for the given team in the given event."""
+    ets = list(
+        EventTeam.objects.filter(event=event).order_by("-total_score").select_related("team")
+    )
+    event_team = next((et for et in ets if et.team_id == team.team_id), None)
+    rank = next((i + 1 for i, et in enumerate(ets) if et.team_id == team.team_id), None)
+    return event_team, rank
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def announcer_pull_data(request, pull_id):
+    pull = get_object_or_404(
+        Pull.objects.select_related("team__team_class", "event", "hook", "tractor__primary_photo"),
+        pk=pull_id,
+    )
+    team = pull.team
+    event = pull.event
+    event_team, rank = _resolve_event_team(event, team)
+
+    tractor_event = (
+        TractorEvent.objects
+        .filter(team=team, event=event)
+        .select_related("tractor__primary_photo")
+        .first()
+    )
+    tractor = tractor_event.tractor if tractor_event else pull.tractor
+    photo_url = tractor.primary_photo.link if (tractor and tractor.primary_photo) else None
+
+    all_event_pulls = (
+        Pull.objects.filter(event=event, team=team)
+        .select_related("hook")
+        .order_by("hook__hook_id")
+    )
+
+    payload = _build_announcer_team_payload(team, event, event_team, rank, tractor, photo_url)
+    payload["current_pull"] = {
+        "pull_id": pull.pull_id,
+        "hook_name": pull.hook.hook_name if pull.hook else None,
+        "final_distance": pull.final_distance,
+    }
+    payload["all_event_pulls"] = [
+        {
+            "pull_id": p.pull_id,
+            "hook_name": p.hook.hook_name if p.hook else None,
+            "final_distance": p.final_distance,
+        }
+        for p in all_event_pulls
+    ]
+    return Response(payload)
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def announcer_man_data(request, run_id):
+    run = get_object_or_404(
+        ManeuverabilityRun.objects.select_related("team__team_class", "event"),
+        pk=run_id,
+    )
+    team = run.team
+    event = run.event
+    event_team, rank = _resolve_event_team(event, team)
+
+    tractor_event = (
+        TractorEvent.objects
+        .filter(team=team, event=event)
+        .select_related("tractor__primary_photo")
+        .first()
+    )
+    tractor = tractor_event.tractor if tractor_event else None
+    photo_url = tractor.primary_photo.link if (tractor and tractor.primary_photo) else None
+
+    payload = _build_announcer_team_payload(team, event, event_team, rank, tractor, photo_url)
+    payload["run_state"] = run.state
+    return Response(payload)
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def announcer_dur_data(request, run_id):
+    run = get_object_or_404(
+        DurabilityRun.objects.select_related("team__team_class", "event", "tractor__primary_photo"),
+        pk=run_id,
+    )
+    team = run.team
+    event = run.event
+    event_team, rank = _resolve_event_team(event, team)
+
+    tractor = run.tractor
+    photo_url = tractor.primary_photo.link if (tractor and tractor.primary_photo) else None
+
+    payload = _build_announcer_team_payload(team, event, event_team, rank, tractor, photo_url)
+    payload["run_state"] = run.state
+    payload["total_laps"] = run.total_laps
+    return Response(payload)

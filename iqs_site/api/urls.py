@@ -48,4 +48,9 @@ urlpatterns = [
     # ── Tech Inspection ───────────────────────────────────────────
     path("events/<int:event_id>/techin/", views.techin_overview, name="techin_overview"),
     path("events/<int:event_id>/techin/<int:team_id>/", views.techin_team_detail, name="techin_team_detail"),
+
+    # ── Announcer ─────────────────────────────────────────────────
+    path("announcer/pull/<int:pull_id>/", views.announcer_pull_data, name="announcer_pull"),
+    path("announcer/maneuverability/<int:run_id>/", views.announcer_man_data, name="announcer_man"),
+    path("announcer/durability/<int:run_id>/", views.announcer_dur_data, name="announcer_dur"),
 ]
