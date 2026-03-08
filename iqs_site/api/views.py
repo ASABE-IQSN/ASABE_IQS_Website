@@ -15,7 +15,7 @@ from events.models import (
     EventTeam, EventTeamPhoto, TractorMedia, TractorInfo,
     DurabilityRun, DurabilityData, ManeuverabilityRun,
     PerformanceEventMedia, TeamInfo,
-    ScoreCategoryInstance, ScoreSubCategoryInstance, ScoreSubCategoryScore,
+    ScoreCategoryInstance, ScoreSubCategoryInstance, ScoreSubCategoryScore, Report
 )
 from schedule.models import ScheduleItem
 from techin.models import (
