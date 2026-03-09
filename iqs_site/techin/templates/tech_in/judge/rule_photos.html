@@ -19,7 +19,7 @@
   <div id="photo-grid" class="photo-grid">
     {% for photo in photos %}
       <div class="photo-item" id="photo-{{ photo.id }}">
-        <img src="/media/{{ photo.media }}" alt="Rule photo" loading="lazy">
+        <img src="/static/{{ photo.media }}" alt="Rule photo" loading="lazy">
         <button class="delete-btn" data-media-id="{{ photo.id }}" data-url="{% url 'tech_in:judge_delete_media' photo.id %}">
           ✕ Delete
         </button>
