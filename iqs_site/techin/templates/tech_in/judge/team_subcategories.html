@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Judge – {{ team.team_name }} – {{ category.rule_category_name }}{% endblock %}
+{% block content %}
+
+{% include "tech_in/partials/banner.html" %}
+
+<div class="judge-container">
+  <p><a href="{% url 'tech_in:judge_category_teams' event.event_id category.rule_category_id %}">← Back to team list</a></p>
+  <h1>{{ team.team_name }}</h1>
+  <p><strong>Event:</strong> {{ event.event_name }} &nbsp;|&nbsp; <strong>Category:</strong> {{ category.rule_category_name }}</p>
+
+  <div class="category-list">
+    {% for row in subcat_rows %}
+      <a class="category-card" href="{% url 'tech_in:judge_subcategory_rules' event.event_id category.rule_category_id team.pk row.subcategory.rule_subcategory_id %}">
+        <div>
+          <div class="cat-name">{{ row.subcategory.rule_subcategory_name }}</div>
+          <div class="sub-count">{{ row.completed }}/{{ row.total }} rules complete</div>
+        </div>
+        <div style="text-align:right;">
+          <span class="pct-badge" style="color: hsl({{ row.percent }},70%,55%);">{{ row.percent }}%</span>
+          <span class="arrow">→</span>
+        </div>
+      </a>
+    {% empty %}
+      <p><em>No subcategories found for this category.</em></p>
+    {% endfor %}
+  </div>
+</div>
+
+<style>
+  .judge-container { max-width: 800px; margin: 1.5rem auto; }
+  .category-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+  .category-card {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1rem 1.25rem;
+    border: 1px solid #4b5563; border-radius: 0.75rem;
+    background: #020617; text-decoration: none; color: inherit;
+  }
+  .category-card:hover { border-color: #6b7280; background: #0f172a; }
+  .cat-name { font-size: 1.05rem; font-weight: 600; }
+  .sub-count { font-size: 0.85rem; color: #9ca3af; margin-top: 0.2rem; }
+  .pct-badge { font-size: 1.1rem; font-weight: 700; margin-right: 0.5rem; }
+  .arrow { font-size: 1.2rem; color: #6b7280; }
+</style>
+{% endblock %}

@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+{% block title %}Judge – {{ subcategory.rule_subcategory_name }} – {{ team.team_name }}{% endblock %}
+{% block content %}
+
+{% include "tech_in/partials/banner.html" %}
+
+<div class="judge-container">
+  <p>
+    <a href="{% url 'tech_in:judge_team_subcategories' event.event_id category.rule_category_id team.pk %}">
+      ← Back to subcategory list
+    </a>
+  </p>
+  <h1>{{ subcategory.rule_subcategory_name }}</h1>
+  <p>
+    <strong>Team:</strong> {{ team.team_name }} &nbsp;|&nbsp;
+    <strong>Event:</strong> {{ event.event_name }} &nbsp;|&nbsp;
+    <strong>Category:</strong> {{ category.rule_category_name }}
+  </p>
+
+  <div id="global-save-indicator" class="save-indicator" aria-live="polite"></div>
+
+  {% for row in rule_rows %}
+    <div class="rule-card" id="rule-card-{{ row.rule.rule_id }}">
+      <div class="rule-header">
+        <span class="rule-number">{{ row.rule.rule_number }}</span>
+        <span class="save-status" id="save-{{ row.rule.rule_id }}"></span>
+      </div>
+      <p class="rule-content">{{ row.rule.rule_content }}</p>
+
+      <div class="radio-group">
+        {% for val, label in status_choices %}
+          <label class="radio-label status-{{ val }}">
+            <input
+              type="radio"
+              name="status-{{ row.rule.rule_id }}"
+              value="{{ val }}"
+              data-rule-id="{{ row.rule.rule_id }}"
+              data-event-id="{{ event.event_id }}"
+              data-team-id="{{ team.pk }}"
+              {% if row.status == val %}checked{% endif %}
+            >
+            {{ label }}
+          </label>
+        {% endfor %}
+      </div>
+
+      <div class="comment-row">
+        <textarea
+          class="comment-textarea"
+          data-rule-id="{{ row.rule.rule_id }}"
+          data-status-id="{{ row.status_id|default:'' }}"
+          placeholder="Comment (optional)…"
+          rows="2"
+        >{{ row.comment }}</textarea>
+      </div>
+
+      <div class="rule-footer">
+        <a href="{% url 'tech_in:judge_rule_photos' event.event_id category.rule_category_id team.pk row.rule.rule_id %}" class="photos-link">
+          📷 Photos
+        </a>
+      </div>
+    </div>
+  {% empty %}
+    <p><em>No rules in this subcategory.</em></p>
+  {% endfor %}
+</div>
+
+<style>
+  .judge-container { max-width: 860px; margin: 1.5rem auto; }
+
+  .rule-card {
+    border: 1px solid #4b5563; border-radius: 0.75rem;
+    padding: 1rem 1.25rem; margin-bottom: 1rem; background: #020617;
+  }
+
+  .rule-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 0.4rem;
+  }
+
+  .rule-number { font-weight: 700; font-size: 1rem; color: #93c5fd; }
+
+  .rule-content { margin: 0 0 0.75rem; font-size: 0.95rem; color: #d1d5db; }
+
+  .radio-group { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem; }
+
+  .radio-label {
+    display: flex; align-items: center; gap: 0.3rem;
+    padding: 0.3rem 0.7rem; border-radius: 0.5rem;
+    border: 1px solid #374151; cursor: pointer; font-size: 0.9rem;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .radio-label:has(input:checked) { border-color: #6b7280; background: #1f2937; }
+  .radio-label.status-3:has(input:checked) { border-color: #4ade80; color: #4ade80; }
+  .radio-label.status-1:has(input:checked) { border-color: #f87171; color: #f87171; }
+  .radio-label.status-2:has(input:checked) { border-color: #eab308; color: #eab308; }
+  .radio-label.status-0:has(input:checked) { border-color: #6b7280; color: #9ca3af; }
+
+  .comment-textarea {
+    width: 100%; box-sizing: border-box;
+    background: #111827; border: 1px solid #374151; border-radius: 0.5rem;
+    color: #d1d5db; padding: 0.5rem; font-size: 0.9rem; resize: vertical;
+  }
+  .comment-textarea:focus { outline: none; border-color: #6b7280; }
+
+  .rule-footer { display: flex; justify-content: flex-end; margin-top: 0.5rem; }
+  .photos-link { color: #93c5fd; text-decoration: none; font-size: 0.9rem; }
+  .photos-link:hover { text-decoration: underline; }
+
+  .save-status { font-size: 0.8rem; color: #9ca3af; }
+  .save-status.saving { color: #fbbf24; }
+  .save-status.saved { color: #4ade80; }
+  .save-status.error { color: #f87171; }
+
+  .save-indicator { min-height: 1.2rem; font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.5rem; }
+</style>
+
+<script>
+  const URL_STATUS = "{{ url_update_status }}";
+  const URL_COMMENT = "{{ url_update_comment }}";
+  const CSRF = "{{ csrf_token }}";
+
+  function setStatus(indicator, text, cls) {
+    indicator.textContent = text;
+    indicator.className = "save-status " + cls;
+  }
+
+  // ---- Status radio save ----
+  document.querySelectorAll("input[type=radio]").forEach(radio => {
+    radio.addEventListener("change", async function () {
+      const ruleId = this.dataset.ruleId;
+      const indicator = document.getElementById("save-" + ruleId);
+      setStatus(indicator, "Saving…", "saving");
+
+      try {
+        const resp = await fetch(URL_STATUS, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": CSRF,
+          },
+          body: JSON.stringify({
+            event_id: parseInt(this.dataset.eventId),
+            team_id: parseInt(this.dataset.teamId),
+            rule_id: parseInt(ruleId),
+            status: parseInt(this.value),
+          }),
+        });
+        const data = await resp.json();
+        if (data.ok) {
+          setStatus(indicator, "Saved", "saved");
+          // Propagate status_id to any comment textarea for this rule
+          const ta = document.querySelector(`.comment-textarea[data-rule-id="${ruleId}"]`);
+          if (ta) {
+            ta.dataset.statusId = data.status_id;
+            // If there's pending comment content, fire comment save now
+            if (ta.value.trim() && ta._pendingComment) {
+              clearTimeout(ta._debounce);
+              saveComment(ta);
+            }
+          }
+        } else {
+          setStatus(indicator, "Error", "error");
+        }
+      } catch (e) {
+        setStatus(indicator, "Error", "error");
+      }
+    });
+  });
+
+  // ---- Comment textarea save with debounce ----
+  async function saveComment(ta) {
+    const ruleId = ta.dataset.ruleId;
+    const statusId = ta.dataset.statusId;
+    const indicator = document.getElementById("save-" + ruleId);
+
+    if (!statusId) {
+      // No status record yet; will be retried after status save
+      ta._pendingComment = true;
+      return;
+    }
+    ta._pendingComment = false;
+    setStatus(indicator, "Saving…", "saving");
+
+    try {
+      const resp = await fetch(URL_COMMENT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": CSRF,
+        },
+        body: JSON.stringify({
+          status_id: parseInt(statusId),
+          comment: ta.value,
+        }),
+      });
+      const data = await resp.json();
+      setStatus(indicator, data.ok ? "Saved" : "Error", data.ok ? "saved" : "error");
+    } catch (e) {
+      setStatus(indicator, "Error", "error");
+    }
+  }
+
+  document.querySelectorAll(".comment-textarea").forEach(ta => {
+    ta._pendingComment = false;
+    ta.addEventListener("input", function () {
+      clearTimeout(this._debounce);
+      const self = this;
+      const ruleId = self.dataset.ruleId;
+      const indicator = document.getElementById("save-" + ruleId);
+      setStatus(indicator, "…", "saving");
+      self._debounce = setTimeout(() => saveComment(self), 800);
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Judge – {{ event.event_name }}{% endblock %}
+{% block content %}
+
+{% include "tech_in/partials/banner.html" %}
+
+<div class="judge-container">
+  <h1>Tech Inspection – Judge</h1>
+  <p><strong>Event:</strong> {{ event.event_name }}</p>
+  <p>Select a category to begin inspecting teams:</p>
+
+  <div class="category-list">
+    {% for cat in categories %}
+      <a class="category-card" href="{% url 'tech_in:judge_category_teams' event.event_id cat.rule_category_id %}">
+        <span class="cat-name">{{ cat.rule_category_name }}</span>
+        <span class="arrow">→</span>
+      </a>
+    {% empty %}
+      <p><em>No categories found.</em></p>
+    {% endfor %}
+  </div>
+</div>
+
+<style>
+  .judge-container { max-width: 800px; margin: 1.5rem auto; }
+  .category-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
+  .category-card {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1rem 1.25rem;
+    border: 1px solid #4b5563; border-radius: 0.75rem;
+    background: #020617; text-decoration: none; color: inherit;
+  }
+  .category-card:hover { border-color: #6b7280; background: #0f172a; }
+  .cat-name { font-size: 1.05rem; font-weight: 600; }
+  .arrow { font-size: 1.2rem; color: #6b7280; }
+</style>
+{% endblock %}

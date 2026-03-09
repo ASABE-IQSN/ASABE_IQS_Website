@@ -1,16 +1,25 @@
 # tech_in/views.py
-from django.db.models import Count, Q
-from django.shortcuts import render, get_object_or_404
-from .models import RuleCategory
-from .models import EventTractorRuleStatus, RuleSubCategory, Rule, RuleTractorMedia
-from events.models import TractorEvent, Event, Team
-from collections import OrderedDict
-from .permissions import user_can_access_team
-from django.shortcuts import redirect
-from iqs_site.utilities import log_view
+import json
+import os
+import re
+from pathlib import Path
+
+from django.conf import settings
 from django.core.cache import cache
+from django.db import transaction
+from django.db.models import Count, Q
+from django.http import Http404, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.cache import cache_page
-from django.http import Http404
+from django.views.decorators.http import require_POST
+
+from collections import OrderedDict
+
+from events.models import Event, Team, TractorEvent
+from iqs_site.utilities import log_view
+
+from .models import EventTractorRuleStatus, Rule, RuleCategory, RuleSubCategory, RuleTractorMedia
+from .permissions import judge_required, user_can_access_team
 
 # @log_view
 # @cache_page(300)
@@ -524,3 +533,315 @@ def category_view(request,event_id,category_id):
     #print(rts)
     context={}
     return render(request,"tech_in/permission_denied.html",context)
+
+
+# ---------------------------------------------------------------------------
+# Judge views
+# ---------------------------------------------------------------------------
+
+STATUS_CHOICES = [(3, "Pass"), (1, "Fail"), (2, "Corrected"), (0, "Not Started")]
+
+
+@judge_required
+@log_view
+def judge_event_overview(request, event_id):
+    event = get_object_or_404(Event, pk=event_id)
+    categories = list(RuleCategory.objects.order_by("rule_category_name"))
+    return render(request, "tech_in/judge/event_overview.html", {
+        "event": event,
+        "categories": categories,
+    })
+
+
+@judge_required
+@log_view
+def judge_category_teams(request, event_id, category_id):
+    event = get_object_or_404(Event, pk=event_id)
+    category = get_object_or_404(RuleCategory, pk=category_id)
+
+    rules_in_cat = list(
+        Rule.objects.filter(sub_category__category=category).values_list("rule_id", flat=True)
+    )
+    total = len(rules_in_cat)
+
+    tractor_events = (
+        TractorEvent.objects
+        .filter(event=event, team__team_class=1)
+        .select_related("team")
+        .order_by("team__team_name")
+    )
+
+    # Aggregate completed (status 2 or 3) counts per tractor_event
+    completed_by_te = dict(
+        EventTractorRuleStatus.objects
+        .filter(event_tractor__in=tractor_events, rule_id__in=rules_in_cat, status__in=(2, 3))
+        .values("event_tractor_id")
+        .annotate(n=Count("event_tractor_rule_status_id"))
+        .values_list("event_tractor_id", "n")
+    )
+
+    team_rows = []
+    for te in tractor_events:
+        completed = completed_by_te.get(te.pk, 0)
+        percent = round((completed / total) * 100) if total else 0
+        team_rows.append({
+            "tractor_event": te,
+            "team": te.team,
+            "completed": completed,
+            "total": total,
+            "percent": percent,
+        })
+
+    return render(request, "tech_in/judge/category_teams.html", {
+        "event": event,
+        "category": category,
+        "team_rows": team_rows,
+    })
+
+
+@judge_required
+@log_view
+def judge_team_subcategories(request, event_id, category_id, team_id):
+    event = get_object_or_404(Event, pk=event_id)
+    category = get_object_or_404(RuleCategory, pk=category_id)
+    team = get_object_or_404(Team, pk=team_id)
+    te = get_object_or_404(TractorEvent, event=event, team=team)
+
+    subcategories = list(
+        RuleSubCategory.objects.filter(category=category)
+        .prefetch_related("rules")
+        .order_by("rule_subcategory_name")
+    )
+
+    # All completed statuses for this TE in this category
+    completed_by_subcat = dict(
+        EventTractorRuleStatus.objects
+        .filter(event_tractor=te, rule__sub_category__category=category, status__in=(2, 3))
+        .values("rule__sub_category_id")
+        .annotate(n=Count("event_tractor_rule_status_id"))
+        .values_list("rule__sub_category_id", "n")
+    )
+
+    subcat_rows = []
+    for subcat in subcategories:
+        rules = list(subcat.rules.all())
+        total = len(rules)
+        completed = completed_by_subcat.get(subcat.pk, 0)
+        percent = round((completed / total) * 100) if total else 0
+        subcat_rows.append({
+            "subcategory": subcat,
+            "completed": completed,
+            "total": total,
+            "percent": percent,
+        })
+
+    return render(request, "tech_in/judge/team_subcategories.html", {
+        "event": event,
+        "category": category,
+        "team": team,
+        "tractor_event": te,
+        "subcat_rows": subcat_rows,
+    })
+
+
+@judge_required
+@log_view
+def judge_subcategory_rules(request, event_id, category_id, team_id, subcategory_id):
+    event = get_object_or_404(Event, pk=event_id)
+    category = get_object_or_404(RuleCategory, pk=category_id)
+    team = get_object_or_404(Team, pk=team_id)
+    te = get_object_or_404(TractorEvent, event=event, team=team)
+    subcategory = get_object_or_404(RuleSubCategory, pk=subcategory_id, category=category)
+
+    rules = list(Rule.objects.filter(sub_category=subcategory).order_by("rule_id"))
+
+    statuses_qs = (
+        EventTractorRuleStatus.objects
+        .filter(event_tractor=te, rule__in=rules)
+        .prefetch_related("media")
+    )
+    status_by_rule = {rs.rule_id: rs for rs in statuses_qs}
+
+    rule_rows = []
+    for rule in rules:
+        rs = status_by_rule.get(rule.pk)
+        if rs:
+            status_val = rs.status
+            status_id = rs.pk
+            comment_obj = next(
+                (m for m in rs.media.all() if m.media_type == RuleTractorMedia.types.COMMENT),
+                None,
+            )
+            comment = comment_obj.media if comment_obj else ""
+        else:
+            status_val = 0
+            status_id = None
+            comment = ""
+        rule_rows.append({
+            "rule": rule,
+            "status": status_val,
+            "status_id": status_id,
+            "comment": comment,
+        })
+
+    return render(request, "tech_in/judge/subcategory_rules.html", {
+        "event": event,
+        "category": category,
+        "team": team,
+        "tractor_event": te,
+        "subcategory": subcategory,
+        "rule_rows": rule_rows,
+        "status_choices": STATUS_CHOICES,
+        "url_update_status": "/techin/judge/ajax/update-status/",
+        "url_update_comment": "/techin/judge/ajax/update-comment/",
+    })
+
+
+@judge_required
+@log_view
+def judge_rule_photos(request, event_id, category_id, team_id, rule_id):
+    event = get_object_or_404(Event, pk=event_id)
+    category = get_object_or_404(RuleCategory, pk=category_id)
+    team = get_object_or_404(Team, pk=team_id)
+    te = get_object_or_404(TractorEvent, event=event, team=team)
+    rule = get_object_or_404(Rule, pk=rule_id, sub_category__category=category)
+
+    rs, _ = EventTractorRuleStatus.objects.get_or_create(
+        event_tractor=te, rule=rule, defaults={"status": 0}
+    )
+    photos = rs.media.filter(media_type=RuleTractorMedia.types.IMAGE).order_by("id")
+
+    return render(request, "tech_in/judge/rule_photos.html", {
+        "event": event,
+        "category": category,
+        "team": team,
+        "tractor_event": te,
+        "rule": rule,
+        "status_obj": rs,
+        "photos": photos,
+        "subcategory": rule.sub_category,
+    })
+
+
+# ---------------------------------------------------------------------------
+# Judge AJAX endpoints
+# ---------------------------------------------------------------------------
+
+@judge_required
+@require_POST
+def judge_update_status(request):
+    try:
+        data = json.loads(request.body)
+        event_id = int(data["event_id"])
+        team_id = int(data["team_id"])
+        rule_id = int(data["rule_id"])
+        status = int(data["status"])
+    except (KeyError, ValueError, json.JSONDecodeError):
+        return JsonResponse({"error": "Invalid request"}, status=400)
+
+    if status not in (0, 1, 2, 3):
+        return JsonResponse({"error": "Invalid status"}, status=400)
+
+    event = get_object_or_404(Event, pk=event_id)
+    team = get_object_or_404(Team, pk=team_id)
+    te = get_object_or_404(TractorEvent, event=event, team=team)
+    rule = get_object_or_404(Rule, pk=rule_id)
+
+    with transaction.atomic():
+        rs, created = (
+            EventTractorRuleStatus.objects
+            .select_for_update()
+            .get_or_create(event_tractor=te, rule=rule, defaults={"status": status})
+        )
+        if not created:
+            rs.status = status
+            rs.save(update_fields=["status"])
+
+    return JsonResponse({"ok": True, "status_id": rs.pk, "status": rs.status})
+
+
+@judge_required
+@require_POST
+def judge_update_comment(request):
+    try:
+        data = json.loads(request.body)
+        status_id = int(data["status_id"])
+        comment_text = str(data.get("comment", ""))
+    except (KeyError, ValueError, json.JSONDecodeError):
+        return JsonResponse({"error": "Invalid request"}, status=400)
+
+    rs = get_object_or_404(EventTractorRuleStatus, pk=status_id)
+
+    with transaction.atomic():
+        existing = (
+            RuleTractorMedia.objects
+            .select_for_update()
+            .filter(event_tractor_rule_status=rs, media_type=RuleTractorMedia.types.COMMENT)
+            .first()
+        )
+        if existing:
+            existing.media = comment_text
+            existing.save(update_fields=["media"])
+            media_id = existing.pk
+        else:
+            obj = RuleTractorMedia.objects.create(
+                event_tractor_rule_status=rs,
+                media_type=RuleTractorMedia.types.COMMENT,
+                media=comment_text,
+            )
+            media_id = obj.pk
+
+    return JsonResponse({"ok": True, "media_id": media_id})
+
+
+@judge_required
+@require_POST
+def judge_upload_photo(request):
+    try:
+        status_id = int(request.POST["status_id"])
+    except (KeyError, ValueError):
+        return JsonResponse({"error": "Missing status_id"}, status=400)
+
+    photo = request.FILES.get("photo")
+    if not photo:
+        return JsonResponse({"error": "No photo provided"}, status=400)
+
+    ext = photo.name.rsplit(".", 1)[-1].lower() if "." in photo.name else ""
+    if ext not in {"png", "jpg", "jpeg", "gif", "webp"}:
+        return JsonResponse({"error": "Invalid file type"}, status=400)
+
+    rs = get_object_or_404(EventTractorRuleStatus, pk=status_id)
+
+    safe_root = re.sub(r"[^\w]", "_", photo.name.rsplit(".", 1)[0])[:50]
+    filename = (
+        f"techin_event{rs.event_tractor.event_id}"
+        f"_team{rs.event_tractor.team_id}"
+        f"_rule{rs.rule_id}"
+        f"_{safe_root}.{ext}"
+    )
+    save_dir = Path(settings.MEDIA_ROOT) / "techin" / "photos"
+    save_dir.mkdir(parents=True, exist_ok=True)
+    dest = save_dir / filename
+
+    with open(dest, "wb+") as fh:
+        for chunk in photo.chunks():
+            fh.write(chunk)
+
+    rel_path = f"techin/photos/{filename}"
+    obj = RuleTractorMedia.objects.create(
+        event_tractor_rule_status=rs,
+        media_type=RuleTractorMedia.types.IMAGE,
+        media=rel_path,
+    )
+
+    return JsonResponse({"ok": True, "media_id": obj.pk, "url": settings.MEDIA_URL + rel_path})
+
+
+@judge_required
+@require_POST
+def judge_delete_media(request, media_id):
+    media = get_object_or_404(RuleTractorMedia, pk=media_id)
+    if media.media_type == RuleTractorMedia.types.IMAGE:
+        Path(settings.MEDIA_ROOT, media.media).unlink(missing_ok=True)
+    media.delete()
+    return JsonResponse({"ok": True})

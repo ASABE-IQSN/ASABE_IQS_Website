@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Judge – {{ category.rule_category_name }} – Teams{% endblock %}
+{% block content %}
+
+{% include "tech_in/partials/banner.html" %}
+
+<div class="judge-container">
+  <p><a href="{% url 'tech_in:judge_event_overview' event.event_id %}">← Back to categories</a></p>
+  <h1>{{ category.rule_category_name }}</h1>
+  <p><strong>Event:</strong> {{ event.event_name }}</p>
+
+  <table class="team-table">
+    <thead>
+      <tr>
+        <th>Team</th>
+        <th class="right">Progress</th>
+        <th class="right">Complete</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in team_rows %}
+        <tr>
+          <td>
+            <a href="{% url 'tech_in:judge_team_subcategories' event.event_id category.rule_category_id row.team.pk %}">
+              {{ row.team.team_name }}
+            </a>
+          </td>
+          <td class="right">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:{{ row.percent }}%; background: hsl({{ row.percent }},70%,45%);"></div>
+            </div>
+          </td>
+          <td class="right pct-label" style="color: hsl({{ row.percent }},70%,55%);">
+            {{ row.percent }}% ({{ row.completed }}/{{ row.total }})
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="3"><em>No teams registered for this event.</em></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<style>
+  .judge-container { max-width: 900px; margin: 1.5rem auto; }
+  .team-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+  .team-table th, .team-table td { border-bottom: 1px solid #374151; padding: 0.5rem 0.6rem; }
+  .team-table th.right, .team-table td.right { text-align: right; }
+  .progress-bar { display: inline-block; width: 140px; height: 10px; background: #1f2937; border-radius: 5px; vertical-align: middle; }
+  .progress-fill { height: 100%; border-radius: 5px; transition: width 0.3s; }
+  .pct-label { font-weight: 600; white-space: nowrap; }
+</style>
+{% endblock %}
