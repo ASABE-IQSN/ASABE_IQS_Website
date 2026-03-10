@@ -24,16 +24,15 @@
     <p>{{ form.role.label_tag }} {{ form.role }}
        {% for error in form.role.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
 
-    <div class="role-fields" data-role="1" style="display:none;">
+    {# team is shared by student/advisor/alumni — rendered once and shown/hidden by JS #}
+    <div id="team-field" style="display:none;">
       <p>{{ form.team.label_tag }} {{ form.team }}
          {% for error in form.team.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
-      <p>{{ form.graduation_year.label_tag }} {{ form.graduation_year }}
-         {% for error in form.graduation_year.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
     </div>
 
-    <div class="role-fields" data-role="2" style="display:none;">
-      <p>{{ form.team.label_tag }} {{ form.team }}
-         {% for error in form.team.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
+    <div class="role-fields" data-role="1" style="display:none;">
+      <p>{{ form.graduation_year.label_tag }} {{ form.graduation_year }}
+         {% for error in form.graduation_year.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
     </div>
 
     <div class="role-fields" data-role="3" style="display:none;">
@@ -42,8 +41,6 @@
     </div>
 
     <div class="role-fields" data-role="4" style="display:none;">
-      <p>{{ form.team.label_tag }} {{ form.team }}
-         {% for error in form.team.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
       <p>{{ form.alumni_graduation_year.label_tag }} {{ form.alumni_graduation_year }}
          {% for error in form.alumni_graduation_year.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
       <p>{{ form.years_participated.label_tag }} {{ form.years_participated }}
@@ -57,12 +54,15 @@
     (function() {
       var roleSelect = document.getElementById('id_role');
       var allSections = document.querySelectorAll('.role-fields');
+      var teamField = document.getElementById('team-field');
+      var teamRoles = ['1', '2', '4'];
 
       function updateVisibility() {
         var selected = roleSelect.value;
         allSections.forEach(function(section) {
           section.style.display = section.dataset.role === selected ? '' : 'none';
         });
+        teamField.style.display = teamRoles.indexOf(selected) !== -1 ? '' : 'none';
       }
 
       roleSelect.addEventListener('change', updateVisibility);
