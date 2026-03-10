@@ -145,10 +145,10 @@ CORS_ALLOWED_ORIGINS = env_list(
 CSRF_TRUSTED_ORIGINS = [
     "https://testing.internationalquarterscale.com",
     "https://internationalquarterscale.com",
+    "https://www.internationalquarterscale.com",
     "https://iqsconnect.org",
-    "http://localhost:8080"
-    # add others if you post from them, e.g.
-    # "https://internationalquarterscale.com",
+    "https://www.iqsconnect.org",
+    "http://localhost:8080",
 ]
 
 

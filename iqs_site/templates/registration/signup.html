@@ -6,6 +6,12 @@
   <form method="post">
     {% csrf_token %}
 
+    {% if form.non_field_errors %}
+      <ul class="errorlist">
+        {% for error in form.non_field_errors %}<li>{{ error }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+
     <p>{{ form.username.label_tag }} {{ form.username }}
        {% for error in form.username.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
     <p>{{ form.email.label_tag }} {{ form.email }}
@@ -33,8 +39,6 @@
     <div class="role-fields" data-role="3" style="display:none;">
       <p>{{ form.company_name.label_tag }} {{ form.company_name }}
          {% for error in form.company_name.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
-      <p>{{ form.sponsorship_level.label_tag }} {{ form.sponsorship_level }}
-         {% for error in form.sponsorship_level.errors %}<br><span class="error">{{ error }}</span>{% endfor %}</p>
     </div>
 
     <div class="role-fields" data-role="4" style="display:none;">

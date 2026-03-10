@@ -63,7 +63,7 @@ class CustomUserCreationForm(UserCreationForm):
     REQUIRED_BY_ROLE = {
         UserProfile.Role.STUDENT: ['team', 'graduation_year'],
         UserProfile.Role.ADVISOR: ['team'],
-        UserProfile.Role.SPONSOR: ['company_name', 'sponsorship_level'],
+        UserProfile.Role.SPONSOR: ['company_name'],
         UserProfile.Role.ALUMNI: ['team', 'alumni_graduation_year', 'years_participated'],
         UserProfile.Role.SPECTATOR: [],
     }
