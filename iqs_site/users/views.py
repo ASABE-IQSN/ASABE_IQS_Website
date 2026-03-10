@@ -278,6 +278,8 @@ def signup(request):
             user = form.save()  # inactive user
             send_verification_email(request, user)
             return render(request, "registration/check_email.html")
+        else:
+            print("Signup form errors:", form.errors.as_json())
     else:
         form = CustomUserCreationForm()
 
