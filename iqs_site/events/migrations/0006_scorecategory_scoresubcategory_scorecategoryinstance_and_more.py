@@ -11,66 +11,129 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.CreateModel(
-            name='ScoreCategory',
-            fields=[
-                ('score_category_id', models.AutoField(primary_key=True, serialize=False)),
-                ('category_name', models.CharField(max_length=45)),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql="""
+                        CREATE TABLE IF NOT EXISTS `score_categories` (
+                            `score_category_id` int NOT NULL AUTO_INCREMENT,
+                            `category_name` varchar(45) NOT NULL,
+                            PRIMARY KEY (`score_category_id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                    """,
+                    reverse_sql="DROP TABLE IF EXISTS `score_categories`;",
+                ),
+                migrations.RunSQL(
+                    sql="""
+                        CREATE TABLE IF NOT EXISTS `score_subcategories` (
+                            `score_subcategory_id` int NOT NULL AUTO_INCREMENT,
+                            `subcategory_name` varchar(45) NOT NULL,
+                            PRIMARY KEY (`score_subcategory_id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                    """,
+                    reverse_sql="DROP TABLE IF EXISTS `score_subcategories`;",
+                ),
+                migrations.RunSQL(
+                    sql="""
+                        CREATE TABLE IF NOT EXISTS `score_category_instances` (
+                            `score_category_instance_id` int NOT NULL AUTO_INCREMENT,
+                            `max_points` int NOT NULL,
+                            `released` tinyint(1) NOT NULL,
+                            `event_id` bigint NOT NULL,
+                            `score_category_id` int NOT NULL,
+                            PRIMARY KEY (`score_category_instance_id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                    """,
+                    reverse_sql="DROP TABLE IF EXISTS `score_category_instances`;",
+                ),
+                migrations.RunSQL(
+                    sql="""
+                        CREATE TABLE IF NOT EXISTS `score_subcategory_instances` (
+                            `score_subcategory_instance_id` int NOT NULL AUTO_INCREMENT,
+                            `max_points` int NOT NULL,
+                            `released` tinyint(1) NOT NULL,
+                            `event_id` bigint NOT NULL,
+                            `score_subcategory_id` int NOT NULL,
+                            PRIMARY KEY (`score_subcategory_instance_id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                    """,
+                    reverse_sql="DROP TABLE IF EXISTS `score_subcategory_instances`;",
+                ),
+                migrations.RunSQL(
+                    sql="""
+                        CREATE TABLE IF NOT EXISTS `score_subcategory_scores` (
+                            `score_subcategory_score_id` int NOT NULL AUTO_INCREMENT,
+                            `subcategory_instance_id` int NOT NULL,
+                            `team_id` bigint NOT NULL,
+                            PRIMARY KEY (`score_subcategory_score_id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                    """,
+                    reverse_sql="DROP TABLE IF EXISTS `score_subcategory_scores`;",
+                ),
             ],
-            options={
-                'db_table': 'score_categories',
-                'managed': True,
-            },
-        ),
-        migrations.CreateModel(
-            name='ScoreSubCategory',
-            fields=[
-                ('score_subcategory_id', models.AutoField(primary_key=True, serialize=False)),
-                ('subcategory_name', models.CharField(max_length=45)),
+            state_operations=[
+                migrations.CreateModel(
+                    name='ScoreCategory',
+                    fields=[
+                        ('score_category_id', models.AutoField(primary_key=True, serialize=False)),
+                        ('category_name', models.CharField(max_length=45)),
+                    ],
+                    options={
+                        'db_table': 'score_categories',
+                        'managed': True,
+                    },
+                ),
+                migrations.CreateModel(
+                    name='ScoreSubCategory',
+                    fields=[
+                        ('score_subcategory_id', models.AutoField(primary_key=True, serialize=False)),
+                        ('subcategory_name', models.CharField(max_length=45)),
+                    ],
+                    options={
+                        'db_table': 'score_subcategories',
+                        'managed': True,
+                    },
+                ),
+                migrations.CreateModel(
+                    name='ScoreCategoryInstance',
+                    fields=[
+                        ('score_category_instance_id', models.AutoField(primary_key=True, serialize=False)),
+                        ('max_points', models.IntegerField()),
+                        ('released', models.BooleanField()),
+                        ('event', models.ForeignKey(db_column='event_id', on_delete=django.db.models.deletion.DO_NOTHING, related_name='score_category_instances', to='events.event')),
+                        ('score_category', models.ForeignKey(db_column='score_category_id', on_delete=django.db.models.deletion.DO_NOTHING, related_name='instances', to='events.scorecategory')),
+                    ],
+                    options={
+                        'db_table': 'score_category_instances',
+                        'managed': True,
+                    },
+                ),
+                migrations.CreateModel(
+                    name='ScoreSubCategoryInstance',
+                    fields=[
+                        ('score_subcategory_instance_id', models.AutoField(primary_key=True, serialize=False)),
+                        ('max_points', models.IntegerField()),
+                        ('released', models.BooleanField()),
+                        ('event', models.ForeignKey(db_column='event_id', on_delete=django.db.models.deletion.DO_NOTHING, related_name='score_subcategory_instances', to='events.event')),
+                        ('score_subcategory', models.ForeignKey(db_column='score_subcategory_id', on_delete=django.db.models.deletion.DO_NOTHING, related_name='instances', to='events.scoresubcategory')),
+                    ],
+                    options={
+                        'db_table': 'score_subcategory_instances',
+                        'managed': True,
+                    },
+                ),
+                migrations.CreateModel(
+                    name='ScoreSubCategoryScore',
+                    fields=[
+                        ('score_subcategory_score_id', models.AutoField(primary_key=True, serialize=False)),
+                        ('subcategory', models.ForeignKey(db_column='subcategory_instance_id', on_delete=django.db.models.deletion.DO_NOTHING, related_name='team_scores', to='events.scoresubcategoryinstance')),
+                        ('team', models.ForeignKey(db_column='team_id', on_delete=django.db.models.deletion.DO_NOTHING, related_name='event_score_subcategory_scores', to='events.team')),
+                    ],
+                    options={
+                        'db_table': 'score_subcategory_scores',
+                        'managed': True,
+                    },
+                ),
             ],
-            options={
-                'db_table': 'score_subcategories',
-                'managed': True,
-            },
-        ),
-        migrations.CreateModel(
-            name='ScoreCategoryInstance',
-            fields=[
-                ('score_category_instance_id', models.AutoField(primary_key=True, serialize=False)),
-                ('max_points', models.IntegerField()),
-                ('released', models.BooleanField()),
-                ('event', models.ForeignKey(db_column='event_id', on_delete=django.db.models.deletion.DO_NOTHING, related_name='score_category_instances', to='events.event')),
-                ('score_category', models.ForeignKey(db_column='score_category_id', on_delete=django.db.models.deletion.DO_NOTHING, related_name='instances', to='events.scorecategory')),
-            ],
-            options={
-                'db_table': 'score_category_instances',
-                'managed': True,
-            },
-        ),
-        migrations.CreateModel(
-            name='ScoreSubCategoryInstance',
-            fields=[
-                ('score_subcategory_instance_id', models.AutoField(primary_key=True, serialize=False)),
-                ('max_points', models.IntegerField()),
-                ('released', models.BooleanField()),
-                ('event', models.ForeignKey(db_column='event_id', on_delete=django.db.models.deletion.DO_NOTHING, related_name='score_subcategory_instances', to='events.event')),
-                ('score_subcategory', models.ForeignKey(db_column='score_subcategory_id', on_delete=django.db.models.deletion.DO_NOTHING, related_name='instances', to='events.scoresubcategory')),
-            ],
-            options={
-                'db_table': 'score_subcategory_instances',
-                'managed': True,
-            },
-        ),
-        migrations.CreateModel(
-            name='ScoreSubCategoryScore',
-            fields=[
-                ('score_subcategory_score_id', models.AutoField(primary_key=True, serialize=False)),
-                ('subcategory', models.ForeignKey(db_column='subcategory_instance_id', on_delete=django.db.models.deletion.DO_NOTHING, related_name='team_scores', to='events.scoresubcategoryinstance')),
-                ('team', models.ForeignKey(db_column='team_id', on_delete=django.db.models.deletion.DO_NOTHING, related_name='event_score_subcategory_scores', to='events.team')),
-            ],
-            options={
-                'db_table': 'score_subcategory_scores',
-                'managed': True,
-            },
         ),
     ]

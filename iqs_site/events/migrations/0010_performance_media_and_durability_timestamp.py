@@ -4,6 +4,16 @@ from django.db import migrations, models
 
 
 def copy_pull_media(apps, schema_editor):
+    from django.db import connection
+
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT COUNT(*) FROM information_schema.tables "
+            "WHERE table_schema = DATABASE() AND table_name = 'pull_media'"
+        )
+        if cursor.fetchone()[0] == 0:
+            return
+
     PullMedia = apps.get_model("events", "PullMedia")
     PerformanceEventMedia = apps.get_model("events", "PerformanceEventMedia")
 
