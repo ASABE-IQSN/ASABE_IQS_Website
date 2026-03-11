@@ -17,23 +17,46 @@ class Migration(migrations.Migration):
             name='performanceeventmedia',
             options={'managed': False, 'permissions': [('can_auto_approve_performance_media', 'Can auto-approve uploaded performance event media')]},
         ),
-        migrations.CreateModel(
-            name='EditLog',
-            fields=[
-                ('edit_log_id', models.AutoField(primary_key=True, serialize=False)),
-                ('timestamp', models.DateTimeField(auto_now_add=True)),
-                ('entity_type', models.CharField(max_length=30)),
-                ('field_name', models.CharField(max_length=100)),
-                ('old_value', models.TextField(blank=True, null=True)),
-                ('new_value', models.TextField(blank=True, null=True)),
-                ('team', models.ForeignKey(blank=True, db_column='team_id', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='edit_logs', to='events.team')),
-                ('tractor', models.ForeignKey(blank=True, db_column='tractor_id', null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='edit_logs', to='events.tractor')),
-                ('user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='edit_logs', to=settings.AUTH_USER_MODEL)),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql="""
+                        CREATE TABLE IF NOT EXISTS `edit_log` (
+                            `edit_log_id` int NOT NULL AUTO_INCREMENT,
+                            `timestamp` datetime(6) NOT NULL,
+                            `entity_type` varchar(30) NOT NULL,
+                            `field_name` varchar(100) NOT NULL,
+                            `old_value` longtext NULL,
+                            `new_value` longtext NULL,
+                            `team_id` bigint NULL,
+                            `tractor_id` int NULL,
+                            `user_id` int NULL,
+                            PRIMARY KEY (`edit_log_id`)
+                        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+                    """,
+                    reverse_sql="DROP TABLE IF EXISTS `edit_log`;",
+                ),
             ],
-            options={
-                'db_table': 'edit_log',
-                'ordering': ['-timestamp'],
-                'indexes': [models.Index(fields=['team', '-timestamp'], name='edit_log_team_id_2b4ca6_idx'), models.Index(fields=['tractor', '-timestamp'], name='edit_log_tractor_70d0cd_idx'), models.Index(fields=['user', '-timestamp'], name='edit_log_user_id_692ca6_idx')],
-            },
+            state_operations=[
+                migrations.CreateModel(
+                    name='EditLog',
+                    fields=[
+                        ('edit_log_id', models.AutoField(primary_key=True, serialize=False)),
+                        ('timestamp', models.DateTimeField(auto_now_add=True)),
+                        ('entity_type', models.CharField(max_length=30)),
+                        ('field_name', models.CharField(max_length=100)),
+                        ('old_value', models.TextField(blank=True, null=True)),
+                        ('new_value', models.TextField(blank=True, null=True)),
+                        ('team', models.ForeignKey(blank=True, db_column='team_id', db_constraint=False, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='edit_logs', to='events.team')),
+                        ('tractor', models.ForeignKey(blank=True, db_column='tractor_id', db_constraint=False, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='edit_logs', to='events.tractor')),
+                        ('user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='edit_logs', to=settings.AUTH_USER_MODEL)),
+                    ],
+                    options={
+                        'db_table': 'edit_log',
+                        'ordering': ['-timestamp'],
+                        'indexes': [models.Index(fields=['team', '-timestamp'], name='edit_log_team_id_2b4ca6_idx'), models.Index(fields=['tractor', '-timestamp'], name='edit_log_tractor_70d0cd_idx'), models.Index(fields=['user', '-timestamp'], name='edit_log_user_id_692ca6_idx')],
+                    },
+                ),
+            ],
         ),
     ]
