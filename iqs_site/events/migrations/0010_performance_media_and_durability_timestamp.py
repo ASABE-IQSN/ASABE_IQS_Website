@@ -7,35 +7,22 @@ def copy_pull_media(apps, schema_editor):
     from django.db import connection
 
     with connection.cursor() as cursor:
+        # Check pull_media table and pull_id column both exist
         cursor.execute(
-            "SELECT COUNT(*) FROM information_schema.tables "
-            "WHERE table_schema = DATABASE() AND table_name = 'pull_media'"
+            "SELECT COUNT(*) FROM information_schema.columns "
+            "WHERE table_schema = DATABASE() AND table_name = 'pull_media' "
+            "AND column_name = 'pull_id'"
         )
         if cursor.fetchone()[0] == 0:
             return
 
-    PullMedia = apps.get_model("events", "PullMedia")
-    PerformanceEventMedia = apps.get_model("events", "PerformanceEventMedia")
-
-    rows = PullMedia.objects.all().values(
-        "pull_id",
-        "pull_media_type",
-        "link",
-    )
-
-    to_create = []
-    for row in rows:
-        to_create.append(
-            PerformanceEventMedia(
-                performance_event_id=row["pull_id"],
-                performance_event_type=1,
-                media_type=row["pull_media_type"],
-                link=row["link"],
-            )
+        cursor.execute(
+            "INSERT INTO performance_event_media "
+            "  (performance_event_id, performance_event_type, media_type, link) "
+            "SELECT pull_id, 1, pull_media_type, link "
+            "FROM pull_media "
+            "WHERE pull_id IS NOT NULL"
         )
-
-    if to_create:
-        PerformanceEventMedia.objects.bulk_create(to_create, batch_size=1000)
 
 
 class Migration(migrations.Migration):
