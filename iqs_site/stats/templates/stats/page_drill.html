@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+
+{% block title %}{{ url }} – Page Views{% endblock %}
+
+{% block extra_styles %}
+.dashboard-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.dashboard-header h1 {
+  margin: 0.25rem 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #f3f6e7;
+  font-family: monospace;
+  word-break: break-all;
+}
+.back-link { font-size: 0.85rem; color: #6b7280; }
+.back-link:hover { color: #9ca3af; }
+
+.days-nav { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+.days-nav a {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #9ca3af;
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.days-nav a.active { background: #1e3a5f; color: #6687fc; border-color: #1e3a5f; }
+.days-nav a:hover { background: #1f2937; color: #f3f6e7; text-decoration: none; }
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.stat-card {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+.stat-card .num { font-size: 2rem; font-weight: 700; color: #6687fc; line-height: 1; }
+.stat-card .label { font-size: 0.75rem; color: #9ca3af; margin-top: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.section { margin-bottom: 2.5rem; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 0.5rem;
+}
+.section-header h2 { margin: 0; font-size: 1rem; font-weight: 600; color: #e5e7eb; }
+.badge { background: #1f2937; color: #9ca3af; border-radius: 9999px; padding: 0.1rem 0.55rem; font-size: 0.75rem; font-weight: 600; }
+.badge.highlight { background: #1e3a5f; color: #6687fc; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th { text-align: left; color: #6b7280; font-weight: 600; padding: 0.4rem 0.6rem; border-bottom: 1px solid #1f2937; white-space: nowrap; }
+td { padding: 0.35rem 0.6rem; border-bottom: 1px solid #111827; color: #d1d5db; vertical-align: top; }
+tr:hover td { background: #0f172a; }
+.mono { font-family: monospace; font-size: 0.78rem; }
+.ts { color: #6b7280; white-space: nowrap; }
+.pill { display: inline-block; padding: 0.1rem 0.45rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+.pill-green  { background: #052e16; color: #4ade80; }
+.pill-red    { background: #450a0a; color: #f87171; }
+.pill-yellow { background: #422006; color: #fbbf24; }
+.empty-note { color: #4b5563; font-size: 0.85rem; padding: 0.5rem 0; }
+.overflow-x { overflow-x: auto; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+.ip-link { color: #6687fc; text-decoration: none; font-family: monospace; font-size: 0.78rem; }
+.ip-link:hover { text-decoration: underline; }
+
+.bar-bg { background: #1f2937; border-radius: 3px; height: 6px; overflow: hidden; margin-top: 3px; }
+.bar-fill { background: #6687fc; height: 100%; }
+
+/* History chart */
+.history-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 80px;
+  margin-bottom: 0.75rem;
+}
+.history-bar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+  cursor: default;
+  position: relative;
+}
+.history-bar-wrap:hover .history-tooltip { display: block; }
+.history-bar {
+  width: 100%;
+  background: #6687fc;
+  border-radius: 2px 2px 0 0;
+  min-height: 2px;
+}
+.history-bar-wrap:hover .history-bar { background: #93c5fd; }
+.history-axis {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  color: #4b5563;
+  margin-top: 0.25rem;
+}
+.history-tooltip {
+  display: none;
+  position: absolute;
+  bottom: 110%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.35rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  color: #f3f6e7;
+  z-index: 10;
+  pointer-events: none;
+}
+.window-note { font-size: 0.78rem; color: #4b5563; margin-bottom: 1.5rem; }
+{% endblock %}
+
+{% block extra_head %}
+<script>
+(function () {
+  document.cookie = 'tz_offset=' + new Date().getTimezoneOffset() + '; path=/; SameSite=Lax';
+})();
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div>
+    <a class="back-link" href="{% url 'stats:page_overview' %}?days={{ days }}">← Page Overview</a>
+    <h1>{{ url }}</h1>
+  </div>
+</div>
+
+<div class="days-nav">
+  {% for d in day_options %}
+  <a href="?url={{ url|urlencode }}&days={{ d }}" class="{% if days == d %}active{% endif %}">{{ d }}d</a>
+  {% endfor %}
+</div>
+
+<p class="window-note">Last {{ days }} day{{ days|pluralize }} · since {{ window_start|date:"N j, Y H:i" }} UTC</p>
+
+<!-- Summary -->
+<div class="summary-grid">
+  <div class="stat-card">
+    <div class="num">{{ total_views }}</div>
+    <div class="label">Total Views</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ unique_ip_count }}</div>
+    <div class="label">Unique IPs</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ geo_by_country|length }}</div>
+    <div class="label">Countries</div>
+  </div>
+</div>
+
+<!-- History chart -->
+{% if days > 1 %}
+<div class="section">
+  <div class="section-header">
+    <h2>Daily Views</h2>
+  </div>
+  <div class="history-chart">
+    {% for row in history %}
+    <div class="history-bar-wrap">
+      <div class="history-tooltip">
+        {{ row.day|date:"M j" }}<br>{{ row.count }} views
+      </div>
+      <div class="history-bar" style="height:{% widthratio row.count history_max 100 %}%;"></div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="history-axis">
+    <span>{{ history.0.day|date:"M j" }}</span>
+    <span>{{ history_end|date:"M j" }}</span>
+  </div>
+</div>
+{% endif %}
+
+<!-- Geo breakdown -->
+<div class="two-col">
+  <div class="section">
+    <div class="section-header">
+      <h2>By Country</h2>
+      <span class="badge {% if geo_by_country %}highlight{% endif %}">{{ geo_by_country|length }}</span>
+    </div>
+    {% if geo_by_country %}
+    <table>
+      <thead><tr><th>Country</th><th>Views</th><th style="width:100px;"></th></tr></thead>
+      <tbody>
+        {% for row in geo_by_country %}
+        <tr>
+          <td>
+            <a href="{% url 'stats:location_drill' %}?country={{ row.name|urlencode }}" style="color:#d1d5db;text-decoration:none;">
+              {{ row.name }}
+            </a>
+          </td>
+          <td><span class="badge highlight">{{ row.count }}</span></td>
+          <td>
+            <div class="bar-bg">
+              <div class="bar-fill" style="width:{% widthratio row.count geo_by_country.0.count 100 %}%;"></div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty-note">No geo data available.</p>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <div class="section-header">
+      <h2>By City</h2>
+      <span class="badge {% if geo_by_city %}highlight{% endif %}">{{ geo_by_city|length }}</span>
+    </div>
+    {% if geo_by_city %}
+    <table>
+      <thead><tr><th>City</th><th>Views</th><th style="width:100px;"></th></tr></thead>
+      <tbody>
+        {% for row in geo_by_city %}
+        <tr>
+          <td>
+            <a href="{% url 'stats:location_drill' %}?city={{ row.city|urlencode }}&country_code={{ row.country_code|urlencode }}" style="color:#d1d5db;text-decoration:none;">
+              {{ row.name }}
+            </a>
+          </td>
+          <td><span class="badge highlight">{{ row.count }}</span></td>
+          <td>
+            <div class="bar-bg">
+              <div class="bar-fill" style="width:{% widthratio row.count geo_by_city.0.count 100 %}%;"></div>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty-note">No city data available.</p>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Top IPs -->
+<div class="section">
+  <div class="section-header">
+    <h2>Top IPs</h2>
+    <span class="badge {% if ip_rows %}highlight{% endif %}">{{ ip_rows|length }}</span>
+  </div>
+  {% if ip_rows %}
+  <div class="overflow-x" style="max-height:320px;overflow-y:auto;">
+  <table>
+    <thead><tr><th>#</th><th>IP</th><th>Location</th><th>ISP</th><th>Views</th></tr></thead>
+    <tbody>
+      {% for row in ip_rows %}
+      <tr>
+        <td class="ts">{{ forloop.counter }}</td>
+        <td>
+          <a class="ip-link" href="{% url 'stats:ip_drill' %}?ip={{ row.ip|urlencode }}&days={{ days }}">{{ row.ip }}</a>
+        </td>
+        <td>{{ row.location|default:"—" }}</td>
+        <td style="color:#6b7280;font-size:0.78rem;">{{ row.isp|default:"—" }}</td>
+        <td><span class="badge highlight">{{ row.count }}</span></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty-note">No views in this window.</p>
+  {% endif %}
+</div>
+
+<!-- Recent Views -->
+<div class="section">
+  <div class="section-header">
+    <h2>Recent Views</h2>
+    <span class="badge {% if recent_views %}highlight{% endif %}">{{ recent_views|length }}</span>
+  </div>
+  {% if recent_views %}
+  <div class="overflow-x" style="max-height:380px;overflow-y:auto;">
+  <table>
+    <thead>
+      <tr><th>Time</th><th>IP</th><th>Location</th><th>User</th><th>Code</th><th>ms</th></tr>
+    </thead>
+    <tbody>
+      {% for v in recent_views %}
+      <tr>
+        <td class="ts"><time data-utc="{{ v.time|date:'c' }}">{{ v.time|date:"M j H:i:s" }}</time></td>
+        <td>
+          <a class="ip-link" href="{% url 'stats:ip_drill' %}?ip={{ v.ip|urlencode }}&days={{ days }}">{{ v.ip }}</a>
+        </td>
+        <td style="font-size:0.78rem;color:#9ca3af;">{{ v.location|default:"—" }}</td>
+        <td>{{ v.user__username|default:"—" }}</td>
+        <td>
+          {% if v.response_code >= 400 %}<span class="pill pill-red">{{ v.response_code }}</span>
+          {% elif v.response_code >= 300 %}<span class="pill pill-yellow">{{ v.response_code }}</span>
+          {% else %}<span class="pill pill-green">{{ v.response_code }}</span>{% endif %}
+        </td>
+        <td class="ts">{{ v.response_time_s|floatformat:3 }}s</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty-note">No views in this window.</p>
+  {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('time[data-utc]').forEach(function (el) {
+    try {
+      var d = new Date(el.dataset.utc);
+      el.textContent = d.toLocaleString([], {
+        month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      });
+    } catch (e) {}
+  });
+});
+</script>
+{% endblock %}

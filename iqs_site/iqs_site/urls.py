@@ -17,6 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
+from django.http import HttpResponse
 from .sitemap import TechinSitemap,StaticViewSitemap, EventSitemap, EventTeamsSitemap,TeamsSitemap,TractorsSitemap
 from django.contrib.sitemaps.views import sitemap
 from django.conf.urls.static import static
@@ -52,7 +53,7 @@ urlpatterns = [
     path(root_prefix+"awards/", include("awards.urls", namespace="awards")),
     path(root_prefix+"forms/", include("compforms.urls", namespace="compforms")),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}),
-
+    path("health/", lambda r: HttpResponse("ok")),
 ]
 
 if settings.DEBUG:

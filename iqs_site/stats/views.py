@@ -655,6 +655,157 @@ def ip_drill(request):
 
 
 @log_view
+@user_passes_test(lambda u: u.is_staff)
+def page_overview(request):
+    days = int(request.GET.get("days", 7))
+    days = min(max(days, 1), 90)
+
+    window_start = timezone.now() - timedelta(days=days)
+    base_qs = PageView.objects.filter(time__gte=window_start)
+
+    total_views = base_qs.count()
+    top_pages = list(
+        base_qs.values("url")
+        .annotate(count=Count("view_id"), unique_ips=Count("ip", distinct=True))
+        .order_by("-count")[:200]
+    )
+
+    return render(request, "stats/page_overview.html", {
+        "days": days,
+        "window_start": window_start,
+        "total_views": total_views,
+        "top_pages": top_pages,
+        "day_options": [1, 7, 14, 30, 90],
+    })
+
+
+@log_view
+@user_passes_test(lambda u: u.is_staff)
+def page_drill(request):
+    url = request.GET.get("url", "").strip()
+    if not url:
+        return redirect("stats:page_overview")
+
+    days = int(request.GET.get("days", 7))
+    days = min(max(days, 1), 90)
+
+    tz_offset = _get_tz_offset(request)
+    now = timezone.now()
+    window_start = now - timedelta(days=days)
+    today = (now - timedelta(minutes=tz_offset)).date()
+    history_start = today - timedelta(days=days - 1)
+
+    base_qs = PageView.objects.filter(url=url, time__gte=window_start)
+
+    total_views = base_qs.count()
+    unique_ip_count = base_qs.values("ip").distinct().count()
+
+    # Geo
+    ip_counts = dict(
+        base_qs.values("ip").annotate(n=Count("view_id")).values_list("ip", "n")
+    )
+    geo_map = resolve_geo(list(ip_counts.keys()))
+
+    country_counter: Counter = Counter()
+    city_counts: dict = {}
+    for ip, count in ip_counts.items():
+        geo = geo_map.get(ip, {})
+        if geo.get("is_private"):
+            continue
+        country = geo.get("country") or "Unknown"
+        country_counter[country] += count
+        city = geo.get("city", "")
+        region = geo.get("region", "")
+        cc = geo.get("country_code", "")
+        if city:
+            key = (city, region, cc)
+            city_counts[key] = city_counts.get(key, 0) + count
+
+    geo_by_country = [{"name": c, "count": n} for c, n in country_counter.most_common(20)]
+    geo_by_city = sorted(
+        [{"name": ", ".join(p for p in [city, region, cc] if p),
+          "city": city, "region": region, "country_code": cc, "count": n}
+         for (city, region, cc), n in city_counts.items()],
+        key=lambda x: -x["count"],
+    )[:20]
+
+    # Daily history
+    raw_history = {
+        row["day"]: row["count"]
+        for row in base_qs
+        .annotate(day=TruncDate("time"))
+        .values("day")
+        .annotate(count=Count("view_id"))
+    }
+    history = [
+        {"day": history_start + timedelta(days=i),
+         "count": raw_history.get(history_start + timedelta(days=i), 0)}
+        for i in range(days)
+    ]
+    history_max = max((r["count"] for r in history), default=1) or 1
+
+    # Recent views with location annotation
+    recent_views = list(
+        base_qs.select_related("user")
+        .order_by("-time")
+        .values("time", "ip", "response_code", "response_time_s", "user__username")[:100]
+    )
+    for v in recent_views:
+        geo = geo_map.get(v["ip"], {})
+        if geo.get("is_private"):
+            v["location"] = "Private"
+        elif geo.get("city"):
+            parts = [geo["city"]]
+            if geo.get("region"):
+                parts.append(geo["region"])
+            parts.append(geo.get("country_code", ""))
+            v["location"] = ", ".join(p for p in parts if p)
+        elif geo.get("country"):
+            v["location"] = geo["country"]
+        else:
+            v["location"] = ""
+
+    # Top IPs with location
+    ip_rows = []
+    for ip, count in sorted(ip_counts.items(), key=lambda x: -x[1])[:50]:
+        geo = geo_map.get(ip, {})
+        if geo.get("is_private"):
+            location = "Private"
+        elif geo.get("city"):
+            parts = [geo["city"]]
+            if geo.get("region"):
+                parts.append(geo["region"])
+            parts.append(geo.get("country_code", ""))
+            location = ", ".join(p for p in parts if p)
+        elif geo.get("country"):
+            location = geo["country"]
+        else:
+            location = ""
+        ip_rows.append({
+            "ip": ip,
+            "count": count,
+            "location": location,
+            "isp": geo.get("isp", ""),
+        })
+
+    return render(request, "stats/page_drill.html", {
+        "url": url,
+        "days": days,
+        "window_start": window_start,
+        "total_views": total_views,
+        "unique_ip_count": unique_ip_count,
+        "geo_by_country": geo_by_country,
+        "geo_by_city": geo_by_city,
+        "history": history,
+        "history_max": history_max,
+        "history_end": today,
+        "recent_views": recent_views,
+        "ip_rows": ip_rows,
+        "day_options": [1, 7, 14, 30, 90],
+    })
+
+
+@log_view
 def plot_page(request):
     return render(
         request,

@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Page Views Overview{% endblock %}
+
+{% block extra_styles %}
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f3f6e7;
+}
+.back-link { font-size: 0.85rem; color: #6b7280; }
+.back-link:hover { color: #9ca3af; }
+
+.days-nav { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+.days-nav a {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #9ca3af;
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.days-nav a.active { background: #1e3a5f; color: #6687fc; border-color: #1e3a5f; }
+.days-nav a:hover { background: #1f2937; color: #f3f6e7; text-decoration: none; }
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.stat-card {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+.stat-card .num { font-size: 2rem; font-weight: 700; color: #6687fc; line-height: 1; }
+.stat-card .label { font-size: 0.75rem; color: #9ca3af; margin-top: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.search-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.search-bar input {
+  flex: 1;
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #f3f6e7;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+.search-bar input:focus { outline: none; border-color: #6687fc; }
+#url-count { font-size: 0.8rem; color: #6b7280; align-self: center; white-space: nowrap; }
+
+.section { margin-bottom: 2.5rem; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 0.5rem;
+}
+.section-header h2 { margin: 0; font-size: 1rem; font-weight: 600; color: #e5e7eb; }
+.badge { background: #1f2937; color: #9ca3af; border-radius: 9999px; padding: 0.1rem 0.55rem; font-size: 0.75rem; font-weight: 600; }
+.badge.highlight { background: #1e3a5f; color: #6687fc; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th {
+  text-align: left; color: #6b7280; font-weight: 600;
+  padding: 0.4rem 0.6rem; border-bottom: 1px solid #1f2937;
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+th:hover { color: #9ca3af; }
+th.sorted-asc::after { content: ' ↑'; color: #6687fc; }
+th.sorted-desc::after { content: ' ↓'; color: #6687fc; }
+td { padding: 0.35rem 0.6rem; border-bottom: 1px solid #111827; color: #d1d5db; vertical-align: middle; }
+tr:hover td { background: #0f172a; }
+tr.hidden-row { display: none; }
+.mono { font-family: monospace; font-size: 0.78rem; }
+.url-link { color: #6687fc; text-decoration: none; }
+.url-link:hover { text-decoration: underline; }
+.overflow-x { overflow-x: auto; }
+
+.bar-cell { width: 120px; }
+.bar-bg { background: #1f2937; border-radius: 3px; height: 6px; overflow: hidden; }
+.bar-fill { background: #6687fc; height: 100%; }
+
+.window-note { font-size: 0.78rem; color: #4b5563; margin-bottom: 1.5rem; }
+{% endblock %}
+
+{% block extra_head %}
+<script>
+(function () {
+  document.cookie = 'tz_offset=' + new Date().getTimezoneOffset() + '; path=/; SameSite=Lax';
+})();
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div>
+    <a class="back-link" href="{% url 'stats:daily_activity' %}">← Daily Activity</a>
+    <h1>Page Views by URL</h1>
+  </div>
+</div>
+
+<div class="days-nav">
+  {% for d in day_options %}
+  <a href="?days={{ d }}" class="{% if days == d %}active{% endif %}">{{ d }}d</a>
+  {% endfor %}
+</div>
+
+<p class="window-note">Showing data for the last {{ days }} day{{ days|pluralize }} (since {{ window_start|date:"N j, Y H:i" }} UTC)</p>
+
+<div class="summary-grid">
+  <div class="stat-card">
+    <div class="num">{{ total_views }}</div>
+    <div class="label">Total Views</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ top_pages|length }}</div>
+    <div class="label">Unique Pages</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <h2>Top Pages</h2>
+    <span class="badge highlight" id="url-badge">{{ top_pages|length }}</span>
+  </div>
+
+  <div class="search-bar">
+    <input type="text" id="url-search" placeholder="Filter URLs…" autocomplete="off">
+    <span id="url-count"></span>
+  </div>
+
+  <div class="overflow-x">
+  <table id="pages-table">
+    <thead>
+      <tr>
+        <th data-col="rank">#</th>
+        <th data-col="url">URL</th>
+        <th data-col="count">Views</th>
+        <th data-col="unique_ips">Unique IPs</th>
+        <th data-col="bar" style="width:120px;">Share</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for page in top_pages %}
+      <tr data-url="{{ page.url }}" data-count="{{ page.count }}" data-ips="{{ page.unique_ips }}">
+        <td class="ts">{{ forloop.counter }}</td>
+        <td class="mono" style="max-width:480px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ page.url }}">
+          <a class="url-link" href="{% url 'stats:page_drill' %}?url={{ page.url|urlencode }}&days={{ days }}">{{ page.url }}</a>
+        </td>
+        <td><span class="badge highlight">{{ page.count }}</span></td>
+        <td>{{ page.unique_ips }}</td>
+        <td class="bar-cell">
+          <div class="bar-bg">
+            <div class="bar-fill" style="width:{% widthratio page.count top_pages.0.count 100 %}%;"></div>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+
+<script>
+(function () {
+  var searchInput = document.getElementById('url-search');
+  var urlCount = document.getElementById('url-count');
+  var badge = document.getElementById('url-badge');
+  var rows = document.querySelectorAll('#pages-table tbody tr');
+  var total = rows.length;
+
+  function filterRows() {
+    var q = searchInput.value.toLowerCase();
+    var visible = 0;
+    rows.forEach(function (row) {
+      var url = row.dataset.url.toLowerCase();
+      var show = !q || url.indexOf(q) !== -1;
+      row.classList.toggle('hidden-row', !show);
+      if (show) visible++;
+    });
+    badge.textContent = visible;
+    urlCount.textContent = q ? ('Showing ' + visible + ' of ' + total) : '';
+  }
+
+  searchInput.addEventListener('input', filterRows);
+
+  // Column sort
+  var sortCol = null;
+  var sortAsc = false;
+  document.querySelectorAll('#pages-table th[data-col]').forEach(function (th) {
+    th.addEventListener('click', function () {
+      var col = th.dataset.col;
+      if (col === 'bar' || col === 'rank') return;
+      if (sortCol === col) { sortAsc = !sortAsc; } else { sortCol = col; sortAsc = false; }
+
+      document.querySelectorAll('#pages-table th').forEach(function (h) {
+        h.classList.remove('sorted-asc', 'sorted-desc');
+      });
+      th.classList.add(sortAsc ? 'sorted-asc' : 'sorted-desc');
+
+      var tbody = document.querySelector('#pages-table tbody');
+      var arr = Array.from(tbody.querySelectorAll('tr'));
+      arr.sort(function (a, b) {
+        var av, bv;
+        if (col === 'url') {
+          av = a.dataset.url; bv = b.dataset.url;
+          return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+        } else if (col === 'count') {
+          av = parseInt(a.dataset.count); bv = parseInt(b.dataset.count);
+        } else if (col === 'unique_ips') {
+          av = parseInt(a.dataset.ips); bv = parseInt(b.dataset.ips);
+        }
+        return sortAsc ? av - bv : bv - av;
+      });
+      arr.forEach(function (r) { tbody.appendChild(r); });
+    });
+  });
+})();
+</script>
+{% endblock %}
