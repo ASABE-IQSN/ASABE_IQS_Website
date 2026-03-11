@@ -3,6 +3,64 @@
 from django.db import migrations
 
 
+def rename_tables(apps, schema_editor):
+    from django.db import connection
+
+    renames = [
+        ('events_event', 'events'),
+        ('events_hook', 'hooks'),
+        ('events_pull', 'pulls'),
+        ('events_team', 'teams'),
+    ]
+    with connection.cursor() as cursor:
+        for old_name, new_name in renames:
+            cursor.execute(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                "WHERE table_schema = DATABASE() AND table_name = %s",
+                [old_name],
+            )
+            old_exists = cursor.fetchone()[0] > 0
+
+            cursor.execute(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                "WHERE table_schema = DATABASE() AND table_name = %s",
+                [new_name],
+            )
+            new_exists = cursor.fetchone()[0] > 0
+
+            if old_exists and not new_exists:
+                cursor.execute(f"RENAME TABLE `{old_name}` TO `{new_name}`")
+
+
+def unrename_tables(apps, schema_editor):
+    from django.db import connection
+
+    renames = [
+        ('events', 'events_event'),
+        ('hooks', 'events_hook'),
+        ('pulls', 'events_pull'),
+        ('teams', 'events_team'),
+    ]
+    with connection.cursor() as cursor:
+        for old_name, new_name in renames:
+            cursor.execute(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                "WHERE table_schema = DATABASE() AND table_name = %s",
+                [old_name],
+            )
+            old_exists = cursor.fetchone()[0] > 0
+
+            cursor.execute(
+                "SELECT COUNT(*) FROM information_schema.tables "
+                "WHERE table_schema = DATABASE() AND table_name = %s",
+                [new_name],
+            )
+            new_exists = cursor.fetchone()[0] > 0
+
+            if old_exists and not new_exists:
+                cursor.execute(f"RENAME TABLE `{old_name}` TO `{new_name}`")
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,20 +68,15 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.AlterModelTable(
-            name='event',
-            table='events',
-        ),
-        migrations.AlterModelTable(
-            name='hook',
-            table='hooks',
-        ),
-        migrations.AlterModelTable(
-            name='pull',
-            table='pulls',
-        ),
-        migrations.AlterModelTable(
-            name='team',
-            table='teams',
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(rename_tables, unrename_tables),
+            ],
+            state_operations=[
+                migrations.AlterModelTable(name='event', table='events'),
+                migrations.AlterModelTable(name='hook', table='hooks'),
+                migrations.AlterModelTable(name='pull', table='pulls'),
+                migrations.AlterModelTable(name='team', table='teams'),
+            ],
         ),
     ]
