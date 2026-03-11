@@ -74,6 +74,14 @@ def account(request):
                     from users.tasks import notify_team_admins_of_request
                     notify_team_admins_of_request.delay(enrollment_request.request_id)
 
+                    send_mail(
+                        f"Your request to join {team.team_name} has been received",
+                        f"Hi {user.username},\n\nYour request to join {team.team_name} has been submitted. A team admin will review your request and you'll be notified once it's approved.\n\nIQS Connect",
+                        "no-reply@iqsconnect.org",
+                        [user.email],
+                        fail_silently=True,
+                    )
+
                     messages.success(request, f"Your request to join {team.team_name} has been sent to team admins.")
 
         return redirect("users:account")
@@ -139,6 +147,8 @@ User = get_user_model()
 
 def is_team_admin(user, team: Team) -> bool:
     gp = getattr(team, "group_profile", None)
+    if user.is_superuser:
+        return True
     if gp is None:
         return False
     return gp.admins.filter(pk=user.pk).exists()
@@ -227,6 +237,14 @@ def manage_team_members(request, team_id):
                     enrollment_request.reviewed_by = request.user
                     enrollment_request.reviewed_at = timezone.now()
                     enrollment_request.save()
+
+                    send_mail(
+                        "Your team join request has been approved",
+                        f"Hi {enrollment_request.user.username},\n\nYour request to join {team.team_name} has been approved. You now have access to the team.\n\nIQS Connect",
+                        "no-reply@iqsconnect.org",
+                        [enrollment_request.user.email],
+                        fail_silently=True,
+                    )
 
                     messages.success(request, f"Approved {enrollment_request.user.username}'s request to join the team.")
                 except TeamEnrollmentRequest.DoesNotExist:

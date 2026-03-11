@@ -101,7 +101,7 @@ def assign_user_to_teams(self, user_id: int) -> dict:
 
     if errors:
         result["errors"] = errors
-
+    
     logger.info(f"Team assignment complete for {user.username}: {len(teams_assigned)} teams")
     return result
 
