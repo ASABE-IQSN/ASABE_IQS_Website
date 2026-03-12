@@ -144,6 +144,41 @@ tr.hidden-row { display: none; }
   {% endif %}
 </div>
 
+{% if nginx_by_category %}
+<div class="section">
+  <div class="section-header">
+    <h2>Traffic by Category</h2>
+    <span style="font-size:0.75rem;color:#4b5563;margin-left:auto;">from Nginx logs · sorted by bytes served</span>
+  </div>
+  {% with max_bytes=nginx_by_category.0.total_bytes %}
+  <table>
+    <thead>
+      <tr>
+        <th>Category</th>
+        <th>Requests</th>
+        <th>Total Bytes</th>
+        <th style="width:160px;"></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in nginx_by_category %}
+      <tr>
+        <td>{{ row.category }}</td>
+        <td>{{ row.nginx_hits }}</td>
+        <td style="white-space:nowrap;font-weight:600;color:#e5e7eb;">{{ row.total_bytes_fmt }}</td>
+        <td>
+          <div class="bar-bg">
+            <div class="bar-fill" style="width:{% widthratio row.total_bytes max_bytes 100 %}%;background:#0ea5e9;"></div>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endwith %}
+</div>
+{% endif %}
+
 <div class="section">
   <div class="section-header">
     <h2>Top Pages</h2>

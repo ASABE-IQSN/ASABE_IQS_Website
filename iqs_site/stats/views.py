@@ -794,14 +794,48 @@ def page_overview(request):
         ))
     session_by_path = {row['path']: row for row in session_stats}
 
-    # Merge NginxLog bytes by URL
-    nginx_bytes_by_url = {
-        row['url']: row
-        for row in NginxLog.objects
+    # Merge NginxLog bytes by URL + build category breakdown
+    IMAGE_EXTS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.ico', '.avif', '.bmp'}
+    JS_CSS_EXTS = {'.js', '.css'}
+
+    URL_CATEGORIES = [
+        # (label, predicate)  — first match wins
+        ("Pull Exports",    lambda u: u.startswith("/static/exports/")),
+        ("Team Photos",     lambda u: u.startswith("/static/photos/") or u.startswith("/media/photos/")),
+        ("Award Images",    lambda u: u.startswith("/static/awards/") or u.startswith("/media/awards/")),
+        ("Report Images",   lambda u: u.startswith("/static/reports/") and any(u.endswith(e) for e in IMAGE_EXTS)),
+        ("Reports (PDF)",   lambda u: u.startswith("/reports/") or u.startswith("/static/reports/")),
+        ("Event Images",    lambda u: u.startswith("/static/events/images/")),
+        ("JS / CSS",        lambda u: u.startswith("/static/") and any(u.endswith(e) for e in JS_CSS_EXTS)),
+        ("Other Static",    lambda u: u.startswith("/static/") or u.startswith("/media/")),
+        ("App Pages",       lambda u: True),
+    ]
+
+    def _categorise(url):
+        for label, pred in URL_CATEGORIES:
+            if pred(url):
+                return label
+        return "Other"
+
+    nginx_rows = list(
+        NginxLog.objects
             .filter(time__gte=window_start)
             .values('url')
             .annotate(total_bytes=Sum('bytes_sent'), avg_bytes=Avg('bytes_sent'), nginx_hits=Count('id'))
-    }
+    )
+    nginx_bytes_by_url = {row['url']: row for row in nginx_rows}
+
+    # Aggregate by category
+    cat_agg: dict = {}
+    for row in nginx_rows:
+        cat = _categorise(row['url'])
+        if cat not in cat_agg:
+            cat_agg[cat] = {'category': cat, 'total_bytes': 0, 'nginx_hits': 0}
+        cat_agg[cat]['total_bytes'] += row['total_bytes'] or 0
+        cat_agg[cat]['nginx_hits'] += row['nginx_hits'] or 0
+    nginx_by_category = sorted(cat_agg.values(), key=lambda x: -x['total_bytes'])
+    for c in nginx_by_category:
+        c['total_bytes_fmt'] = _fmt_bytes(c['total_bytes'])
 
     for row in top_pages:
         sess = session_by_path.get(row['url'], {})
@@ -824,6 +858,7 @@ def page_overview(request):
         "total_views": total_views,
         "top_pages": top_pages,
         "total_nginx_bytes": _fmt_bytes(total_nginx_bytes),
+        "nginx_by_category": nginx_by_category,
         "day_options": [1, 7, 14, 30, 90],
     })
 
