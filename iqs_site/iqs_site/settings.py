@@ -355,6 +355,14 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
 
+from celery.schedules import crontab
+CELERY_BEAT_SCHEDULE = {
+    "import-nginx-logs-hourly": {
+        "task": "stats.import_nginx_logs",
+        "schedule": crontab(minute=5),  # run at :05 past every hour
+    },
+}
+
 APIURL=os.environ["APIURL"]
 
 INTERNAL_REPORT_TOKEN = os.environ.get("INTERNAL_REPORT_TOKEN", "")

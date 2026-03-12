@@ -129,6 +129,18 @@ AVAILABLE_METRICS = [
 ]
 
 
+def _fmt_bytes(b):
+    """Format a byte count as a human-readable string."""
+    if b is None:
+        return "0 B"
+    b = int(b)
+    for unit in ("B", "KB", "MB", "GB"):
+        if b < 1024:
+            return f"{b:.1f} {unit}" if unit != "B" else f"{b} B"
+        b /= 1024
+    return f"{b:.1f} TB"
+
+
 def _fmt_seconds(s):
     """Format seconds as 'Xm Ys' string."""
     if s is None:
@@ -781,6 +793,16 @@ def page_overview(request):
             avg_active_s=Avg('active_seconds'),
         ))
     session_by_path = {row['path']: row for row in session_stats}
+
+    # Merge NginxLog bytes by URL
+    nginx_bytes_by_url = {
+        row['url']: row
+        for row in NginxLog.objects
+            .filter(time__gte=window_start)
+            .values('url')
+            .annotate(total_bytes=Sum('bytes_sent'), avg_bytes=Avg('bytes_sent'), nginx_hits=Count('id'))
+    }
+
     for row in top_pages:
         sess = session_by_path.get(row['url'], {})
         row['session_count'] = sess.get('session_count', 0)
@@ -788,12 +810,20 @@ def page_overview(request):
         row['avg_active_s'] = sess.get('avg_active_s') or 0
         row['total_active_fmt'] = _fmt_seconds(row['total_active_s'])
         row['avg_active_fmt'] = _fmt_seconds(row['avg_active_s'])
+        nginx = nginx_bytes_by_url.get(row['url'], {})
+        row['total_bytes'] = nginx.get('total_bytes') or 0
+        row['avg_bytes'] = int(nginx.get('avg_bytes') or 0)
+        row['total_bytes_fmt'] = _fmt_bytes(row['total_bytes'])
+        row['avg_bytes_fmt'] = _fmt_bytes(row['avg_bytes'])
+
+    total_nginx_bytes = NginxLog.objects.filter(time__gte=window_start).aggregate(t=Sum('bytes_sent'))['t'] or 0
 
     return render(request, "stats/page_overview.html", {
         "days": days,
         "window_start": window_start,
         "total_views": total_views,
         "top_pages": top_pages,
+        "total_nginx_bytes": _fmt_bytes(total_nginx_bytes),
         "day_options": [1, 7, 14, 30, 90],
     })
 
@@ -884,6 +914,34 @@ def page_drill(request):
         else:
             v["location"] = ""
 
+    # Nginx throughput for this URL
+    nginx_qs = NginxLog.objects.filter(url=url, time__gte=window_start)
+    nginx_agg = nginx_qs.aggregate(
+        total_bytes=Sum('bytes_sent'),
+        avg_bytes=Avg('bytes_sent'),
+        nginx_hits=Count('id'),
+    )
+    nginx_total_bytes = nginx_agg['total_bytes'] or 0
+    nginx_avg_bytes = int(nginx_agg['avg_bytes'] or 0)
+    nginx_hits = nginx_agg['nginx_hits'] or 0
+
+    # Daily bytes history
+    raw_bytes_history = {
+        row['day']: row['bytes']
+        for row in nginx_qs
+            .annotate(day=TruncDate('time'))
+            .values('day')
+            .annotate(bytes=Sum('bytes_sent'))
+    }
+    bytes_history = [
+        {"day": history_start + timedelta(days=i),
+         "bytes": raw_bytes_history.get(history_start + timedelta(days=i), 0)}
+        for i in range(days)
+    ]
+    bytes_history_max = max((r["bytes"] for r in bytes_history), default=1) or 1
+    for r in bytes_history:
+        r["bytes_fmt"] = _fmt_bytes(r["bytes"])
+
     # Top IPs with location
     ip_rows = []
     for ip, count in sorted(ip_counts.items(), key=lambda x: -x[1])[:50]:
@@ -920,6 +978,11 @@ def page_drill(request):
         "history_end": today,
         "recent_views": recent_views,
         "ip_rows": ip_rows,
+        "nginx_total_bytes": _fmt_bytes(nginx_total_bytes),
+        "nginx_avg_bytes": _fmt_bytes(nginx_avg_bytes),
+        "nginx_hits": nginx_hits,
+        "bytes_history": bytes_history,
+        "bytes_history_max": bytes_history_max,
         "day_options": [1, 7, 14, 30, 90],
     })
 

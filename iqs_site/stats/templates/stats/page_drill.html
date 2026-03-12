@@ -173,9 +173,23 @@ tr:hover td { background: #0f172a; }
     <div class="num">{{ geo_by_country|length }}</div>
     <div class="label">Countries</div>
   </div>
+  {% if nginx_hits %}
+  <div class="stat-card">
+    <div class="num" style="font-size:1.3rem;">{{ nginx_total_bytes }}</div>
+    <div class="label">Total Bytes</div>
+  </div>
+  <div class="stat-card">
+    <div class="num" style="font-size:1.3rem;">{{ nginx_avg_bytes }}</div>
+    <div class="label">Avg / Request</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ nginx_hits }}</div>
+    <div class="label">Nginx Hits</div>
+  </div>
+  {% endif %}
 </div>
 
-<!-- History chart -->
+<!-- History charts -->
 {% if days > 1 %}
 <div class="section">
   <div class="section-header">
@@ -196,6 +210,29 @@ tr:hover td { background: #0f172a; }
     <span>{{ history_end|date:"M j" }}</span>
   </div>
 </div>
+
+{% if nginx_hits %}
+<div class="section">
+  <div class="section-header">
+    <h2>Daily Bytes Served</h2>
+    <span style="font-size:0.75rem;color:#4b5563;margin-left:auto;">from Nginx logs</span>
+  </div>
+  <div class="history-chart">
+    {% for row in bytes_history %}
+    <div class="history-bar-wrap">
+      <div class="history-tooltip">
+        {{ row.day|date:"M j" }}<br>{{ row.bytes_fmt }}
+      </div>
+      <div class="history-bar" style="height:{% widthratio row.bytes bytes_history_max 100 %}%;background:#0ea5e9;"></div>
+    </div>
+    {% endfor %}
+  </div>
+  <div class="history-axis">
+    <span>{{ bytes_history.0.day|date:"M j" }}</span>
+    <span>{{ history_end|date:"M j" }}</span>
+  </div>
+</div>
+{% endif %}
 {% endif %}
 
 <!-- Geo breakdown -->

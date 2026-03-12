@@ -7,13 +7,18 @@ already-imported lines are skipped via a SHA-256 hash stored on each row.
 
 Usage examples
 --------------
-  # Import a single file
-  python manage.py import_nginx_logs --log-file /var/log/nginx/access.log
+  # Import the main site log
+  python manage.py import_nginx_logs --log-file /var/log/nginx/quarterscale_access.log
 
-  # Import multiple files (e.g. rotated logs)
+  # Import all vhost logs at once
   python manage.py import_nginx_logs \
-      --log-file /var/log/nginx/access.log \
-      --log-file /var/log/nginx/access.log.1
+      --log-file /var/log/nginx/quarterscale_access.log \
+      --log-file /var/log/nginx/testing_access.log \
+      --log-file /var/log/nginx/api_access.log \
+      --log-file /var/log/nginx/ingest_access.log
+
+  # NOTE: /var/log/nginx/access.log is a symlink to /dev/stdout in the nginx
+  # Docker image — do NOT use it, reading it will hang.
 
   # Only import 404s and image requests (faster for targeted backfill)
   python manage.py import_nginx_logs \
@@ -26,13 +31,15 @@ Usage examples
 
 Nginx log_format
 ----------------
-The command expects the nginx "combined" format (the default):
+The command expects the "timed" format defined in nginx/nginx.conf:
 
-    log_format combined '$remote_addr - $remote_user [$time_local] '
-                        '"$request" $status $body_bytes_sent '
-                        '"$http_referer" "$http_user_agent"';
+    log_format timed '$remote_addr - $remote_user [$time_local] '
+                     '"$request" $status $body_bytes_sent '
+                     '"$http_referer" "$http_user_agent" '
+                     'rt=$request_time';
 
-If you use a custom format, adjust LOG_PATTERN below to match.
+The regex uses re.match() so the trailing rt= field is ignored harmlessly.
+If you use a different format, adjust LOG_PATTERN below to match.
 """
 
 from __future__ import annotations

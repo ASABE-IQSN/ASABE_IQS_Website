@@ -136,6 +136,12 @@ tr.hidden-row { display: none; }
     <div class="num">{{ top_pages|length }}</div>
     <div class="label">Unique Pages</div>
   </div>
+  {% if total_nginx_bytes != "0 B" %}
+  <div class="stat-card">
+    <div class="num" style="font-size:1.3rem;">{{ total_nginx_bytes }}</div>
+    <div class="label">Nginx Bytes Served</div>
+  </div>
+  {% endif %}
 </div>
 
 <div class="section">
@@ -160,13 +166,16 @@ tr.hidden-row { display: none; }
         <th data-col="sessions">Sessions</th>
         <th data-col="total_time">Total Time</th>
         <th data-col="avg_time">Avg Time</th>
+        <th data-col="total_bytes">Total Bytes</th>
+        <th data-col="avg_bytes">Avg/Req</th>
         <th data-col="bar" style="width:120px;">Share</th>
       </tr>
     </thead>
     <tbody>
       {% for page in top_pages %}
       <tr data-url="{{ page.url }}" data-count="{{ page.count }}" data-ips="{{ page.unique_ips }}"
-          data-sessions="{{ page.session_count }}" data-total-time="{{ page.total_active_s }}" data-avg-time="{{ page.avg_active_s }}">
+          data-sessions="{{ page.session_count }}" data-total-time="{{ page.total_active_s }}" data-avg-time="{{ page.avg_active_s }}"
+          data-total-bytes="{{ page.total_bytes }}" data-avg-bytes="{{ page.avg_bytes }}">
         <td class="ts">{{ forloop.counter }}</td>
         <td class="mono" style="max-width:480px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ page.url }}">
           <a class="url-link" href="{% url 'stats:page_drill' %}?url={{ page.url|urlencode }}&days={{ days }}">{{ page.url }}</a>
@@ -176,6 +185,8 @@ tr.hidden-row { display: none; }
         <td>{% if page.session_count %}<span class="badge highlight">{{ page.session_count }}</span>{% else %}—{% endif %}</td>
         <td style="color:#4ade80;white-space:nowrap;">{% if page.total_active_s %}{{ page.total_active_fmt }}{% else %}—{% endif %}</td>
         <td style="color:#9ca3af;white-space:nowrap;">{% if page.avg_active_s %}{{ page.avg_active_fmt }}{% else %}—{% endif %}</td>
+        <td style="white-space:nowrap;">{% if page.total_bytes %}{{ page.total_bytes_fmt }}{% else %}<span style="color:#374151;">—</span>{% endif %}</td>
+        <td style="color:#9ca3af;white-space:nowrap;">{% if page.avg_bytes %}{{ page.avg_bytes_fmt }}{% else %}<span style="color:#374151;">—</span>{% endif %}</td>
         <td class="bar-cell">
           <div class="bar-bg">
             <div class="bar-fill" style="width:{% widthratio page.count top_pages.0.count 100 %}%;"></div>
@@ -242,6 +253,10 @@ tr.hidden-row { display: none; }
           av = parseInt(a.dataset.totalTime || '0'); bv = parseInt(b.dataset.totalTime || '0');
         } else if (col === 'avg_time') {
           av = parseInt(a.dataset.avgTime || '0'); bv = parseInt(b.dataset.avgTime || '0');
+        } else if (col === 'total_bytes') {
+          av = parseInt(a.dataset.totalBytes || '0'); bv = parseInt(b.dataset.totalBytes || '0');
+        } else if (col === 'avg_bytes') {
+          av = parseInt(a.dataset.avgBytes || '0'); bv = parseInt(b.dataset.avgBytes || '0');
         }
         return sortAsc ? av - bv : bv - av;
       });
