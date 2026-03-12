@@ -225,6 +225,10 @@ tr:hover td {
     <div class="label">Page views</div>
   </div>
   <div class="stat-card">
+    <div class="num">{{ session_total }}</div>
+    <div class="label">Page sessions</div>
+  </div>
+  <div class="stat-card">
     <div class="num">{{ edit_logs|length }}</div>
     <div class="label">Field edits</div>
   </div>
@@ -265,7 +269,7 @@ tr:hover td {
         {% for u in new_accounts %}
         <tr>
           <td>
-            <a href="/admin/auth/user/{{ u.id }}/change/">{{ u.username }}</a>
+            <a href="{% url 'stats:user_activity' %}?user_id={{ u.id }}">{{ u.username }}</a>
             {% if u.first_name or u.last_name %}
               <span style="color:#6b7280"> — {{ u.first_name }} {{ u.last_name }}</span>
             {% endif %}
@@ -296,7 +300,7 @@ tr:hover td {
       <tbody>
         {% for u in logins %}
         <tr>
-          <td><a href="/admin/auth/user/{{ u.id }}/change/">{{ u.username }}</a></td>
+          <td><a href="{% url 'stats:user_activity' %}?user_id={{ u.id }}">{{ u.username }}</a></td>
           <td class="mono">{{ u.email }}</td>
           <td class="ts"><time data-utc="{{ u.last_login|date:'c' }}">{{ u.last_login|time:"H:i:s" }}</time></td>
         </tr>
@@ -493,6 +497,155 @@ tr:hover td {
     </div>
   </div>
 </div>
+
+<!-- Page Sessions Today -->
+<div class="section">
+  <div class="section-header">
+    <h2>Page Sessions Today</h2>
+    <span class="badge {% if session_total %}highlight{% endif %}">{{ session_total }}</span>
+    <span style="font-size:0.75rem;color:#4b5563;margin-left:auto;">client-side dwell time · bots excluded</span>
+  </div>
+  {% if top_pages_by_time or top_pages_by_count %}
+  <div class="two-col">
+    <div>
+      <div style="font-size:0.8rem;color:#6b7280;margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Top Pages by Time</div>
+      {% if top_pages_by_time %}
+      <table>
+        <thead><tr><th>#</th><th>Path</th><th>Visits</th><th>Total Time</th></tr></thead>
+        <tbody>
+          {% for row in top_pages_by_time %}
+          <tr>
+            <td class="ts">{{ forloop.counter }}</td>
+            <td class="mono" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ row.path }}">{{ row.path }}</td>
+            <td><span class="badge highlight">{{ row.session_count }}</span></td>
+            <td style="color:#4ade80;">{{ row.total_active_fmt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty-note">No sessions recorded.</p>
+      {% endif %}
+    </div>
+    <div>
+      <div style="font-size:0.8rem;color:#6b7280;margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Top Pages by Visits</div>
+      {% if top_pages_by_count %}
+      <table>
+        <thead><tr><th>#</th><th>Path</th><th>Visits</th><th>Total Time</th></tr></thead>
+        <tbody>
+          {% for row in top_pages_by_count %}
+          <tr>
+            <td class="ts">{{ forloop.counter }}</td>
+            <td class="mono" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ row.path }}">{{ row.path }}</td>
+            <td><span class="badge highlight">{{ row.session_count }}</span></td>
+            <td style="color:#4ade80;">{{ row.total_active_fmt }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty-note">No sessions recorded.</p>
+      {% endif %}
+    </div>
+  </div>
+  {% else %}
+  <p class="empty-note">No page sessions recorded.</p>
+  {% endif %}
+</div>
+
+<!-- Team Page Activity -->
+{% if team_page_stats %}
+<div class="section">
+  <div class="section-header">
+    <h2>Team Page Activity</h2>
+    <span class="badge highlight">{{ team_page_stats|length }} rows</span>
+    <a href="{% url 'stats:team_page_activity' %}" style="font-size:0.78rem;color:#6687fc;margin-left:auto;">Full report →</a>
+  </div>
+  <div class="overflow-x">
+  <table>
+    <thead>
+      <tr><th>Team</th><th>#</th><th>Page</th><th>Visits</th><th>Total Time</th><th>Avg Time</th></tr>
+    </thead>
+    <tbody>
+      {% for row in team_page_stats %}
+      <tr>
+        <td>{{ row.team_name }}</td>
+        <td style="color:#6b7280;">{{ row.team_number }}</td>
+        <td class="mono" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ row.path }}">{{ row.path }}</td>
+        <td><span class="badge highlight">{{ row.session_count }}</span></td>
+        <td style="color:#4ade80;">{{ row.total_active_fmt }}</td>
+        <td style="color:#9ca3af;">{{ row.avg_active_fmt }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endif %}
+
+<!-- Nginx Traffic -->
+{% if nginx_total %}
+<div class="section">
+  <div class="section-header">
+    <h2>Nginx Traffic</h2>
+    <span class="badge highlight">{{ nginx_total }} requests</span>
+    <span style="font-size:0.75rem;color:#4b5563;margin-left:auto;">all traffic including static files &amp; bots</span>
+  </div>
+  <div class="summary-grid" style="margin-bottom:1rem;">
+    <div class="stat-card">
+      <div class="num">{{ nginx_total }}</div>
+      <div class="label">Total Requests</div>
+    </div>
+    <div class="stat-card">
+      <div class="num">{{ nginx_bytes|filesizeformat }}</div>
+      <div class="label">Bytes Served</div>
+    </div>
+  </div>
+  <div class="two-col">
+    <div>
+      <div style="font-size:0.8rem;color:#6b7280;margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Status Codes</div>
+      <table>
+        <thead><tr><th>Code</th><th>Count</th><th style="width:120px;"></th></tr></thead>
+        <tbody>
+          {% with max_nginx=nginx_status_dist.0.count %}
+          {% for row in nginx_status_dist %}
+          <tr>
+            <td>
+              {% if row.status_code >= 500 %}<span class="pill pill-red">{{ row.status_code }}</span>
+              {% elif row.status_code >= 400 %}<span class="pill pill-yellow">{{ row.status_code }}</span>
+              {% elif row.status_code >= 300 %}<span class="pill pill-blue">{{ row.status_code }}</span>
+              {% else %}<span class="pill pill-green">{{ row.status_code }}</span>{% endif %}
+            </td>
+            <td><span class="badge highlight">{{ row.count }}</span></td>
+            <td>
+              <div style="background:#1f2937;border-radius:3px;height:6px;overflow:hidden;">
+                <div style="background:#6687fc;height:100%;width:{% widthratio row.count max_nginx 100 %}%;"></div>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+          {% endwith %}
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div style="font-size:0.8rem;color:#6b7280;margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Top URLs by Hits</div>
+      <table>
+        <thead><tr><th>#</th><th>URL</th><th>Hits</th></tr></thead>
+        <tbody>
+          {% for row in nginx_top_urls %}
+          <tr>
+            <td class="ts">{{ forloop.counter }}</td>
+            <td class="mono" style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ row.url }}">{{ row.url }}</td>
+            <td><span class="badge highlight">{{ row.count }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- 500 Errors -->
 {% if server_errors %}

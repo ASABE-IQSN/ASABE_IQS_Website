@@ -157,18 +157,25 @@ tr.hidden-row { display: none; }
         <th data-col="url">URL</th>
         <th data-col="count">Views</th>
         <th data-col="unique_ips">Unique IPs</th>
+        <th data-col="sessions">Sessions</th>
+        <th data-col="total_time">Total Time</th>
+        <th data-col="avg_time">Avg Time</th>
         <th data-col="bar" style="width:120px;">Share</th>
       </tr>
     </thead>
     <tbody>
       {% for page in top_pages %}
-      <tr data-url="{{ page.url }}" data-count="{{ page.count }}" data-ips="{{ page.unique_ips }}">
+      <tr data-url="{{ page.url }}" data-count="{{ page.count }}" data-ips="{{ page.unique_ips }}"
+          data-sessions="{{ page.session_count }}" data-total-time="{{ page.total_active_s }}" data-avg-time="{{ page.avg_active_s }}">
         <td class="ts">{{ forloop.counter }}</td>
         <td class="mono" style="max-width:480px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ page.url }}">
           <a class="url-link" href="{% url 'stats:page_drill' %}?url={{ page.url|urlencode }}&days={{ days }}">{{ page.url }}</a>
         </td>
         <td><span class="badge highlight">{{ page.count }}</span></td>
         <td>{{ page.unique_ips }}</td>
+        <td>{% if page.session_count %}<span class="badge highlight">{{ page.session_count }}</span>{% else %}—{% endif %}</td>
+        <td style="color:#4ade80;white-space:nowrap;">{% if page.total_active_s %}{{ page.total_active_fmt }}{% else %}—{% endif %}</td>
+        <td style="color:#9ca3af;white-space:nowrap;">{% if page.avg_active_s %}{{ page.avg_active_fmt }}{% else %}—{% endif %}</td>
         <td class="bar-cell">
           <div class="bar-bg">
             <div class="bar-fill" style="width:{% widthratio page.count top_pages.0.count 100 %}%;"></div>
@@ -229,6 +236,12 @@ tr.hidden-row { display: none; }
           av = parseInt(a.dataset.count); bv = parseInt(b.dataset.count);
         } else if (col === 'unique_ips') {
           av = parseInt(a.dataset.ips); bv = parseInt(b.dataset.ips);
+        } else if (col === 'sessions') {
+          av = parseInt(a.dataset.sessions || '0'); bv = parseInt(b.dataset.sessions || '0');
+        } else if (col === 'total_time') {
+          av = parseInt(a.dataset.totalTime || '0'); bv = parseInt(b.dataset.totalTime || '0');
+        } else if (col === 'avg_time') {
+          av = parseInt(a.dataset.avgTime || '0'); bv = parseInt(b.dataset.avgTime || '0');
         }
         return sortAsc ? av - bv : bv - av;
       });

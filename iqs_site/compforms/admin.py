@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.db.models import Count
 from .models import (
     Question, CompForm, FormQuestion, EventForm, FormResponse, QuestionResponse,
     QuestionGroup, GroupQuestion, TeamQuestionAssignment, QuestionSwap,
@@ -7,11 +8,21 @@ from .models import (
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
-    list_display = ('question_id', 'question_text_truncated', 'question_type', 'created_at')
+    list_display = ('question_id', 'question_text_truncated', 'question_type', 'skip_count', 'created_at')
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).annotate(
+            _skip_count=Count('swapped_away_from', distinct=True)
+        )
 
     def question_text_truncated(self, obj):
         return obj.question_text[:80]
     question_text_truncated.short_description = 'Question Text'
+
+    def skip_count(self, obj):
+        return obj._skip_count
+    skip_count.short_description = 'Times Skipped'
+    skip_count.admin_order_field = '_skip_count'
 
 
 class FormQuestionInline(admin.TabularInline):

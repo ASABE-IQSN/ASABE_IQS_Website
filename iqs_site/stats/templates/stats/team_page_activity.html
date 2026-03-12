@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}Team Page Activity{% endblock %}
+
+{% block extra_styles %}
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f3f6e7;
+}
+.back-link { font-size: 0.85rem; color: #6b7280; }
+.back-link:hover { color: #9ca3af; }
+
+.days-nav { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+.days-nav a {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #9ca3af;
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.days-nav a.active { background: #1e3a5f; color: #6687fc; border-color: #1e3a5f; }
+.days-nav a:hover { background: #1f2937; color: #f3f6e7; text-decoration: none; }
+
+.section { margin-bottom: 2.5rem; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 0.5rem;
+}
+.section-header h2 { margin: 0; font-size: 1rem; font-weight: 600; color: #e5e7eb; }
+.badge { background: #1f2937; color: #9ca3af; border-radius: 9999px; padding: 0.1rem 0.55rem; font-size: 0.75rem; font-weight: 600; }
+.badge.highlight { background: #1e3a5f; color: #6687fc; }
+
+.search-bar { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+.search-bar input {
+  flex: 1;
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #f3f6e7;
+  padding: 0.4rem 0.75rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+.search-bar input:focus { outline: none; border-color: #6687fc; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th {
+  text-align: left; color: #6b7280; font-weight: 600;
+  padding: 0.4rem 0.6rem; border-bottom: 1px solid #1f2937;
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+th:hover { color: #9ca3af; }
+th.sorted-asc::after { content: ' ↑'; color: #6687fc; }
+th.sorted-desc::after { content: ' ↓'; color: #6687fc; }
+td { padding: 0.35rem 0.6rem; border-bottom: 1px solid #111827; color: #d1d5db; vertical-align: middle; }
+tr:hover td { background: #0f172a; }
+tr.hidden-row { display: none; }
+.mono { font-family: monospace; font-size: 0.78rem; }
+.overflow-x { overflow-x: auto; }
+.window-note { font-size: 0.78rem; color: #4b5563; margin-bottom: 1.5rem; }
+
+.leaderboard { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; margin-bottom: 2rem; }
+.lb-card {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 0.6rem;
+  padding: 0.75rem 1rem;
+}
+.lb-card .lb-rank { font-size: 0.7rem; color: #4b5563; text-transform: uppercase; letter-spacing: 0.05em; }
+.lb-card .lb-team { font-size: 0.9rem; font-weight: 600; color: #e5e7eb; margin: 0.25rem 0; }
+.lb-card .lb-num { font-size: 0.75rem; color: #6b7280; }
+.lb-card .lb-time { font-size: 1.1rem; font-weight: 700; color: #4ade80; }
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div>
+    <a class="back-link" href="{% url 'stats:daily_activity' %}">← Daily Activity</a>
+    <h1>Team Page Activity</h1>
+  </div>
+</div>
+
+<div class="days-nav">
+  {% for d in day_options %}
+  <a href="?days={{ d }}" class="{% if days == d %}active{% endif %}">{{ d }}d</a>
+  {% endfor %}
+</div>
+
+<p class="window-note">Showing data for the last {{ days }} day{{ days|pluralize }} (since {{ window_start|date:"N j, Y H:i" }} UTC) · logged-in users only · users on multiple teams counted for each</p>
+
+{% if top_teams %}
+<div class="section">
+  <div class="section-header">
+    <h2>Top Teams by Total Active Time</h2>
+    <span class="badge highlight">{{ top_teams|length }} teams</span>
+  </div>
+  <div class="leaderboard">
+    {% for t in top_teams %}
+    <div class="lb-card">
+      <div class="lb-rank">#{{ forloop.counter }} · {{ t.team_number }}</div>
+      <div class="lb-team">{{ t.team_name }}</div>
+      <div class="lb-time">{{ t.total_active_fmt }}</div>
+      <div class="lb-num">{{ t.session_count }} session{{ t.session_count|pluralize }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<div class="section">
+  <div class="section-header">
+    <h2>Team × Page Breakdown</h2>
+    <span class="badge highlight" id="row-badge">{{ team_page_stats|length }}</span>
+  </div>
+
+  {% if team_page_stats %}
+  <div class="search-bar">
+    <input type="text" id="row-search" placeholder="Filter by team or page…" autocomplete="off">
+  </div>
+
+  <div class="overflow-x">
+  <table id="team-table">
+    <thead>
+      <tr>
+        <th data-col="team">Team</th>
+        <th data-col="num">#</th>
+        <th data-col="path">Page</th>
+        <th data-col="visits">Visits</th>
+        <th data-col="total_time">Total Time</th>
+        <th data-col="avg_time">Avg Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in team_page_stats %}
+      <tr data-team="{{ row.team_name|lower }}" data-path="{{ row.path|lower }}"
+          data-visits="{{ row.session_count }}" data-total="{{ row.total_active_s }}" data-avg="{{ row.avg_active_s }}">
+        <td>{{ row.team_name }}</td>
+        <td style="color:#6b7280;">{{ row.team_number }}</td>
+        <td class="mono" style="max-width:320px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ row.path }}">{{ row.path }}</td>
+        <td><span class="badge highlight">{{ row.session_count }}</span></td>
+        <td style="color:#4ade80;white-space:nowrap;">{{ row.total_active_fmt }}</td>
+        <td style="color:#9ca3af;white-space:nowrap;">{{ row.avg_active_fmt }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p style="color:#4b5563;font-size:0.85rem;">No team page sessions found for this period. This requires logged-in users who are members of teams.</p>
+  {% endif %}
+</div>
+
+<script>
+(function () {
+  var searchInput = document.getElementById('row-search');
+  var badge = document.getElementById('row-badge');
+  var rows = document.querySelectorAll('#team-table tbody tr');
+
+  if (searchInput) {
+    searchInput.addEventListener('input', function () {
+      var q = searchInput.value.toLowerCase();
+      var visible = 0;
+      rows.forEach(function (row) {
+        var match = !q || row.dataset.team.indexOf(q) !== -1 || row.dataset.path.indexOf(q) !== -1;
+        row.classList.toggle('hidden-row', !match);
+        if (match) visible++;
+      });
+      badge.textContent = visible;
+    });
+  }
+
+  // Column sort
+  var sortCol = null;
+  var sortAsc = false;
+  document.querySelectorAll('#team-table th[data-col]').forEach(function (th) {
+    th.addEventListener('click', function () {
+      var col = th.dataset.col;
+      if (sortCol === col) { sortAsc = !sortAsc; } else { sortCol = col; sortAsc = false; }
+      document.querySelectorAll('#team-table th').forEach(function (h) {
+        h.classList.remove('sorted-asc', 'sorted-desc');
+      });
+      th.classList.add(sortAsc ? 'sorted-asc' : 'sorted-desc');
+      var tbody = document.querySelector('#team-table tbody');
+      var arr = Array.from(tbody.querySelectorAll('tr'));
+      arr.sort(function (a, b) {
+        var av, bv;
+        if (col === 'team') {
+          av = a.dataset.team; bv = b.dataset.team;
+          return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+        } else if (col === 'path') {
+          av = a.dataset.path; bv = b.dataset.path;
+          return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+        } else if (col === 'visits') {
+          av = parseInt(a.dataset.visits || '0'); bv = parseInt(b.dataset.visits || '0');
+        } else if (col === 'total_time') {
+          av = parseInt(a.dataset.total || '0'); bv = parseInt(b.dataset.total || '0');
+        } else if (col === 'avg_time') {
+          av = parseInt(a.dataset.avg || '0'); bv = parseInt(b.dataset.avg || '0');
+        } else { return 0; }
+        return sortAsc ? av - bv : bv - av;
+      });
+      arr.forEach(function (r) { tbody.appendChild(r); });
+    });
+  });
+})();
+</script>
+{% endblock %}

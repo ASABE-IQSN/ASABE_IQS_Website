@@ -220,6 +220,25 @@
 
 .gq-required { color: #f87171; margin-left: 0.25rem; font-size: 0.85rem; }
 
+.skip-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: #1a0808;
+  color: #f87171;
+  border: 1px solid #4b1515;
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+.skip-badge.zero {
+  background: #0b1120;
+  color: #374151;
+  border-color: #1f2937;
+}
+
 /* Add question section */
 .add-question-section {
   border-top: 1px solid #1e3a5f;
@@ -399,6 +418,9 @@
                       {{ gq.question.question_text }}
                       <span class="question-type-badge">{{ gq.question.get_question_type_display }}</span>
                       {% if gq.required %}<span class="gq-required">*</span>{% endif %}
+                      <span class="skip-badge {% if gq.skip_count == 0 %}zero{% endif %}">
+                        {{ gq.skip_count }} skip{{ gq.skip_count|pluralize }}
+                      </span>
                     </span>
                     <div class="q-actions">
                       <button type="button" class="q-action-btn edit"

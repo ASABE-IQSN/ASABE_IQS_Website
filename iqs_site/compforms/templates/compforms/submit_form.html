@@ -112,6 +112,22 @@
 }
 .submit-btn:hover { background: #7c9dfd; }
 
+.autosave-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.autosave-status {
+  font-size: 0.8rem;
+  transition: opacity 0.4s;
+}
+.autosave-status.idle    { color: #4b5563; }
+.autosave-status.dirty   { color: #fbbf24; }
+.autosave-status.saving  { color: #6b7280; }
+.autosave-status.saved   { color: #6ee7b7; }
+.autosave-status.error   { color: #f87171; }
+
 .read-only-answer {
   background: #0f172a;
   border: 1px solid #1f2937;
@@ -330,7 +346,10 @@
 
         {% endif %}
       {% endfor %}
-      <button type="submit" class="submit-btn">Save Answers</button>
+      <div class="autosave-row">
+        <button type="submit" class="submit-btn">Save Answers</button>
+        <span id="autosave-status" class="autosave-status idle"></span>
+      </div>
     </form>
 
   {% else %}
@@ -401,5 +420,68 @@ function doExtra(groupId) {
   document.getElementById('extra-group-id').value = groupId;
   document.getElementById('extra-form').submit();
 }
+
+{% if event_form.is_open %}
+(function () {
+  var AUTOSAVE_URL = '{{ autosave_url }}';
+  var DEBOUNCE_MS  = 3000;
+
+  var statusEl = document.getElementById('autosave-status');
+  var mainForm = document.querySelector('.form-card form');
+  var timer    = null;
+  var saving   = false;
+
+  function setStatus(state, text) {
+    statusEl.className = 'autosave-status ' + state;
+    statusEl.textContent = text;
+  }
+
+  function getCsrf() {
+    var m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+  }
+
+  function doAutosave() {
+    if (!mainForm || saving) return;
+    saving = true;
+    setStatus('saving', 'Saving\u2026');
+
+    var data = new FormData(mainForm);
+    fetch(AUTOSAVE_URL, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrf() },
+      body: data,
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      saving = false;
+      if (d.ok) {
+        setStatus('saved', 'All changes saved');
+        setTimeout(function () {
+          if (statusEl.className.indexOf('saved') !== -1) {
+            setStatus('idle', '');
+          }
+        }, 4000);
+      } else {
+        setStatus('error', 'Auto-save failed \u2014 use Save Answers');
+      }
+    })
+    .catch(function () {
+      saving = false;
+      setStatus('error', 'Auto-save failed \u2014 use Save Answers');
+    });
+  }
+
+  function onInput() {
+    setStatus('dirty', 'Unsaved changes');
+    clearTimeout(timer);
+    timer = setTimeout(doAutosave, DEBOUNCE_MS);
+  }
+
+  if (mainForm) {
+    mainForm.addEventListener('input', onInput);
+  }
+})();
+{% endif %}
 </script>
 {% endblock %}

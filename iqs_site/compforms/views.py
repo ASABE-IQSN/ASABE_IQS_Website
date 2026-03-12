@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import Count
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import get_object_or_404, render, redirect
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.contrib import messages
 from django.utils import timezone
 
@@ -202,6 +202,12 @@ def submit_form(request, event_form_id, team_id):
     ).count()
     swaps_remaining = effective_limit - swaps_used
 
+    from django.urls import reverse
+    autosave_url = reverse(
+        'compforms:autosave_form',
+        kwargs={'event_form_id': event_form_id, 'team_id': team_id},
+    )
+
     return render(request, 'compforms/submit_form.html', {
         'event_form': event_form,
         'team': team,
@@ -212,7 +218,75 @@ def submit_form(request, event_form_id, team_id):
         'effective_limit': effective_limit,
         'has_flagged': bool(flagged_qids),
         'active_page': 'my account',
+        'autosave_url': autosave_url,
     })
+
+
+@login_required
+def autosave_form(request, event_form_id, team_id):
+    if request.method != 'POST':
+        return JsonResponse({'ok': False}, status=405)
+
+    event_form = get_object_or_404(
+        EventForm.objects.select_related('form', 'event'),
+        pk=event_form_id,
+    )
+    event_team = get_object_or_404(
+        EventTeam.objects.select_related('team', 'event'),
+        event=event_form.event,
+        team_id=team_id,
+    )
+
+    if not _user_on_team(request.user, event_team.team):
+        return JsonResponse({'ok': False, 'error': 'forbidden'}, status=403)
+
+    if not event_form.is_open:
+        return JsonResponse({'ok': False, 'error': 'closed'}, status=400)
+
+    existing_response = FormResponse.objects.filter(
+        event_form=event_form,
+        event_team=event_team,
+    ).prefetch_related('answers__question').first()
+
+    existing_answers = {}
+    flagged_qids = {}
+    if existing_response:
+        for ans in existing_response.answers.all():
+            existing_answers[ans.question_id] = ans.answer
+            if ans.flagged:
+                flagged_qids[ans.question_id] = ans.flag_reason
+
+    _, valid_question_ids = _build_sections(event_form, event_team, existing_answers, flagged_qids)
+
+    form_response, _ = FormResponse.objects.get_or_create(
+        event_form=event_form,
+        event_team=event_team,
+    )
+    form_response.submitted_by = request.user
+    form_response.save()
+
+    for key, value in request.POST.items():
+        if not key.startswith('question_'):
+            continue
+        try:
+            qid = int(key[len('question_'):])
+        except ValueError:
+            continue
+        if qid not in valid_question_ids:
+            continue
+        qr, _ = QuestionResponse.objects.update_or_create(
+            form_response=form_response,
+            question_id=qid,
+            defaults={'answer': value.strip()},
+        )
+        if qr.flagged:
+            qr.flagged = False
+            qr.flagged_by = None
+            qr.flagged_at = None
+            qr.flag_reason = ''
+            qr.save(update_fields=['flagged', 'flagged_by', 'flagged_at', 'flag_reason'])
+
+    return JsonResponse({'ok': True})
 
 
 @login_required
@@ -648,11 +722,29 @@ def form_template(request, form_id):
         .order_by('order')
     )
 
+    # Build skip-count map: how many times each question has been swapped away from
+    all_gq_question_ids = [
+        gq.question_id
+        for group in groups
+        for gq in group.group_questions.all()
+    ]
+    skip_counts = {}
+    if all_gq_question_ids:
+        skip_counts = {
+            row['old_question_id']: row['n']
+            for row in QuestionSwap.objects
+            .filter(old_question_id__in=all_gq_question_ids)
+            .values('old_question_id')
+            .annotate(n=Count('old_question_id'))
+        }
+
     sections = []
     for fq in flat_fqs:
         sections.append({'type': 'flat', 'order': fq.order, 'fq': fq})
     for group in groups:
         gqs = list(group.group_questions.select_related('question').order_by('display_order'))
+        for gq in gqs:
+            gq.skip_count = skip_counts.get(gq.question_id, 0)
         n = group.num_assigned
         shown = n if (n > 0 and n < len(gqs)) else len(gqs)
         sections.append({

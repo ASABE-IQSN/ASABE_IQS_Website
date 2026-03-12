@@ -11,7 +11,7 @@ from django.contrib.admin.models import LogEntry
 from django.contrib.auth.decorators import user_passes_test
 from iqs_site.utilities import log_view
 from django.contrib.auth.models import User
-from django.db.models import Count, Max, Min
+from django.db.models import Avg, Count, Max, Min, Sum
 from django.db.models.functions import TruncDate
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -20,8 +20,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from events.models import EditLog, EventTeamPhoto, PerformanceEventMedia, TractorMedia
-from stats.models import IPGeoCache, PageSession
-from users.models import TeamEnrollmentRequest, View as PageView
+from stats.models import IPGeoCache, NginxLog, PageSession
+from users.models import GroupProfile, TeamEnrollmentRequest, View as PageView
 
 
 def _is_private_ip(ip_str: str) -> bool:
@@ -127,6 +127,44 @@ AVAILABLE_METRICS = [
     ("distance", "Distance (ft)"),
     ("rpm", "Engine RPM"),
 ]
+
+
+def _fmt_seconds(s):
+    """Format seconds as 'Xm Ys' string."""
+    if s is None:
+        return "0s"
+    s = int(s)
+    if s >= 60:
+        return f"{s // 60}m {s % 60}s"
+    return f"{s}s"
+
+
+def _aggregate_team_page_stats(team_page_sessions, user_team_map):
+    """
+    Given a queryset of (path, user_id, session_count, total_active_s) rows
+    and a user→teams map, aggregate by (team_name, team_number, path).
+    Users on multiple teams get counted for each team.
+    Returns list sorted by total_active_s descending, capped at 50 rows.
+    """
+    agg: dict = {}  # (team_name, team_number, path) -> {session_count, total_active_s}
+    for row in team_page_sessions:
+        uid = row['user_id']
+        teams = user_team_map.get(uid, [])
+        for (team_name, team_number) in teams:
+            key = (team_name, team_number, row['path'])
+            if key not in agg:
+                agg[key] = {'team_name': team_name, 'team_number': team_number,
+                            'path': row['path'], 'session_count': 0, 'total_active_s': 0}
+            agg[key]['session_count'] += row['session_count']
+            agg[key]['total_active_s'] += row['total_active_s'] or 0
+
+    result = sorted(agg.values(), key=lambda x: -x['total_active_s'])[:50]
+    for row in result:
+        row['avg_active_s'] = (row['total_active_s'] // row['session_count']
+                               if row['session_count'] else 0)
+        row['total_active_fmt'] = _fmt_seconds(row['total_active_s'])
+        row['avg_active_fmt'] = _fmt_seconds(row['avg_active_s'])
+    return result
 
 
 @log_view
@@ -325,6 +363,60 @@ def daily_activity(request):
         )[:100]
     )
 
+    # --- Page Session summary ---
+    sessions_today = PageSession.objects.filter(started_at__gte=day_start, started_at__lt=day_end)
+    session_total = sessions_today.count()
+    top_pages_by_time = list(
+        sessions_today
+        .values('path')
+        .annotate(session_count=Count('session_id'), total_active_s=Sum('active_seconds'))
+        .order_by('-total_active_s')[:20]
+    )
+    top_pages_by_count = list(
+        sessions_today
+        .values('path')
+        .annotate(session_count=Count('session_id'), total_active_s=Sum('active_seconds'))
+        .order_by('-session_count')[:20]
+    )
+    for row in top_pages_by_time:
+        row['total_active_fmt'] = _fmt_seconds(row['total_active_s'])
+    for row in top_pages_by_count:
+        row['total_active_fmt'] = _fmt_seconds(row['total_active_s'])
+
+    # --- Team breakdown via GroupProfile ---
+    user_team_rows = (GroupProfile.objects
+        .filter(team__isnull=False)
+        .values('group__user', 'team__team_name', 'team__team_number'))
+    user_team_map: dict = {}
+    for row in user_team_rows:
+        uid = row['group__user']
+        if uid:
+            user_team_map.setdefault(uid, []).append(
+                (row['team__team_name'], row['team__team_number'])
+            )
+    team_page_sessions_qs = (sessions_today
+        .filter(user__isnull=False)
+        .values('path', 'user_id')
+        .annotate(session_count=Count('session_id'), total_active_s=Sum('active_seconds')))
+    team_page_stats = _aggregate_team_page_stats(team_page_sessions_qs, user_team_map)
+
+    # --- Nginx daily summary ---
+    nginx_today = NginxLog.objects.filter(time__gte=day_start, time__lt=day_end)
+    nginx_total = nginx_today.count()
+    nginx_bytes = nginx_today.aggregate(total=Sum('bytes_sent'))['total'] or 0
+    nginx_status_dist = list(
+        nginx_today
+        .values('status_code')
+        .annotate(count=Count('id'))
+        .order_by('status_code')
+    )
+    nginx_top_urls = list(
+        nginx_today
+        .values('url')
+        .annotate(count=Count('id'))
+        .order_by('-count')[:10]
+    )
+
     # --- 500 errors ---
     server_errors = list(
         page_views.filter(response_code__gte=500)
@@ -377,6 +469,14 @@ def daily_activity(request):
         "admin_logs": admin_logs,
         "server_errors": server_errors,
         "server_error_urls": server_error_urls,
+        "session_total": session_total,
+        "top_pages_by_time": top_pages_by_time,
+        "top_pages_by_count": top_pages_by_count,
+        "team_page_stats": team_page_stats,
+        "nginx_total": nginx_total,
+        "nginx_bytes": nginx_bytes,
+        "nginx_status_dist": nginx_status_dist,
+        "nginx_top_urls": nginx_top_urls,
     })
 
 
@@ -671,6 +771,24 @@ def page_overview(request):
         .order_by("-count")[:200]
     )
 
+    # Merge PageSession stats by path
+    session_stats = (PageSession.objects
+        .filter(started_at__gte=window_start)
+        .values('path')
+        .annotate(
+            session_count=Count('session_id'),
+            total_active_s=Sum('active_seconds'),
+            avg_active_s=Avg('active_seconds'),
+        ))
+    session_by_path = {row['path']: row for row in session_stats}
+    for row in top_pages:
+        sess = session_by_path.get(row['url'], {})
+        row['session_count'] = sess.get('session_count', 0)
+        row['total_active_s'] = sess.get('total_active_s') or 0
+        row['avg_active_s'] = sess.get('avg_active_s') or 0
+        row['total_active_fmt'] = _fmt_seconds(row['total_active_s'])
+        row['avg_active_fmt'] = _fmt_seconds(row['avg_active_s'])
+
     return render(request, "stats/page_overview.html", {
         "days": days,
         "window_start": window_start,
@@ -802,6 +920,131 @@ def page_drill(request):
         "history_end": today,
         "recent_views": recent_views,
         "ip_rows": ip_rows,
+        "day_options": [1, 7, 14, 30, 90],
+    })
+
+
+@log_view
+@user_passes_test(lambda u: u.is_staff)
+def user_activity(request):
+    user_id = request.GET.get("user_id")
+    if not user_id:
+        return redirect("stats:daily_activity")
+    try:
+        profile_user = User.objects.get(pk=user_id)
+    except User.DoesNotExist:
+        return redirect("stats:daily_activity")
+
+    days = int(request.GET.get("days", 30))
+    days = min(max(days, 1), 90)
+    window_start = timezone.now() - timedelta(days=days)
+
+    # Page views
+    views_qs = PageView.objects.filter(user=profile_user, time__gte=window_start).order_by("-time")
+    recent_views = list(views_qs.values("time", "url", "ip", "response_code", "response_time_s")[:200])
+    top_urls = list(
+        views_qs.values("url")
+        .annotate(count=Count("view_id"))
+        .order_by("-count")[:20]
+    )
+
+    # Page sessions
+    sessions_qs = PageSession.objects.filter(user=profile_user, started_at__gte=window_start).order_by("-started_at")
+    recent_sessions = list(sessions_qs.values(
+        "session_id", "path", "page_title", "started_at", "last_seen_at", "active_seconds", "is_complete"
+    )[:200])
+    for s in recent_sessions:
+        s["active_fmt"] = _fmt_seconds(s["active_seconds"])
+    session_total_time = sessions_qs.aggregate(total=Sum("active_seconds"))["total"] or 0
+
+    # Edit logs
+    edit_logs = list(
+        EditLog.objects.filter(user=profile_user, timestamp__gte=window_start)
+        .select_related("team", "tractor")
+        .order_by("-timestamp")
+        .values(
+            "timestamp", "entity_type", "field_name", "old_value", "new_value",
+            "team__team_name", "team__team_number", "tractor__tractor_name",
+        )[:200]
+    )
+
+    # Geo lookup for views
+    ip_counts = dict(
+        views_qs.values("ip").annotate(n=Count("view_id")).values_list("ip", "n")
+    )
+    geo_map = resolve_geo(list(ip_counts.keys()))
+    for v in recent_views:
+        geo = geo_map.get(v["ip"], {})
+        if geo.get("is_private"):
+            v["location"] = "Private"
+        elif geo.get("city"):
+            parts = [geo["city"]]
+            if geo.get("region"):
+                parts.append(geo["region"])
+            parts.append(geo.get("country_code", ""))
+            v["location"] = ", ".join(p for p in parts if p)
+        elif geo.get("country"):
+            v["location"] = geo["country"]
+        else:
+            v["location"] = ""
+
+    return render(request, "stats/user_activity.html", {
+        "profile_user": profile_user,
+        "days": days,
+        "window_start": window_start,
+        "recent_views": recent_views,
+        "top_urls": top_urls,
+        "recent_sessions": recent_sessions,
+        "session_total_time": _fmt_seconds(session_total_time),
+        "edit_logs": edit_logs,
+        "day_options": [7, 14, 30, 90],
+    })
+
+
+@log_view
+@user_passes_test(lambda u: u.is_staff)
+def team_page_activity(request):
+    days = int(request.GET.get("days", 30))
+    days = min(max(days, 1), 90)
+    window_start = timezone.now() - timedelta(days=days)
+
+    sessions = (PageSession.objects
+        .filter(started_at__gte=window_start)
+        .filter(user__isnull=False)
+        .values('path', 'user_id')
+        .annotate(session_count=Count('session_id'), total_active_s=Sum('active_seconds')))
+
+    user_team_rows = (GroupProfile.objects
+        .filter(team__isnull=False)
+        .values('group__user', 'team__team_name', 'team__team_number'))
+    user_team_map: dict = {}
+    for row in user_team_rows:
+        uid = row['group__user']
+        if uid:
+            user_team_map.setdefault(uid, []).append(
+                (row['team__team_name'], row['team__team_number'])
+            )
+
+    team_page_stats = _aggregate_team_page_stats(sessions, user_team_map)
+
+    # Top teams by total time across all pages
+    team_totals: dict = {}
+    for row in team_page_stats:
+        key = (row['team_name'], row['team_number'])
+        if key not in team_totals:
+            team_totals[key] = {'team_name': row['team_name'], 'team_number': row['team_number'],
+                                'total_active_s': 0, 'session_count': 0}
+        team_totals[key]['total_active_s'] += row['total_active_s']
+        team_totals[key]['session_count'] += row['session_count']
+    top_teams = sorted(team_totals.values(), key=lambda x: -x['total_active_s'])
+    for t in top_teams:
+        t['total_active_fmt'] = _fmt_seconds(t['total_active_s'])
+
+    return render(request, "stats/team_page_activity.html", {
+        "days": days,
+        "window_start": window_start,
+        "team_page_stats": team_page_stats,
+        "top_teams": top_teams,
         "day_options": [1, 7, 14, 30, 90],
     })
 

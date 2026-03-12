@@ -5,6 +5,7 @@ app_name = 'compforms'
 
 urlpatterns = [
     path('<int:event_form_id>/<int:team_id>/', views.submit_form, name='submit_form'),
+    path('<int:event_form_id>/<int:team_id>/autosave/', views.autosave_form, name='autosave_form'),
     path('<int:event_form_id>/<int:team_id>/swap/', views.swap_question, name='swap_question'),
     path('<int:event_form_id>/<int:team_id>/extra/', views.extra_question, name='extra_question'),
     path('<int:event_form_id>/responses/', views.form_responses_overview, name='form_responses_overview'),

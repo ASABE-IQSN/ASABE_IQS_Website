@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+
+{% block title %}User Activity – {{ profile_user.username }}{% endblock %}
+
+{% block extra_styles %}
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.dashboard-header h1 { margin: 0; font-size: 1.4rem; font-weight: 700; color: #f3f6e7; }
+.back-link { font-size: 0.85rem; color: #6b7280; }
+.back-link:hover { color: #9ca3af; }
+
+.days-nav { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; }
+.days-nav a {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #9ca3af;
+  padding: 0.3rem 0.75rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+}
+.days-nav a.active { background: #1e3a5f; color: #6687fc; border-color: #1e3a5f; }
+.days-nav a:hover { background: #1f2937; color: #f3f6e7; text-decoration: none; }
+
+.user-card {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.user-card .field { display: flex; flex-direction: column; gap: 0.2rem; }
+.user-card .field-label { font-size: 0.7rem; color: #4b5563; text-transform: uppercase; letter-spacing: 0.05em; }
+.user-card .field-value { font-size: 0.9rem; color: #e5e7eb; }
+.user-card .field-value.mono { font-family: monospace; font-size: 0.82rem; }
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.stat-card { background: #0f172a; border: 1px solid #1f2937; border-radius: 0.75rem; padding: 1rem 1.25rem; text-align: center; }
+.stat-card .num { font-size: 2rem; font-weight: 700; color: #6687fc; line-height: 1; }
+.stat-card .label { font-size: 0.75rem; color: #9ca3af; margin-top: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.section { margin-bottom: 2.5rem; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 0.5rem;
+}
+.section-header h2 { margin: 0; font-size: 1rem; font-weight: 600; color: #e5e7eb; }
+.badge { background: #1f2937; color: #9ca3af; border-radius: 9999px; padding: 0.1rem 0.55rem; font-size: 0.75rem; font-weight: 600; }
+.badge.highlight { background: #1e3a5f; color: #6687fc; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th { text-align: left; color: #6b7280; font-weight: 600; padding: 0.4rem 0.6rem; border-bottom: 1px solid #1f2937; white-space: nowrap; }
+td { padding: 0.35rem 0.6rem; border-bottom: 1px solid #111827; color: #d1d5db; vertical-align: top; }
+tr:hover td { background: #0f172a; }
+.mono { font-family: monospace; font-size: 0.78rem; }
+.ts { color: #6b7280; white-space: nowrap; }
+.pill { display: inline-block; padding: 0.1rem 0.45rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+.pill-green  { background: #052e16; color: #4ade80; }
+.pill-red    { background: #450a0a; color: #f87171; }
+.pill-yellow { background: #422006; color: #fbbf24; }
+.pill-blue   { background: #0c1a3b; color: #6687fc; }
+.pill-gray   { background: #1f2937; color: #9ca3af; }
+.empty-note { color: #4b5563; font-size: 0.85rem; padding: 0.5rem 0; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.overflow-x { overflow-x: auto; }
+.window-note { font-size: 0.78rem; color: #4b5563; margin-bottom: 1.5rem; }
+@media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div>
+    <a class="back-link" href="{% url 'stats:daily_activity' %}">← Daily Activity</a>
+    <h1>{{ profile_user.username }}</h1>
+  </div>
+</div>
+
+<!-- User info card -->
+<div class="user-card">
+  <div class="field">
+    <span class="field-label">Username</span>
+    <span class="field-value mono">{{ profile_user.username }}</span>
+  </div>
+  {% if profile_user.get_full_name %}
+  <div class="field">
+    <span class="field-label">Name</span>
+    <span class="field-value">{{ profile_user.get_full_name }}</span>
+  </div>
+  {% endif %}
+  <div class="field">
+    <span class="field-label">Email</span>
+    <span class="field-value mono">{{ profile_user.email|default:"—" }}</span>
+  </div>
+  <div class="field">
+    <span class="field-label">Joined</span>
+    <span class="field-value"><time data-utc="{{ profile_user.date_joined|date:'c' }}">{{ profile_user.date_joined|date:"N j, Y" }}</time></span>
+  </div>
+  <div class="field">
+    <span class="field-label">Last login</span>
+    <span class="field-value">{% if profile_user.last_login %}<time data-utc="{{ profile_user.last_login|date:'c' }}">{{ profile_user.last_login|date:"N j, Y H:i" }}</time>{% else %}—{% endif %}</span>
+  </div>
+  <div class="field">
+    <span class="field-label">Status</span>
+    <span class="field-value">
+      {% if profile_user.is_superuser %}<span class="pill pill-red">superuser</span>
+      {% elif profile_user.is_staff %}<span class="pill pill-blue">staff</span>
+      {% else %}<span class="pill pill-gray">user</span>{% endif %}
+      {% if not profile_user.is_active %}<span class="pill pill-red">inactive</span>{% endif %}
+    </span>
+  </div>
+  <div class="field" style="margin-left:auto;">
+    <span class="field-label">Admin</span>
+    <span class="field-value"><a href="/admin/auth/user/{{ profile_user.id }}/change/" style="color:#6687fc;font-size:0.82rem;">Edit in admin →</a></span>
+  </div>
+</div>
+
+<div class="days-nav">
+  {% for d in day_options %}
+  <a href="?user_id={{ profile_user.id }}&days={{ d }}" class="{% if days == d %}active{% endif %}">{{ d }}d</a>
+  {% endfor %}
+</div>
+<p class="window-note">Showing data for the last {{ days }} day{{ days|pluralize }} (since {{ window_start|date:"N j, Y H:i" }} UTC)</p>
+
+<!-- Summary cards -->
+<div class="summary-grid">
+  <div class="stat-card">
+    <div class="num">{{ recent_views|length }}</div>
+    <div class="label">Page views</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ recent_sessions|length }}</div>
+    <div class="label">Sessions</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ session_total_time }}</div>
+    <div class="label">Active time</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ edit_logs|length }}</div>
+    <div class="label">Field edits</div>
+  </div>
+</div>
+
+<!-- Page Views -->
+<div class="section">
+  <div class="section-header">
+    <h2>Page Views</h2>
+    <span class="badge {% if recent_views %}highlight{% endif %}">{{ recent_views|length }}</span>
+  </div>
+  {% if recent_views %}
+  <div class="two-col">
+    <div>
+      <div style="font-size:0.8rem;color:#6b7280;margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Top URLs</div>
+      <table>
+        <thead><tr><th>#</th><th>URL</th><th>Views</th></tr></thead>
+        <tbody>
+          {% for row in top_urls %}
+          <tr>
+            <td class="ts">{{ forloop.counter }}</td>
+            <td class="mono" style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ row.url }}">
+              <a href="{% url 'stats:page_drill' %}?url={{ row.url|urlencode }}&days={{ days }}" style="color:#6687fc;">{{ row.url }}</a>
+            </td>
+            <td><span class="badge highlight">{{ row.count }}</span></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <div style="font-size:0.8rem;color:#6b7280;margin-bottom:0.5rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;">Recent (last 200)</div>
+      <div class="overflow-x" style="max-height:400px;overflow-y:auto;">
+      <table>
+        <thead>
+          <tr><th>Time</th><th>URL</th><th>Location</th><th>Code</th><th>ms</th></tr>
+        </thead>
+        <tbody>
+          {% for v in recent_views %}
+          <tr>
+            <td class="ts"><time data-utc="{{ v.time|date:'c' }}">{{ v.time|date:"M j H:i:s" }}</time></td>
+            <td class="mono" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ v.url }}">{{ v.url }}</td>
+            <td style="color:#9ca3af;white-space:nowrap;font-size:0.78rem;">{{ v.location|default:"—" }}</td>
+            <td>
+              {% if v.response_code >= 400 %}<span class="pill pill-red">{{ v.response_code }}</span>
+              {% elif v.response_code >= 300 %}<span class="pill pill-yellow">{{ v.response_code }}</span>
+              {% else %}<span class="pill pill-green">{{ v.response_code }}</span>{% endif %}
+            </td>
+            <td class="ts">{{ v.response_time_s|floatformat:3 }}s</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <p class="empty-note">No page views in this period.</p>
+  {% endif %}
+</div>
+
+<!-- Page Sessions -->
+<div class="section">
+  <div class="section-header">
+    <h2>Page Sessions</h2>
+    <span class="badge {% if recent_sessions %}highlight{% endif %}">{{ recent_sessions|length }}</span>
+    <span style="font-size:0.75rem;color:#4b5563;margin-left:auto;">total active time: <strong style="color:#4ade80;">{{ session_total_time }}</strong></span>
+  </div>
+  {% if recent_sessions %}
+  <div class="overflow-x" style="max-height:400px;overflow-y:auto;">
+  <table>
+    <thead>
+      <tr><th>Started</th><th>Page</th><th>Title</th><th>Active Time</th><th>Complete</th></tr>
+    </thead>
+    <tbody>
+      {% for s in recent_sessions %}
+      <tr>
+        <td class="ts" style="white-space:nowrap;"><time data-utc="{{ s.started_at|date:'c' }}">{{ s.started_at|date:"M j H:i" }}</time></td>
+        <td class="mono" style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ s.path }}">{{ s.path }}</td>
+        <td style="color:#6b7280;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ s.page_title }}">{{ s.page_title|default:"—" }}</td>
+        <td style="color:#4ade80;white-space:nowrap;">{{ s.active_fmt }}</td>
+        <td>{% if s.is_complete %}<span class="pill pill-green">yes</span>{% else %}<span class="pill pill-gray">—</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty-note">No page sessions in this period.</p>
+  {% endif %}
+</div>
+
+<!-- Edit Logs -->
+<div class="section">
+  <div class="section-header">
+    <h2>Field Edits</h2>
+    <span class="badge {% if edit_logs %}highlight{% endif %}">{{ edit_logs|length }}</span>
+  </div>
+  {% if edit_logs %}
+  <div class="overflow-x">
+  <table>
+    <thead>
+      <tr><th>Time</th><th>Entity</th><th>Field</th><th>Old</th><th>New</th></tr>
+    </thead>
+    <tbody>
+      {% for log in edit_logs %}
+      <tr>
+        <td class="ts" style="white-space:nowrap;"><time data-utc="{{ log.timestamp|date:'c' }}">{{ log.timestamp|date:"M j H:i:s" }}</time></td>
+        <td>
+          {% if log.entity_type == "team" %}
+            <span class="pill pill-blue">Team</span>
+            {{ log.team__team_name|default:"" }}
+            {% if log.team__team_number %}<span style="color:#6b7280"> ({{ log.team__team_number }})</span>{% endif %}
+          {% elif log.entity_type == "tractor" %}
+            <span class="pill pill-yellow">Tractor</span>
+            {{ log.tractor__tractor_name|default:"" }}
+          {% else %}
+            <span class="pill pill-gray">{{ log.entity_type }}</span>
+          {% endif %}
+        </td>
+        <td class="mono">{{ log.field_name }}</td>
+        <td style="color:#f87171;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ log.old_value }}">{{ log.old_value|default:"—"|truncatechars:60 }}</td>
+        <td style="color:#4ade80;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ log.new_value }}">{{ log.new_value|default:"—"|truncatechars:60 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty-note">No field edits in this period.</p>
+  {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('time[data-utc]').forEach(function (el) {
+    try {
+      var d = new Date(el.dataset.utc);
+      var opts = {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false};
+      el.textContent = d.toLocaleString([], opts);
+    } catch (e) {}
+  });
+});
+</script>
+{% endblock %}
