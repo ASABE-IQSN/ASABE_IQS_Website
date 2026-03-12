@@ -12,4 +12,8 @@ urlpatterns = [
     path("location/", views.location_drill, name="location_drill"),
     path("ip/", views.ip_drill, name="ip_drill"),
     path("ips/", views.ip_list, name="ip_list"),
+    # Page-time tracking
+    path("pv/start/", views.pv_start, name="pv_start"),
+    path("pv/ping/", views.pv_ping, name="pv_ping"),
+    path("pv/end/", views.pv_end, name="pv_end"),
 ]

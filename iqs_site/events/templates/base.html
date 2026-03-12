@@ -227,6 +227,98 @@
 </div>
 
 {% block extra_scripts %}{% endblock %}
+
+<script>
+(function () {
+  var START_URL  = '{% url "stats:pv_start" %}';
+  var PING_URL   = '{% url "stats:pv_ping" %}';
+  var END_URL    = '{% url "stats:pv_end" %}';
+  var HEARTBEAT  = 30000; // ms between pings while tab is visible
+
+  var sessionId  = null;
+  var token      = null;
+  var visibleMs  = 0;        // accumulated visible milliseconds
+  var visibleSince = null;   // timestamp when tab last became visible
+  var pingTimer  = null;
+
+  function getCsrf() {
+    var m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+  }
+
+  function postForm(url, data) {
+    var body = Object.keys(data).map(function(k) {
+      return encodeURIComponent(k) + '=' + encodeURIComponent(data[k]);
+    }).join('&');
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': getCsrf(),
+      },
+      body: body,
+    });
+  }
+
+  function activeSeconds() {
+    var total = visibleMs;
+    if (visibleSince !== null) total += Date.now() - visibleSince;
+    return Math.round(total / 1000);
+  }
+
+  function sendPing() {
+    if (!sessionId) return;
+    postForm(PING_URL, { session_id: sessionId, token: token, active_seconds: activeSeconds() });
+  }
+
+  function startHeartbeat() {
+    clearInterval(pingTimer);
+    pingTimer = setInterval(sendPing, HEARTBEAT);
+  }
+
+  function stopHeartbeat() {
+    clearInterval(pingTimer);
+  }
+
+  // Page Visibility API — pause accumulation and heartbeat when tab is hidden
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) {
+      if (visibleSince !== null) {
+        visibleMs += Date.now() - visibleSince;
+        visibleSince = null;
+      }
+      stopHeartbeat();
+    } else {
+      visibleSince = Date.now();
+      startHeartbeat();
+    }
+  });
+
+  // Final beacon on tab close / navigation away
+  window.addEventListener('pagehide', function () {
+    if (!sessionId) return;
+    if (visibleSince !== null) visibleMs += Date.now() - visibleSince;
+    var body = 'session_id=' + sessionId +
+               '&token=' + encodeURIComponent(token) +
+               '&active_seconds=' + Math.round(visibleMs / 1000);
+    navigator.sendBeacon(END_URL, new Blob([body], { type: 'application/x-www-form-urlencoded' }));
+  });
+
+  // Start session
+  visibleSince = Date.now();
+  postForm(START_URL, {
+    path: window.location.pathname,
+    title: document.title,
+    referrer: document.referrer.slice(0, 500),
+  }).then(function (r) { return r.json(); })
+    .then(function (d) {
+      sessionId = d.session_id;
+      token = d.token;
+      startHeartbeat();
+    })
+    .catch(function () { /* fail silently */ });
+})();
+</script>
 </body>
 </html>
 

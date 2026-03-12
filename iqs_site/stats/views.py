@@ -16,10 +16,11 @@ from django.db.models.functions import TruncDate
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
-from iqs_site.utilities import log_view
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
 
 from events.models import EditLog, EventTeamPhoto, PerformanceEventMedia, TractorMedia
-from stats.models import IPGeoCache
+from stats.models import IPGeoCache, PageSession
 from users.models import TeamEnrollmentRequest, View as PageView
 
 
@@ -863,3 +864,59 @@ def test_series_api(request):
             series[m] = {"timestamps": [], "values": [], "label": m}
     print(series)
     return JsonResponse({"series": series})
+
+
+# ---------------------------------------------------------------------------
+# Page-time tracking endpoints (called by JS in base.html)
+# ---------------------------------------------------------------------------
+
+@require_POST
+def pv_start(request):
+    """Create a new PageSession on page load. Returns session_id + token."""
+    session = PageSession.objects.create(
+        user=request.user if request.user.is_authenticated else None,
+        path=request.POST.get('path', '')[:500],
+        page_title=request.POST.get('title', '')[:512],
+        referrer=request.POST.get('referrer', '')[:500],
+        last_seen_at=timezone.now(),
+    )
+    return JsonResponse({'session_id': session.session_id, 'token': str(session.token)})
+
+
+@require_POST
+def pv_ping(request):
+    """Heartbeat — bump last_seen_at and update active_seconds."""
+    _update_session(request, complete=False)
+    return JsonResponse({'ok': True})
+
+
+@csrf_exempt
+@require_POST
+def pv_end(request):
+    """
+    Final beacon sent via sendBeacon on pagehide.
+    csrf_exempt because sendBeacon with a Blob can't always attach the header
+    in time; the token field provides authentication instead.
+    """
+    _update_session(request, complete=True)
+    return JsonResponse({'ok': True})
+
+
+def _update_session(request, complete):
+    try:
+        session_id = int(request.POST.get('session_id', ''))
+        token = request.POST.get('token', '')
+        active_seconds = max(0, int(float(request.POST.get('active_seconds', 0))))
+    except (ValueError, TypeError):
+        return
+
+    try:
+        session = PageSession.objects.get(pk=session_id, token=token)
+    except PageSession.DoesNotExist:
+        return
+
+    session.last_seen_at = timezone.now()
+    session.active_seconds = active_seconds
+    if complete:
+        session.is_complete = True
+    session.save(update_fields=['last_seen_at', 'active_seconds', 'is_complete'])

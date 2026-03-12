@@ -10,7 +10,7 @@ from django.utils import timezone
 from events.models import EventTeam
 from users.models import GroupProfile
 from .models import (
-    CompForm, EventForm, FormResponse, Question, QuestionResponse,
+    CompForm, EventForm, FormQuestion, FormResponse, Question, QuestionResponse,
     QuestionGroup, GroupQuestion,
     TeamQuestionAssignment, QuestionSwap,
     MAX_QUESTION_SWAPS, get_or_create_group_assignments,
