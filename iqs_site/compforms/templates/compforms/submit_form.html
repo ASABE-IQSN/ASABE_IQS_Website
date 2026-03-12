@@ -48,6 +48,30 @@
 .swap-counter.depleted { color: #f87171; border-color: #4b1515; }
 .swap-counter.depleted .count { color: #f87171; }
 
+/* Extra question button */
+.extra-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #1f2937;
+  flex-wrap: wrap;
+}
+.extra-btn {
+  background: transparent;
+  border: 1px solid #2d4a2d;
+  border-radius: 0.5rem;
+  color: #6ee7b7;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.extra-btn:hover:not(:disabled) { background: #0a1a0f; border-color: #4ade80; }
+.extra-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.extra-note { font-size: 0.75rem; color: #4b5563; }
+
 /* Questions */
 .question-block { margin-bottom: 1.5rem; }
 
@@ -198,7 +222,8 @@
 
 {% if event_form.is_open %}
   <div class="swap-counter {% if swaps_remaining == 0 %}depleted{% endif %}">
-    Question swaps: <span class="count">{{ swaps_remaining }}</span>&nbsp;of {{ max_swaps }} remaining
+    Question swaps: <span class="count">{{ swaps_remaining }}</span>&nbsp;of {{ effective_limit }} remaining
+    {% if effective_limit > 5 %}<span style="color:#6ee7b7;font-size:0.75rem;">(includes {{ effective_limit|add:"-5" }} earned)</span>{% endif %}
   </div>
 {% endif %}
 
@@ -256,12 +281,14 @@
                 <input type="text" class="question-input"
                   id="q{{ q.question_id }}"
                   name="question_{{ q.question_id }}"
-                  value="{{ current_answer }}">
+                  value="{{ current_answer }}"
+                  data-group="{{ section.group.group_id }}">
               {% else %}
                 <textarea class="question-textarea"
                   id="q{{ q.question_id }}"
                   name="question_{{ q.question_id }}"
-                  rows="4">{{ current_answer }}</textarea>
+                  rows="4"
+                  data-group="{{ section.group.group_id }}">{{ current_answer }}</textarea>
               {% endif %}
 
               {% if section.swappable %}
@@ -286,6 +313,21 @@
               {% endif %}
             </div>
           {% endfor %}
+
+          {% if section.swappable and section.extra_available %}
+            <div class="extra-row">
+              <button type="button" class="extra-btn"
+                id="extra-btn-{{ section.group.group_id }}"
+                onclick="doExtra('{{ section.group.group_id }}')">
+                + Answer Another Question
+              </button>
+              <span class="extra-note">
+                Earns +1 swap &bull; 
+                {% if section.extras_added %}&bull; {{ section.extras_added }} extra added so far{% endif %}
+              </span>
+            </div>
+          {% endif %}
+
         {% endif %}
       {% endfor %}
       <button type="submit" class="submit-btn">Save Answers</button>
@@ -321,7 +363,7 @@
   {% endif %}
 </div>
 
-{# Standalone form used by doSwap() — sits outside the main answer form #}
+{# Standalone forms — sit outside the main answer form to avoid nesting #}
 <form id="swap-form" method="post"
   action="{% url 'compforms:swap_question' event_form_id=event_form.event_form_id team_id=team.team_id %}"
   style="display:none;">
@@ -330,12 +372,34 @@
   <input type="hidden" id="swap-question-id" name="question_id" value="">
 </form>
 
+<form id="extra-form" method="post"
+  action="{% url 'compforms:extra_question' event_form_id=event_form.event_form_id team_id=team.team_id %}"
+  style="display:none;">
+  {% csrf_token %}
+  <input type="hidden" id="extra-group-id" name="group_id" value="">
+</form>
+
 <script>
 function doSwap(groupId, questionId, msg) {
   if (!confirm(msg)) return;
   document.getElementById('swap-group-id').value = groupId;
   document.getElementById('swap-question-id').value = questionId;
   document.getElementById('swap-form').submit();
+}
+
+function doExtra(groupId) {
+  // Check all inputs/textareas in this group have a non-empty value
+  var fields = document.querySelectorAll('[data-group="' + groupId + '"]');
+  var allFilled = Array.prototype.every.call(fields, function(el) {
+    return el.value.trim() !== '';
+  });
+  if (!allFilled) {
+    alert('Please answer all current questions in this section before adding another.');
+    return;
+  }
+  if (!confirm('Add another question from this section? This earns you one extra swap.')) return;
+  document.getElementById('extra-group-id').value = groupId;
+  document.getElementById('extra-form').submit();
 }
 </script>
 {% endblock %}

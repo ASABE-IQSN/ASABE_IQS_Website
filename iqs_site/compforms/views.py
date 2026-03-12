@@ -1,6 +1,7 @@
 import random
 
 from django.contrib.auth.decorators import login_required
+from django.db.models import Count
 from django.contrib.admin.views.decorators import staff_member_required
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden
@@ -66,6 +67,54 @@ def _build_sections(event_form, event_team, existing_answers, flagged_qids):
             valid_ids.add(q.question_id)
 
     return sections, valid_ids
+
+
+def _extra_info_for_groups(event_team, event_form):
+    """
+    Returns (per_group, total_extras) where:
+      per_group   = {group_id: {'extras_added': int, 'extra_available': int}}
+      total_extras = sum of extras_added across all random groups
+    Uses 3 aggregate queries regardless of group count.
+    """
+    groups = list(event_form.form.question_groups.filter(num_assigned__gt=0))
+    if not groups:
+        return {}, 0
+
+    group_ids = [g.group_id for g in groups]
+
+    pool_sizes = {
+        row['group_id']: row['n']
+        for row in GroupQuestion.objects.filter(group_id__in=group_ids)
+        .values('group_id').annotate(n=Count('pk'))
+    }
+    assigned_counts = {
+        row['group_id']: row['n']
+        for row in TeamQuestionAssignment.objects.filter(
+            event_team=event_team, group_id__in=group_ids
+        ).values('group_id').annotate(n=Count('pk'))
+    }
+    swapped_counts = {
+        row['group_id']: row['n']
+        for row in QuestionSwap.objects.filter(
+            event_team=event_team, group_id__in=group_ids
+        ).values('group_id').annotate(n=Count('old_question_id', distinct=True))
+    }
+
+    per_group = {}
+    total_extras = 0
+    for g in groups:
+        n_assigned = assigned_counts.get(g.group_id, 0)
+        n_pool = pool_sizes.get(g.group_id, 0)
+        n_swapped = swapped_counts.get(g.group_id, 0)
+        extras_added = max(0, n_assigned - g.num_assigned)
+        extra_available = max(0, n_pool - n_assigned - n_swapped)
+        per_group[g.group_id] = {
+            'extras_added': extras_added,
+            'extra_available': extra_available,
+        }
+        total_extras += extras_added
+
+    return per_group, total_extras
 
 
 @login_required
@@ -138,12 +187,20 @@ def submit_form(request, event_form_id, team_id):
         messages.success(request, "Your answers have been saved.")
         return redirect('compforms:submit_form', event_form_id=event_form_id, team_id=team_id)
 
+    extra_info, total_extras = _extra_info_for_groups(event_team, event_form)
+    for section in sections:
+        if section['type'] == 'group' and section['swappable']:
+            info = extra_info.get(section['group'].group_id, {'extras_added': 0, 'extra_available': 0})
+            section['extras_added'] = info['extras_added']
+            section['extra_available'] = info['extra_available']
+
+    effective_limit = MAX_QUESTION_SWAPS + total_extras
     swaps_used = QuestionSwap.objects.filter(
         event_team=event_team,
         event_form=event_form,
         is_flag_driven=False,
     ).count()
-    swaps_remaining = MAX_QUESTION_SWAPS - swaps_used
+    swaps_remaining = effective_limit - swaps_used
 
     return render(request, 'compforms/submit_form.html', {
         'event_form': event_form,
@@ -152,7 +209,7 @@ def submit_form(request, event_form_id, team_id):
         'existing_response': existing_response,
         'swaps_remaining': swaps_remaining,
         'swaps_remaining_after': max(swaps_remaining - 1, 0),
-        'max_swaps': MAX_QUESTION_SWAPS,
+        'effective_limit': effective_limit,
         'has_flagged': bool(flagged_qids),
         'active_page': 'my account',
     })
@@ -210,11 +267,13 @@ def swap_question(request, event_form_id, team_id):
     ).exists()
 
     if not is_flag_driven:
+        _, total_extras = _extra_info_for_groups(event_team, event_form)
+        effective_limit = MAX_QUESTION_SWAPS + total_extras
         swaps_used = QuestionSwap.objects.filter(
             event_team=event_team, event_form=event_form, is_flag_driven=False
         ).count()
-        if swaps_used >= MAX_QUESTION_SWAPS:
-            messages.error(request, f"You have used all {MAX_QUESTION_SWAPS} question swaps for this form.")
+        if swaps_used >= effective_limit:
+            messages.error(request, f"You have used all {effective_limit} question swaps for this form.")
             return redirect('compforms:submit_form', event_form_id=event_form_id, team_id=team_id)
 
     # Pool = all group questions minus currently assigned minus previously swapped-away
@@ -263,6 +322,97 @@ def swap_question(request, event_form_id, team_id):
         ).delete()
 
     messages.success(request, "You have a new question. Your previous answer was cleared.")
+    return redirect('compforms:submit_form', event_form_id=event_form_id, team_id=team_id)
+
+
+@login_required
+def extra_question(request, event_form_id, team_id):
+    """Add one more question from a group's pool to the team's assignment."""
+    if request.method != 'POST':
+        return HttpResponseForbidden()
+
+    event_form = get_object_or_404(
+        EventForm.objects.select_related('form', 'event'), pk=event_form_id
+    )
+    event_team = get_object_or_404(
+        EventTeam.objects.select_related('team', 'event'),
+        event=event_form.event, team_id=team_id,
+    )
+
+    if not _user_on_team(request.user, event_team.team):
+        return HttpResponseForbidden()
+
+    if not event_form.is_open:
+        messages.error(request, "This form is closed.")
+        return redirect('compforms:submit_form', event_form_id=event_form_id, team_id=team_id)
+
+    try:
+        group_id = int(request.POST.get('group_id', ''))
+    except (ValueError, TypeError):
+        messages.error(request, "Invalid request.")
+        return redirect('compforms:submit_form', event_form_id=event_form_id, team_id=team_id)
+
+    group = get_object_or_404(QuestionGroup, pk=group_id, form=event_form.form)
+
+    if group.num_assigned == 0:
+        messages.error(request, "This section already shows all questions.")
+        return redirect('compforms:submit_form', event_form_id=event_form_id, team_id=team_id)
+
+    current_assignments = TeamQuestionAssignment.objects.filter(event_team=event_team, group=group)
+    assigned_qids = list(current_assignments.values_list('question_id', flat=True))
+
+    # Server-side: all currently assigned questions must have a non-empty answer
+    existing_response = FormResponse.objects.filter(
+        event_form=event_form, event_team=event_team
+    ).first()
+    answered_qids = set()
+    if existing_response:
+        answered_qids = set(
+            QuestionResponse.objects.filter(
+                form_response=existing_response,
+                question_id__in=assigned_qids,
+            ).exclude(answer='').values_list('question_id', flat=True)
+        )
+
+    if set(assigned_qids) != answered_qids:
+        messages.error(request, "Please answer all current questions in this section before adding another.")
+        return redirect('compforms:submit_form', event_form_id=event_form_id, team_id=team_id)
+
+    # Pool: all group questions minus currently assigned minus previously swapped-away
+    assigned_ids = set(assigned_qids)
+    swapped_away_ids = set(
+        QuestionSwap.objects.filter(event_team=event_team, group=group)
+        .values_list('old_question_id', flat=True)
+    )
+    excluded = assigned_ids | swapped_away_ids
+
+    available = list(
+        GroupQuestion.objects.filter(group=group)
+        .exclude(question_id__in=excluded)
+        .select_related('question')
+    )
+
+    if not available:
+        messages.error(request, "There are no more questions available in this section.")
+        return redirect('compforms:submit_form', event_form_id=event_form_id, team_id=team_id)
+
+    new_gq = random.choice(available)
+    max_order = (
+        current_assignments.order_by('-display_order')
+        .values_list('display_order', flat=True).first() or 0
+    )
+    TeamQuestionAssignment.objects.create(
+        event_team=event_team,
+        group=group,
+        question=new_gq.question,
+        display_order=max_order + 1,
+    )
+
+    messages.success(
+        request,
+        f'A new question has been added to "{group.name}". '
+        f'You also earned one additional swap.'
+    )
     return redirect('compforms:submit_form', event_form_id=event_form_id, team_id=team_id)
 
 
