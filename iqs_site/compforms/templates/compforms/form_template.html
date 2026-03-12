@@ -18,30 +18,18 @@
 /* Flat question rows */
 .question-block { margin-bottom: 1.25rem; }
 
-.question-label {
-  display: block;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #e2e8f0;
+.question-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
   margin-bottom: 0.35rem;
 }
 
-.question-mock-input {
-  width: 100%;
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 0.5rem;
-  color: #4b5563;
-  padding: 0.5rem 0.75rem;
+.question-label {
+  flex: 1;
   font-size: 0.9rem;
-  font-style: italic;
-  box-sizing: border-box;
-  min-height: 2.4rem;
-}
-
-.question-mock-textarea {
-  min-height: 72px;
-  resize: none;
+  font-weight: 600;
+  color: #e2e8f0;
 }
 
 .question-type-badge {
@@ -56,6 +44,103 @@
   vertical-align: middle;
   font-weight: 500;
 }
+
+.question-mock-input {
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  color: #4b5563;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-style: italic;
+  box-sizing: border-box;
+  min-height: 2.4rem;
+}
+.question-mock-textarea { min-height: 72px; }
+
+/* Edit / delete action buttons */
+.q-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.q-action-btn {
+  background: transparent;
+  border: 1px solid #1f2937;
+  border-radius: 0.4rem;
+  font-size: 0.73rem;
+  padding: 0.15rem 0.55rem;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.q-action-btn.edit  { color: #6687fc; border-color: #2d3a5f; }
+.q-action-btn.edit:hover  { background: #0f1a38; }
+.q-action-btn.delete { color: #f87171; border-color: #4b1515; }
+.q-action-btn.delete:hover { background: #1a0808; }
+
+/* Inline edit form (shared between flat + group) */
+.inline-edit-form {
+  margin-top: 0.65rem;
+  background: #060d1c;
+  border: 1px solid #2d3a5f;
+  border-radius: 0.6rem;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.inline-edit-form label {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+.inline-edit-form textarea,
+.inline-edit-form select {
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.45rem;
+  color: #e2e8f0;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.87rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  resize: vertical;
+}
+.inline-edit-form textarea:focus,
+.inline-edit-form select:focus { outline: none; border-color: #6687fc; }
+.inline-edit-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.save-btn {
+  background: #6687fc;
+  color: #020617;
+  border: none;
+  border-radius: 0.45rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.83rem;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.save-btn:hover { background: #7c9dfd; }
+.cancel-btn {
+  background: transparent;
+  border: 1px solid #1f2937;
+  border-radius: 0.45rem;
+  color: #6b7280;
+  padding: 0.4rem 0.85rem;
+  font-size: 0.83rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.cancel-btn:hover { color: #9ca3af; }
 
 /* Group blocks */
 .group-card {
@@ -83,10 +168,7 @@
   margin: 0;
 }
 
-.group-meta {
-  font-size: 0.8rem;
-  color: #6b7280;
-}
+.group-meta { font-size: 0.8rem; color: #6b7280; }
 
 .shown-badge {
   font-size: 0.78rem;
@@ -107,18 +189,20 @@
 }
 
 .group-questions-list {
-  padding: 0.75rem 1.25rem 0.5rem;
+  padding: 0.5rem 1.25rem 0.25rem;
 }
+
+.group-question-item {
+  border-bottom: 1px solid #111827;
+  padding: 0.5rem 0;
+}
+.group-question-item:last-child { border-bottom: none; }
 
 .group-question-row {
   display: flex;
   align-items: flex-start;
   gap: 0.75rem;
-  padding: 0.6rem 0;
-  border-bottom: 1px solid #111827;
 }
-
-.group-question-row:last-child { border-bottom: none; }
 
 .gq-order {
   font-size: 0.78rem;
@@ -136,14 +220,13 @@
 
 .gq-required { color: #f87171; margin-left: 0.25rem; font-size: 0.85rem; }
 
-/* Add question form */
+/* Add question section */
 .add-question-section {
   border-top: 1px solid #1e3a5f;
   padding: 1rem 1.25rem;
-  background: #060d1c;
 }
 
-.add-question-section summary {
+.add-question-section > details > summary {
   font-size: 0.85rem;
   font-weight: 600;
   color: #6687fc;
@@ -151,11 +234,9 @@
   user-select: none;
   list-style: none;
 }
-
-.add-question-section summary::-webkit-details-marker { display: none; }
-.add-question-section summary::before { content: '+ '; }
-
-details[open] summary::before { content: '– '; }
+.add-question-section > details > summary::-webkit-details-marker { display: none; }
+.add-question-section > details > summary::before { content: '+ Add question to this group'; }
+.add-question-section > details[open] > summary::before { content: '– Cancel'; }
 
 .add-question-form {
   margin-top: 0.85rem;
@@ -163,14 +244,12 @@ details[open] summary::before { content: '– '; }
   flex-direction: column;
   gap: 0.65rem;
 }
-
 .add-question-form label {
   font-size: 0.8rem;
   color: #9ca3af;
   display: block;
   margin-bottom: 0.2rem;
 }
-
 .add-question-form textarea,
 .add-question-form select {
   width: 100%;
@@ -184,10 +263,8 @@ details[open] summary::before { content: '– '; }
   box-sizing: border-box;
   resize: vertical;
 }
-
 .add-question-form textarea:focus,
 .add-question-form select:focus { outline: none; border-color: #6687fc; }
-
 .add-btn {
   align-self: flex-start;
   background: #6687fc;
@@ -217,7 +294,7 @@ details[open] summary::before { content: '– '; }
   font-size: 0.9rem;
   color: #93c5fd;
 }
-.notice.error { background: #1a0a0a; border-color: #4b1515; color: #fca5a5; }
+.notice.error   { background: #1a0a0a; border-color: #4b1515; color: #fca5a5; }
 .notice.success { background: #0a1a0f; border-color: #15402a; color: #6ee7b7; }
 {% endblock %}
 
@@ -238,19 +315,58 @@ details[open] summary::before { content: '– '; }
 <div class="form-card">
   {% if sections %}
     {% for section in sections %}
+
       {% if section.type == 'flat' %}
         {% with fq=section.fq %}
         <div class="question-block">
-          <label class="question-label">
-            {{ fq.order }}. {{ fq.question.question_text }}
-            {% if fq.required %}<span style="color:#f87171;">*</span>{% endif %}
-            <span class="question-type-badge">{{ fq.question.get_question_type_display }}</span>
-          </label>
+          <div class="question-header">
+            <span class="question-label">
+              {{ fq.order }}. {{ fq.question.question_text }}
+              {% if fq.required %}<span style="color:#f87171;">*</span>{% endif %}
+              <span class="question-type-badge">{{ fq.question.get_question_type_display }}</span>
+            </span>
+            <div class="q-actions">
+              <button type="button" class="q-action-btn edit"
+                onclick="toggleEdit('flat-{{ fq.form_question_id }}')">Edit</button>
+              <form method="post" style="margin:0;"
+                onsubmit="return confirm('Remove this question from the form?')">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete_flat_question">
+                <input type="hidden" name="form_question_id" value="{{ fq.form_question_id }}">
+                <button type="submit" class="q-action-btn delete">Delete</button>
+              </form>
+            </div>
+          </div>
+
           {% if fq.question.question_type == 'SHORT_TEXT' %}
             <div class="question-mock-input">Team answer</div>
           {% else %}
             <div class="question-mock-input question-mock-textarea">Team answer</div>
           {% endif %}
+
+          <div id="flat-{{ fq.form_question_id }}" class="inline-edit-form" style="display:none;">
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="edit_question">
+              <input type="hidden" name="question_id" value="{{ fq.question.question_id }}">
+              <div>
+                <label>Question text</label>
+                <textarea name="question_text" rows="2" required>{{ fq.question.question_text }}</textarea>
+              </div>
+              <div>
+                <label>Type</label>
+                <select name="question_type">
+                  <option value="{{ LONG_TEXT }}"{% if fq.question.question_type == LONG_TEXT %} selected{% endif %}>Long text</option>
+                  <option value="{{ SHORT_TEXT }}"{% if fq.question.question_type == SHORT_TEXT %} selected{% endif %}>Short text</option>
+                </select>
+              </div>
+              <div class="inline-edit-actions">
+                <button type="submit" class="save-btn">Save</button>
+                <button type="button" class="cancel-btn"
+                  onclick="toggleEdit('flat-{{ fq.form_question_id }}')">Cancel</button>
+              </div>
+            </form>
+          </div>
         </div>
         {% endwith %}
 
@@ -276,13 +392,50 @@ details[open] summary::before { content: '– '; }
           {% if section.group_questions %}
             <div class="group-questions-list">
               {% for gq in section.group_questions %}
-                <div class="group-question-row">
-                  <span class="gq-order">{{ forloop.counter }}.</span>
-                  <span class="gq-text">
-                    {{ gq.question.question_text }}
-                    <span class="question-type-badge">{{ gq.question.get_question_type_display }}</span>
-                    {% if gq.required %}<span class="gq-required">*</span>{% endif %}
-                  </span>
+                <div class="group-question-item">
+                  <div class="group-question-row">
+                    <span class="gq-order">{{ forloop.counter }}.</span>
+                    <span class="gq-text">
+                      {{ gq.question.question_text }}
+                      <span class="question-type-badge">{{ gq.question.get_question_type_display }}</span>
+                      {% if gq.required %}<span class="gq-required">*</span>{% endif %}
+                    </span>
+                    <div class="q-actions">
+                      <button type="button" class="q-action-btn edit"
+                        onclick="toggleEdit('gq-{{ gq.group_question_id }}')">Edit</button>
+                      <form method="post" style="margin:0;"
+                        onsubmit="return confirm('Remove this question from the group?')">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete_group_question">
+                        <input type="hidden" name="group_question_id" value="{{ gq.group_question_id }}">
+                        <button type="submit" class="q-action-btn delete">Delete</button>
+                      </form>
+                    </div>
+                  </div>
+
+                  <div id="gq-{{ gq.group_question_id }}" class="inline-edit-form" style="display:none;">
+                    <form method="post">
+                      {% csrf_token %}
+                      <input type="hidden" name="action" value="edit_question">
+                      <input type="hidden" name="question_id" value="{{ gq.question.question_id }}">
+                      <div>
+                        <label>Question text</label>
+                        <textarea name="question_text" rows="2" required>{{ gq.question.question_text }}</textarea>
+                      </div>
+                      <div>
+                        <label>Type</label>
+                        <select name="question_type">
+                          <option value="{{ LONG_TEXT }}"{% if gq.question.question_type == LONG_TEXT %} selected{% endif %}>Long text</option>
+                          <option value="{{ SHORT_TEXT }}"{% if gq.question.question_type == SHORT_TEXT %} selected{% endif %}>Short text</option>
+                        </select>
+                      </div>
+                      <div class="inline-edit-actions">
+                        <button type="submit" class="save-btn">Save</button>
+                        <button type="button" class="cancel-btn"
+                          onclick="toggleEdit('gq-{{ gq.group_question_id }}')">Cancel</button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
               {% endfor %}
             </div>
@@ -292,7 +445,7 @@ details[open] summary::before { content: '– '; }
 
           <div class="add-question-section">
             <details>
-              <summary>Add question to this group</summary>
+              <summary></summary>
               <form method="post" class="add-question-form">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="add_question_to_group">
@@ -314,9 +467,21 @@ details[open] summary::before { content: '– '; }
           </div>
         </div>
       {% endif %}
+
     {% endfor %}
   {% else %}
     <p style="color:#6b7280;">This form has no questions yet.</p>
   {% endif %}
 </div>
+
+<script>
+function toggleEdit(id) {
+  var el = document.getElementById(id);
+  if (el.style.display === 'none') {
+    el.style.display = 'flex';
+  } else {
+    el.style.display = 'none';
+  }
+}
+</script>
 {% endblock %}

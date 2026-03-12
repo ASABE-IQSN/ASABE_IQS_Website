@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     Question, CompForm, FormQuestion, EventForm, FormResponse, QuestionResponse,
-    QuestionGroup, GroupQuestion, TeamQuestionAssignment,
+    QuestionGroup, GroupQuestion, TeamQuestionAssignment, QuestionSwap,
 )
 
 
@@ -73,8 +73,19 @@ class FormResponseAdmin(admin.ModelAdmin):
 
 @admin.register(QuestionResponse)
 class QuestionResponseAdmin(admin.ModelAdmin):
-    list_display = ('question', 'answer_truncated')
+    list_display = ('question', 'answer_truncated', 'flagged', 'flagged_by', 'flagged_at')
+    list_filter = ('flagged',)
 
     def answer_truncated(self, obj):
         return obj.answer[:80]
     answer_truncated.short_description = 'Answer'
+
+
+@admin.register(QuestionSwap)
+class QuestionSwapAdmin(admin.ModelAdmin):
+    list_display = ('swap_id', 'event_team', 'group', 'old_question', 'new_question', 'swapped_at', 'is_flag_driven')
+    list_filter = ('is_flag_driven', 'group__form')
+    readonly_fields = ('swap_id', 'event_team', 'event_form', 'group', 'old_question', 'new_question', 'swapped_at', 'swapped_by', 'is_flag_driven')
+
+    def has_add_permission(self, request):
+        return False

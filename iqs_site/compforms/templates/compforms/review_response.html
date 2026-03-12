@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}Review — {{ team.team_name }} — {{ event_form.form.name }} – IQS Connect{% endblock %}
+
+{% block extra_styles %}
+.breadcrumb { font-size: 0.85rem; color: #6b7280; margin-bottom: 1.25rem; }
+.breadcrumb a { color: #6687fc; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+.page-header { margin-bottom: 1.5rem; }
+.page-header h1 { font-size: 1.3rem; font-weight: 700; margin: 0 0 0.2rem; }
+.page-header .subtitle { color: #9ca3af; font-size: 0.88rem; }
+
+.notice { border-radius: 0.6rem; padding: 0.65rem 1rem; margin-bottom: 1.25rem; font-size: 0.88rem; }
+.notice.success { background: #0a1a0f; border: 1px solid #15402a; color: #6ee7b7; }
+.notice.error   { background: #1a0a0a; border: 1px solid #4b1515; color: #fca5a5; }
+
+/* Flat question card */
+.q-card {
+  background: #0b1120;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+
+.q-card-header {
+  padding: 0.7rem 1.1rem;
+  border-bottom: 1px solid #1f2937;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.q-label {
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.q-source-badge {
+  font-size: 0.7rem;
+  color: #6b7280;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 0.35rem;
+  padding: 0.1rem 0.5rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.q-answer {
+  padding: 0.65rem 1.1rem;
+  font-size: 0.88rem;
+  color: #9ca3af;
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 2rem;
+}
+.q-answer.empty { color: #374151; font-style: italic; }
+
+/* Flag state */
+.q-card.flagged { border-color: #7f1d1d; }
+.q-card.flagged .q-card-header { background: #1a0808; border-bottom-color: #7f1d1d; }
+
+.flagged-strip {
+  background: #1a0a0a;
+  border-top: 1px solid #7f1d1d;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.8rem;
+  color: #fca5a5;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.flag-reason-text { color: #9ca3af; }
+.unflag-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid #7f1d1d;
+  border-radius: 0.4rem;
+  color: #f87171;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.6rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.unflag-btn:hover { background: #2d0808; }
+
+/* Flag action area */
+.flag-action {
+  border-top: 1px solid #1f2937;
+  padding: 0.6rem 1.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.flag-action details { flex: 1; }
+.flag-action summary {
+  font-size: 0.78rem;
+  color: #6b7280;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+.flag-action summary::-webkit-details-marker { display: none; }
+.flag-action summary::before { content: '⚑ Flag this response'; }
+details[open] summary::before { content: '▲ Cancel'; }
+
+.flag-form {
+  margin-top: 0.6rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.flag-form input[type="text"] {
+  flex: 1;
+  min-width: 180px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.4rem;
+  color: #e2e8f0;
+  padding: 0.35rem 0.65rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+}
+.flag-form input[type="text"]:focus { outline: none; border-color: #ef4444; }
+.flag-submit-btn {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border: none;
+  border-radius: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.flag-submit-btn:hover { background: #991b1b; }
+
+/* Group header within review */
+.group-header {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #93c5fd;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 1.5rem 0 0.5rem;
+}
+
+/* Swap history */
+.swap-history { margin-top: 2rem; }
+.swap-history h2 { font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem; }
+.swap-row {
+  background: #0b1120;
+  border: 1px solid #1f2937;
+  border-radius: 0.6rem;
+  padding: 0.6rem 1rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.82rem;
+  color: #9ca3af;
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.swap-row .swap-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #0f2a48;
+  color: #60a5fa;
+  border: 1px solid #1e4060;
+  flex-shrink: 0;
+}
+.swap-row .swap-badge.flag-driven { background: #1a0a0a; color: #f87171; border-color: #7f1d1d; }
+{% endblock %}
+
+{% block content %}
+<div class="breadcrumb">
+  <a href="{% url 'compforms:form_responses_overview' event_form_id=event_form.event_form_id %}">
+    {{ event_form.form.name }} Responses
+  </a>
+  &rsaquo; {{ team.team_name }}
+</div>
+
+<div class="page-header">
+  <h1>{{ team.team_name }} <span style="color:#6b7280;font-weight:400;font-size:1rem;">#{{ team.team_number }}</span></h1>
+  <div class="subtitle">{{ event_form.form.name }} &mdash; {{ event_form.event }} &mdash; Staff review</div>
+</div>
+
+{% for message in messages %}
+  <div class="notice {% if 'error' in message.tags %}error{% else %}success{% endif %}">{{ message }}</div>
+{% endfor %}
+
+{% for section in sections %}
+  {% if section.type == 'flat' %}
+    {% with fq=section.fq aobj=section.answer_obj %}
+    <div class="q-card {% if aobj.flagged %}flagged{% endif %}">
+      <div class="q-card-header">
+        <span class="q-label">{{ fq.order }}. {{ fq.question.question_text }}</span>
+        <span class="q-source-badge">Flat question</span>
+      </div>
+      <div class="q-answer {% if not aobj or not aobj.answer %}empty{% endif %}">
+        {% if aobj and aobj.answer %}{{ aobj.answer }}{% else %}No answer provided{% endif %}
+      </div>
+      {% if aobj %}
+        {% if aobj.flagged %}
+          <div class="flagged-strip">
+            <span>⚑ Flagged{% if aobj.flagged_by %} by {{ aobj.flagged_by.get_full_name|default:aobj.flagged_by.username }}{% endif %}{% if aobj.flagged_at %} on {{ aobj.flagged_at|date:"M d, Y" }}{% endif %}</span>
+            {% if aobj.flag_reason %}<span class="flag-reason-text">— {{ aobj.flag_reason }}</span>{% endif %}
+            <form method="post" style="margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="unflag">
+              <input type="hidden" name="question_response_id" value="{{ aobj.question_response_id }}">
+              <button type="submit" class="unflag-btn">Remove flag</button>
+            </form>
+          </div>
+        {% else %}
+          <div class="flag-action">
+            <details>
+              <summary></summary>
+              <form method="post" class="flag-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="flag">
+                <input type="hidden" name="question_response_id" value="{{ aobj.question_response_id }}">
+                <input type="text" name="reason" placeholder="Reason (optional)">
+                <button type="submit" class="flag-submit-btn">Flag</button>
+              </form>
+            </details>
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endwith %}
+
+  {% else %}
+    <div class="group-header">{{ section.group.name }}</div>
+    {% for q, aobj in section.qa_pairs %}
+    <div class="q-card {% if aobj.flagged %}flagged{% endif %}">
+      <div class="q-card-header">
+        <span class="q-label">{{ q.question_text }}</span>
+        <span class="q-source-badge">{{ section.group.name }}</span>
+      </div>
+      <div class="q-answer {% if not aobj or not aobj.answer %}empty{% endif %}">
+        {% if aobj and aobj.answer %}{{ aobj.answer }}{% else %}No answer provided{% endif %}
+      </div>
+      {% if aobj %}
+        {% if aobj.flagged %}
+          <div class="flagged-strip">
+            <span>⚑ Flagged{% if aobj.flagged_by %} by {{ aobj.flagged_by.get_full_name|default:aobj.flagged_by.username }}{% endif %}{% if aobj.flagged_at %} on {{ aobj.flagged_at|date:"M d, Y" }}{% endif %}</span>
+            {% if aobj.flag_reason %}<span class="flag-reason-text">— {{ aobj.flag_reason }}</span>{% endif %}
+            <form method="post" style="margin:0;">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="unflag">
+              <input type="hidden" name="question_response_id" value="{{ aobj.question_response_id }}">
+              <button type="submit" class="unflag-btn">Remove flag</button>
+            </form>
+          </div>
+        {% else %}
+          <div class="flag-action">
+            <details>
+              <summary></summary>
+              <form method="post" class="flag-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="flag">
+                <input type="hidden" name="question_response_id" value="{{ aobj.question_response_id }}">
+                <input type="text" name="reason" placeholder="Reason (optional)">
+                <button type="submit" class="flag-submit-btn">Flag</button>
+              </form>
+            </details>
+          </div>
+        {% endif %}
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% endif %}
+{% endfor %}
+
+{% if swaps %}
+  <div class="swap-history">
+    <h2>Swap History</h2>
+    {% for swap in swaps %}
+      <div class="swap-row">
+        <span class="swap-badge {% if swap.is_flag_driven %}flag-driven{% endif %}">
+          {% if swap.is_flag_driven %}Flag-driven{% else %}Team swap{% endif %}
+        </span>
+        <span>
+          <strong style="color:#e2e8f0;">{{ swap.group.name }}</strong>
+          &mdash; replaced "{{ swap.old_question }}" with "{{ swap.new_question }}"
+        </span>
+        <span style="margin-left:auto;color:#4b5563;font-size:0.78rem;">{{ swap.swapped_at|date:"M d, Y g:i A" }}</span>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

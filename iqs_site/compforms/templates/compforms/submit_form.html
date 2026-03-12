@@ -28,19 +28,27 @@
   font-size: 0.9rem;
   color: #93c5fd;
 }
+.form-notice.error  { background: #1a0a0a; border-color: #4b1515; color: #fca5a5; }
+.form-notice.closed { background: #1a1a0a; border-color: #4b4515; color: #fde68a; }
 
-.form-notice.error {
-  background: #1a0a0a;
-  border-color: #4b1515;
-  color: #fca5a5;
+/* Swap counter badge */
+.swap-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: #9ca3af;
+  background: #0b1120;
+  border: 1px solid #1f2937;
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  margin-bottom: 1.25rem;
 }
+.swap-counter .count { font-weight: 700; color: #e2e8f0; }
+.swap-counter.depleted { color: #f87171; border-color: #4b1515; }
+.swap-counter.depleted .count { color: #f87171; }
 
-.form-notice.closed {
-  background: #1a1a0a;
-  border-color: #4b4515;
-  color: #fde68a;
-}
-
+/* Questions */
 .question-block { margin-bottom: 1.5rem; }
 
 .question-label {
@@ -50,24 +58,7 @@
   color: #e2e8f0;
   margin-bottom: 0.4rem;
 }
-
 .question-label .req { color: #f87171; margin-left: 0.2rem; }
-
-.group-header {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #93c5fd;
-  border-bottom: 1px solid #1f2937;
-  padding-bottom: 0.4rem;
-  margin-bottom: 1rem;
-  margin-top: 0.5rem;
-}
-.group-description {
-  font-size: 0.85rem;
-  color: #6b7280;
-  margin-top: -0.75rem;
-  margin-bottom: 1rem;
-}
 
 .question-input,
 .question-textarea {
@@ -108,6 +99,74 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* Group headers */
+.group-header {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #93c5fd;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 0.4rem;
+  margin-bottom: 1rem;
+  margin-top: 0.5rem;
+}
+.group-description {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-top: -0.75rem;
+  margin-bottom: 1rem;
+}
+
+/* Flagged question banner */
+.flag-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  background: #1a0a0a;
+  border: 1px solid #7f1d1d;
+  border-radius: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  margin-bottom: 0.6rem;
+  font-size: 0.85rem;
+  color: #fca5a5;
+}
+.flag-banner .flag-icon { font-size: 1rem; flex-shrink: 0; margin-top: 0.05rem; }
+.flag-banner .flag-reason { color: #9ca3af; font-size: 0.8rem; margin-top: 0.2rem; }
+
+/* Swap button row */
+.swap-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+.swap-btn {
+  background: transparent;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  color: #9ca3af;
+  font-size: 0.8rem;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  font-family: inherit;
+}
+.swap-btn:hover:not(:disabled) { border-color: #6687fc; color: #6687fc; }
+.swap-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.swap-btn.flag-swap { border-color: #7f1d1d; color: #f87171; }
+.swap-btn.flag-swap:hover:not(:disabled) { border-color: #ef4444; color: #ef4444; }
+.swap-note { font-size: 0.75rem; color: #4b5563; }
+
+/* Flagged alert at top */
+.flagged-alert {
+  background: #1a0a0a;
+  border: 1px solid #7f1d1d;
+  border-radius: 0.6rem;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  color: #fca5a5;
+}
 {% endblock %}
 
 {% block content %}
@@ -123,11 +182,23 @@
   <div class="form-notice {% if 'error' in message.tags %}error{% endif %}">{{ message }}</div>
 {% endfor %}
 
+{% if has_flagged %}
+  <div class="flagged-alert">
+    One or more of your answers has been flagged for review. See the highlighted questions below — you can edit your answer or request a new question.
+  </div>
+{% endif %}
+
 {% if not event_form.is_open %}
   <div class="form-notice closed">This form is closed. Answers are read-only.</div>
 {% elif existing_response %}
   <div class="form-notice">
     Last saved: {{ existing_response.updated_at|date:"M d, Y g:i A" }}. You can update your answers and save again.
+  </div>
+{% endif %}
+
+{% if event_form.is_open %}
+  <div class="swap-counter {% if swaps_remaining == 0 %}depleted{% endif %}">
+    Question swaps: <span class="count">{{ swaps_remaining }}</span>&nbsp;of {{ max_swaps }} remaining
   </div>
 {% endif %}
 
@@ -144,50 +215,74 @@
               {% if fq.required %}<span class="req">*</span>{% endif %}
             </label>
             {% if fq.question.question_type == 'SHORT_TEXT' %}
-              <input
-                type="text"
-                class="question-input"
+              <input type="text" class="question-input"
                 id="q{{ fq.question.question_id }}"
                 name="question_{{ fq.question.question_id }}"
                 value="{{ current_answer }}"
-                {% if fq.required %}required{% endif %}
-              >
+                {% if fq.required %}required{% endif %}>
             {% else %}
-              <textarea
-                class="question-textarea"
+              <textarea class="question-textarea"
                 id="q{{ fq.question.question_id }}"
                 name="question_{{ fq.question.question_id }}"
                 rows="4"
-                {% if fq.required %}required{% endif %}
-              >{{ current_answer }}</textarea>
+                {% if fq.required %}required{% endif %}>{{ current_answer }}</textarea>
             {% endif %}
           </div>
           {% endwith %}
+
         {% else %}
+          {# Group section #}
           <h3 class="group-header">{{ section.group.name }}</h3>
           {% if section.group.description %}
             <p class="group-description">{{ section.group.description }}</p>
           {% endif %}
-          {% for q, current_answer in section.questions %}
+
+          {% for q, current_answer, flag_reason in section.questions %}
             <div class="question-block">
+              {% if flag_reason is not None %}
+                <div class="flag-banner">
+                  <span class="flag-icon">&#9888;</span>
+                  <div>
+                    <div>This response was flagged by a reviewer.</div>
+                    {% if flag_reason %}<div class="flag-reason">Reason: {{ flag_reason }}</div>{% endif %}
+                  </div>
+                </div>
+              {% endif %}
+
               <label class="question-label" for="q{{ q.question_id }}">
                 {{ q.question_text }}
               </label>
               {% if q.question_type == 'SHORT_TEXT' %}
-                <input
-                  type="text"
-                  class="question-input"
+                <input type="text" class="question-input"
                   id="q{{ q.question_id }}"
                   name="question_{{ q.question_id }}"
-                  value="{{ current_answer }}"
-                >
+                  value="{{ current_answer }}">
               {% else %}
-                <textarea
-                  class="question-textarea"
+                <textarea class="question-textarea"
                   id="q{{ q.question_id }}"
                   name="question_{{ q.question_id }}"
-                  rows="4"
-                >{{ current_answer }}</textarea>
+                  rows="4">{{ current_answer }}</textarea>
+              {% endif %}
+
+              {% if section.swappable %}
+                <div class="swap-row">
+                  {% if flag_reason is not None %}
+                    <button type="button" class="swap-btn flag-swap"
+                      onclick="doSwap('{{ section.group.group_id }}', '{{ q.question_id }}', 'Replace this question with a new one? This cannot be undone and your current answer will be cleared.')">
+                      Get New Question
+                    </button>
+                    <span class="swap-note">Does not count against your swap limit.</span>
+                  {% elif swaps_remaining > 0 %}
+                    <button type="button" class="swap-btn"
+                      onclick="doSwap('{{ section.group.group_id }}', '{{ q.question_id }}', 'Get a new question? This cannot be undone. Your current answer will be cleared and you will have {{ swaps_remaining_after }} swap{{ swaps_remaining_after|pluralize }} remaining.')">
+                      Get New Question
+                    </button>
+                    <span class="swap-note">{{ swaps_remaining }} swap{{ swaps_remaining|pluralize }} remaining</span>
+                  {% else %}
+                    <button type="button" class="swap-btn" disabled>Get New Question</button>
+                    <span class="swap-note">No swaps remaining</span>
+                  {% endif %}
+                </div>
               {% endif %}
             </div>
           {% endfor %}
@@ -195,7 +290,9 @@
       {% endfor %}
       <button type="submit" class="submit-btn">Save Answers</button>
     </form>
+
   {% else %}
+    {# Read-only view #}
     {% for section in sections %}
       {% if section.type == 'flat' %}
         {% with fq=section.fq current_answer=section.answer %}
@@ -211,7 +308,7 @@
         {% if section.group.description %}
           <p class="group-description">{{ section.group.description }}</p>
         {% endif %}
-        {% for q, current_answer in section.questions %}
+        {% for q, current_answer, flag_reason in section.questions %}
           <div class="question-block">
             <span class="question-label">{{ q.question_text }}</span>
             <div class="read-only-answer">
@@ -223,4 +320,22 @@
     {% endfor %}
   {% endif %}
 </div>
+
+{# Standalone form used by doSwap() — sits outside the main answer form #}
+<form id="swap-form" method="post"
+  action="{% url 'compforms:swap_question' event_form_id=event_form.event_form_id team_id=team.team_id %}"
+  style="display:none;">
+  {% csrf_token %}
+  <input type="hidden" id="swap-group-id" name="group_id" value="">
+  <input type="hidden" id="swap-question-id" name="question_id" value="">
+</form>
+
+<script>
+function doSwap(groupId, questionId, msg) {
+  if (!confirm(msg)) return;
+  document.getElementById('swap-group-id').value = groupId;
+  document.getElementById('swap-question-id').value = questionId;
+  document.getElementById('swap-form').submit();
+}
+</script>
 {% endblock %}

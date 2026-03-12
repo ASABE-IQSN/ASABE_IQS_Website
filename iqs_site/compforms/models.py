@@ -126,6 +126,15 @@ class QuestionResponse(models.Model):
         related_name='answers',
     )
     answer = models.TextField(blank=True)
+    flagged = models.BooleanField(default=False)
+    flagged_by = models.ForeignKey(
+        get_user_model(),
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='flagged_responses',
+    )
+    flagged_at = models.DateTimeField(null=True, blank=True)
+    flag_reason = models.TextField(blank=True)
 
     class Meta:
         unique_together = ('form_response', 'question')
@@ -187,6 +196,41 @@ class TeamQuestionAssignment(models.Model):
 
     def __str__(self):
         return f"{self.event_team} — {self.group.name} — {self.question}"
+
+
+MAX_QUESTION_SWAPS = 5
+
+
+class QuestionSwap(models.Model):
+    swap_id = models.AutoField(primary_key=True)
+    event_team = models.ForeignKey(
+        'events.EventTeam', on_delete=models.CASCADE, related_name='question_swaps'
+    )
+    event_form = models.ForeignKey(
+        EventForm, on_delete=models.CASCADE, related_name='question_swaps'
+    )
+    group = models.ForeignKey(QuestionGroup, on_delete=models.CASCADE, related_name='swaps')
+    old_question = models.ForeignKey(
+        Question, on_delete=models.DO_NOTHING, related_name='swapped_away_from'
+    )
+    new_question = models.ForeignKey(
+        Question, on_delete=models.DO_NOTHING, related_name='swapped_in_to'
+    )
+    swapped_at = models.DateTimeField(auto_now_add=True)
+    swapped_by = models.ForeignKey(
+        get_user_model(), on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='initiated_swaps',
+    )
+    is_flag_driven = models.BooleanField(
+        default=False,
+        help_text="True when swap was triggered by a staff-flagged response. Does not count against team limit.",
+    )
+
+    class Meta:
+        ordering = ['-swapped_at']
+
+    def __str__(self):
+        return f"{self.event_team} swapped Q{self.old_question_id} → Q{self.new_question_id}"
 
 
 def get_or_create_group_assignments(event_team, question_group):
