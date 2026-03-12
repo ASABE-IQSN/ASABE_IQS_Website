@@ -53,6 +53,22 @@
 
 .question-label .req { color: #f87171; margin-left: 0.2rem; }
 
+.group-header {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #93c5fd;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 0.4rem;
+  margin-bottom: 1rem;
+  margin-top: 0.5rem;
+}
+.group-description {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin-top: -0.75rem;
+  margin-bottom: 1rem;
+}
+
 .question-input,
 .question-textarea {
   width: 100%;
@@ -119,42 +135,91 @@
   {% if event_form.is_open %}
     <form method="post">
       {% csrf_token %}
-      {% for fq, current_answer in question_rows %}
-        <div class="question-block">
-          <label class="question-label" for="q{{ fq.question.question_id }}">
-            {{ fq.order }}. {{ fq.question.question_text }}
-            {% if fq.required %}<span class="req">*</span>{% endif %}
-          </label>
-          {% if fq.question.question_type == 'SHORT_TEXT' %}
-            <input
-              type="text"
-              class="question-input"
-              id="q{{ fq.question.question_id }}"
-              name="question_{{ fq.question.question_id }}"
-              value="{{ current_answer }}"
-              {% if fq.required %}required{% endif %}
-            >
-          {% else %}
-            <textarea
-              class="question-textarea"
-              id="q{{ fq.question.question_id }}"
-              name="question_{{ fq.question.question_id }}"
-              rows="4"
-              {% if fq.required %}required{% endif %}
-            >{{ current_answer }}</textarea>
+      {% for section in sections %}
+        {% if section.type == 'flat' %}
+          {% with fq=section.fq current_answer=section.answer %}
+          <div class="question-block">
+            <label class="question-label" for="q{{ fq.question.question_id }}">
+              {{ fq.order }}. {{ fq.question.question_text }}
+              {% if fq.required %}<span class="req">*</span>{% endif %}
+            </label>
+            {% if fq.question.question_type == 'SHORT_TEXT' %}
+              <input
+                type="text"
+                class="question-input"
+                id="q{{ fq.question.question_id }}"
+                name="question_{{ fq.question.question_id }}"
+                value="{{ current_answer }}"
+                {% if fq.required %}required{% endif %}
+              >
+            {% else %}
+              <textarea
+                class="question-textarea"
+                id="q{{ fq.question.question_id }}"
+                name="question_{{ fq.question.question_id }}"
+                rows="4"
+                {% if fq.required %}required{% endif %}
+              >{{ current_answer }}</textarea>
+            {% endif %}
+          </div>
+          {% endwith %}
+        {% else %}
+          <h3 class="group-header">{{ section.group.name }}</h3>
+          {% if section.group.description %}
+            <p class="group-description">{{ section.group.description }}</p>
           {% endif %}
-        </div>
+          {% for q, current_answer in section.questions %}
+            <div class="question-block">
+              <label class="question-label" for="q{{ q.question_id }}">
+                {{ q.question_text }}
+              </label>
+              {% if q.question_type == 'SHORT_TEXT' %}
+                <input
+                  type="text"
+                  class="question-input"
+                  id="q{{ q.question_id }}"
+                  name="question_{{ q.question_id }}"
+                  value="{{ current_answer }}"
+                >
+              {% else %}
+                <textarea
+                  class="question-textarea"
+                  id="q{{ q.question_id }}"
+                  name="question_{{ q.question_id }}"
+                  rows="4"
+                >{{ current_answer }}</textarea>
+              {% endif %}
+            </div>
+          {% endfor %}
+        {% endif %}
       {% endfor %}
       <button type="submit" class="submit-btn">Save Answers</button>
     </form>
   {% else %}
-    {% for fq, current_answer in question_rows %}
-      <div class="question-block">
-        <span class="question-label">{{ fq.order }}. {{ fq.question.question_text }}</span>
-        <div class="read-only-answer">
-          {% if current_answer %}{{ current_answer }}{% else %}<em style="color:#4b5563;">No answer provided</em>{% endif %}
+    {% for section in sections %}
+      {% if section.type == 'flat' %}
+        {% with fq=section.fq current_answer=section.answer %}
+        <div class="question-block">
+          <span class="question-label">{{ fq.order }}. {{ fq.question.question_text }}</span>
+          <div class="read-only-answer">
+            {% if current_answer %}{{ current_answer }}{% else %}<em style="color:#4b5563;">No answer provided</em>{% endif %}
+          </div>
         </div>
-      </div>
+        {% endwith %}
+      {% else %}
+        <h3 class="group-header">{{ section.group.name }}</h3>
+        {% if section.group.description %}
+          <p class="group-description">{{ section.group.description }}</p>
+        {% endif %}
+        {% for q, current_answer in section.questions %}
+          <div class="question-block">
+            <span class="question-label">{{ q.question_text }}</span>
+            <div class="read-only-answer">
+              {% if current_answer %}{{ current_answer }}{% else %}<em style="color:#4b5563;">No answer provided</em>{% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      {% endif %}
     {% endfor %}
   {% endif %}
 </div>

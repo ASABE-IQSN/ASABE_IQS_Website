@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}{{ form.name }} — Form Template – IQS Connect{% endblock %}
+
+{% block extra_styles %}
+.page-header { margin-bottom: 1.5rem; }
+.page-header h1 { font-size: 1.4rem; font-weight: 700; margin: 0 0 0.25rem; }
+.page-header .subtitle { color: #9ca3af; font-size: 0.9rem; }
+
+.form-card {
+  background: #0b1120;
+  border: 1px solid #1f2937;
+  border-radius: 0.9rem;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Flat question rows */
+.question-block { margin-bottom: 1.25rem; }
+
+.question-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e2e8f0;
+  margin-bottom: 0.35rem;
+}
+
+.question-mock-input {
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  color: #4b5563;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.9rem;
+  font-style: italic;
+  box-sizing: border-box;
+  min-height: 2.4rem;
+}
+
+.question-mock-textarea {
+  min-height: 72px;
+  resize: none;
+}
+
+.question-type-badge {
+  display: inline-block;
+  font-size: 0.7rem;
+  color: #6b7280;
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 0.35rem;
+  padding: 0.1rem 0.45rem;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+  font-weight: 500;
+}
+
+/* Group blocks */
+.group-card {
+  background: #060d1c;
+  border: 1px solid #1e3a5f;
+  border-radius: 0.85rem;
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.group-card-header {
+  background: #0d1f38;
+  border-bottom: 1px solid #1e3a5f;
+  padding: 0.85rem 1.25rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.group-card-header h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #93c5fd;
+  margin: 0;
+}
+
+.group-meta {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.shown-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  background: #0f2a48;
+  color: #60a5fa;
+  border: 1px solid #1e4060;
+  border-radius: 999px;
+  padding: 0.15rem 0.65rem;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.group-description {
+  font-size: 0.85rem;
+  color: #6b7280;
+  padding: 0.6rem 1.25rem 0;
+}
+
+.group-questions-list {
+  padding: 0.75rem 1.25rem 0.5rem;
+}
+
+.group-question-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid #111827;
+}
+
+.group-question-row:last-child { border-bottom: none; }
+
+.gq-order {
+  font-size: 0.78rem;
+  color: #374151;
+  min-width: 1.5rem;
+  padding-top: 0.15rem;
+  flex-shrink: 0;
+}
+
+.gq-text {
+  flex: 1;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+}
+
+.gq-required { color: #f87171; margin-left: 0.25rem; font-size: 0.85rem; }
+
+/* Add question form */
+.add-question-section {
+  border-top: 1px solid #1e3a5f;
+  padding: 1rem 1.25rem;
+  background: #060d1c;
+}
+
+.add-question-section summary {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6687fc;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+.add-question-section summary::-webkit-details-marker { display: none; }
+.add-question-section summary::before { content: '+ '; }
+
+details[open] summary::before { content: '– '; }
+
+.add-question-form {
+  margin-top: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.add-question-form label {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.add-question-form textarea,
+.add-question-form select {
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  color: #e2e8f0;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.88rem;
+  font-family: inherit;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.add-question-form textarea:focus,
+.add-question-form select:focus { outline: none; border-color: #6687fc; }
+
+.add-btn {
+  align-self: flex-start;
+  background: #6687fc;
+  color: #020617;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.5rem 1.1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.add-btn:hover { background: #7c9dfd; }
+
+.empty-group {
+  padding: 0.75rem 1.25rem;
+  color: #374151;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.notice {
+  background: #0f2235;
+  border: 1px solid #1e4060;
+  border-radius: 0.6rem;
+  padding: 0.65rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+  color: #93c5fd;
+}
+.notice.error { background: #1a0a0a; border-color: #4b1515; color: #fca5a5; }
+.notice.success { background: #0a1a0f; border-color: #15402a; color: #6ee7b7; }
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>{{ form.name }}</h1>
+  <div class="subtitle">Form template — staff view</div>
+</div>
+
+{% if form.description %}
+  <p style="color:#9ca3af; margin-top:-0.5rem; margin-bottom:1.25rem;">{{ form.description }}</p>
+{% endif %}
+
+{% for message in messages %}
+  <div class="notice {% if 'error' in message.tags %}error{% elif 'success' in message.tags %}success{% endif %}">{{ message }}</div>
+{% endfor %}
+
+<div class="form-card">
+  {% if sections %}
+    {% for section in sections %}
+      {% if section.type == 'flat' %}
+        {% with fq=section.fq %}
+        <div class="question-block">
+          <label class="question-label">
+            {{ fq.order }}. {{ fq.question.question_text }}
+            {% if fq.required %}<span style="color:#f87171;">*</span>{% endif %}
+            <span class="question-type-badge">{{ fq.question.get_question_type_display }}</span>
+          </label>
+          {% if fq.question.question_type == 'SHORT_TEXT' %}
+            <div class="question-mock-input">Team answer</div>
+          {% else %}
+            <div class="question-mock-input question-mock-textarea">Team answer</div>
+          {% endif %}
+        </div>
+        {% endwith %}
+
+      {% else %}
+        {# Group section #}
+        <div class="group-card">
+          <div class="group-card-header">
+            <h3>{{ section.group.name }}</h3>
+            <span class="group-meta">{{ section.group_questions|length }} question{{ section.group_questions|length|pluralize }} in pool</span>
+            <span class="shown-badge">
+              {% if section.group.num_assigned == 0 %}
+                All {{ section.shown }} shown
+              {% else %}
+                {{ section.shown }} of {{ section.group_questions|length }} shown per team
+              {% endif %}
+            </span>
+          </div>
+
+          {% if section.group.description %}
+            <p class="group-description">{{ section.group.description }}</p>
+          {% endif %}
+
+          {% if section.group_questions %}
+            <div class="group-questions-list">
+              {% for gq in section.group_questions %}
+                <div class="group-question-row">
+                  <span class="gq-order">{{ forloop.counter }}.</span>
+                  <span class="gq-text">
+                    {{ gq.question.question_text }}
+                    <span class="question-type-badge">{{ gq.question.get_question_type_display }}</span>
+                    {% if gq.required %}<span class="gq-required">*</span>{% endif %}
+                  </span>
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <p class="empty-group">No questions in this group yet.</p>
+          {% endif %}
+
+          <div class="add-question-section">
+            <details>
+              <summary>Add question to this group</summary>
+              <form method="post" class="add-question-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_question_to_group">
+                <input type="hidden" name="group_id" value="{{ section.group.group_id }}">
+                <div>
+                  <label for="qt-{{ section.group.group_id }}">Question text</label>
+                  <textarea id="qt-{{ section.group.group_id }}" name="question_text" rows="2" placeholder="Enter question text…" required></textarea>
+                </div>
+                <div>
+                  <label for="qtype-{{ section.group.group_id }}">Type</label>
+                  <select id="qtype-{{ section.group.group_id }}" name="question_type">
+                    <option value="{{ LONG_TEXT }}">Long text</option>
+                    <option value="{{ SHORT_TEXT }}">Short text</option>
+                  </select>
+                </div>
+                <button type="submit" class="add-btn">Add question</button>
+              </form>
+            </details>
+          </div>
+        </div>
+      {% endif %}
+    {% endfor %}
+  {% else %}
+    <p style="color:#6b7280;">This form has no questions yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

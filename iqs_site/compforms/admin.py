@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import Question, CompForm, FormQuestion, EventForm, FormResponse, QuestionResponse
+from .models import (
+    Question, CompForm, FormQuestion, EventForm, FormResponse, QuestionResponse,
+    QuestionGroup, GroupQuestion, TeamQuestionAssignment,
+)
 
 
 @admin.register(Question)
@@ -17,15 +20,44 @@ class FormQuestionInline(admin.TabularInline):
     ordering = ('order',)
 
 
+class GroupQuestionInline(admin.TabularInline):
+    model = GroupQuestion
+    extra = 1
+    ordering = ('display_order',)
+
+
+class QuestionGroupInline(admin.StackedInline):
+    model = QuestionGroup
+    extra = 0
+    show_change_link = True
+
+
 @admin.register(CompForm)
 class CompFormAdmin(admin.ModelAdmin):
     list_display = ('form_id', 'name', 'created_at')
-    inlines = [FormQuestionInline]
+    inlines = [FormQuestionInline, QuestionGroupInline]
 
 
 @admin.register(FormQuestion)
 class FormQuestionAdmin(admin.ModelAdmin):
     list_display = ('form', 'question', 'order', 'required')
+
+
+@admin.register(QuestionGroup)
+class QuestionGroupAdmin(admin.ModelAdmin):
+    list_display = ('group_id', 'form', 'name', 'num_assigned', 'order')
+    list_filter = ('form',)
+    inlines = [GroupQuestionInline]
+
+
+@admin.register(TeamQuestionAssignment)
+class TeamQuestionAssignmentAdmin(admin.ModelAdmin):
+    list_display = ('assignment_id', 'event_team', 'group', 'question', 'display_order')
+    list_filter = ('group__form', 'group')
+    readonly_fields = ('assignment_id', 'event_team', 'group', 'question', 'display_order')
+
+    def has_add_permission(self, request):
+        return False
 
 
 @admin.register(EventForm)

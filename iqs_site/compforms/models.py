@@ -1,4 +1,6 @@
-from django.db import models
+import random
+
+from django.db import models, transaction
 from django.contrib.auth import get_user_model
 
 
@@ -130,3 +132,97 @@ class QuestionResponse(models.Model):
 
     def __str__(self):
         return f"Answer to '{self.question}': {self.answer[:50]}"
+
+
+class QuestionGroup(models.Model):
+    group_id = models.AutoField(primary_key=True)
+    form = models.ForeignKey(CompForm, on_delete=models.CASCADE, related_name='question_groups')
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True)
+    num_assigned = models.PositiveIntegerField(
+        default=0,
+        help_text="Questions randomly assigned per team. 0 = show all.",
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text="Shared namespace with FormQuestion.order — controls interleave order on form.",
+    )
+
+    class Meta:
+        ordering = ['order']
+        unique_together = ('form', 'name')
+
+    def __str__(self):
+        return f"{self.form} — Group: {self.name}"
+
+
+class GroupQuestion(models.Model):
+    group_question_id = models.AutoField(primary_key=True)
+    group = models.ForeignKey(QuestionGroup, on_delete=models.CASCADE, related_name='group_questions')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='group_questions')
+    display_order = models.PositiveIntegerField(default=0)
+    required = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('group', 'question')
+        ordering = ['display_order']
+
+    def __str__(self):
+        return f"{self.group.name} — {self.question}"
+
+
+class TeamQuestionAssignment(models.Model):
+    assignment_id = models.AutoField(primary_key=True)
+    event_team = models.ForeignKey(
+        'events.EventTeam', on_delete=models.CASCADE, related_name='question_assignments'
+    )
+    group = models.ForeignKey(QuestionGroup, on_delete=models.CASCADE, related_name='assignments')
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='team_assignments')
+    display_order = models.PositiveIntegerField()
+
+    class Meta:
+        unique_together = ('event_team', 'group', 'question')
+        ordering = ['group', 'display_order']
+        indexes = [models.Index(fields=['event_team', 'group'])]
+
+    def __str__(self):
+        return f"{self.event_team} — {self.group.name} — {self.question}"
+
+
+def get_or_create_group_assignments(event_team, question_group):
+    """Return list of Questions assigned to event_team for question_group, creating rows if needed."""
+    existing = list(
+        TeamQuestionAssignment.objects
+        .filter(event_team=event_team, group=question_group)
+        .select_related('question').order_by('display_order')
+    )
+    if existing:
+        return [a.question for a in existing]
+
+    with transaction.atomic():
+        locked = (
+            TeamQuestionAssignment.objects
+            .select_for_update()
+            .filter(event_team=event_team, group=question_group)
+        )
+        if locked.exists():
+            return [a.question for a in locked.order_by('display_order').select_related('question')]
+
+        bank = list(
+            GroupQuestion.objects.filter(group=question_group)
+            .select_related('question').order_by('display_order')
+        )
+        n = question_group.num_assigned
+        selected = bank if (n == 0 or n >= len(bank)) else random.sample(bank, n)
+
+        to_create = [
+            TeamQuestionAssignment(
+                event_team=event_team,
+                group=question_group,
+                question=gq.question,
+                display_order=i,
+            )
+            for i, gq in enumerate(selected, start=1)
+        ]
+        TeamQuestionAssignment.objects.bulk_create(to_create)
+        return [a.question for a in to_create]

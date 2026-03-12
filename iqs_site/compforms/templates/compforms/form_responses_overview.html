@@ -77,6 +77,30 @@ table.response-table td { color: #cbd5e1; }
   max-width: 200px;
   word-break: break-word;
 }
+
+.group-responses-section { margin-top: 2rem; }
+.group-responses-section h2 { font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; }
+
+.team-group-card {
+  background: #0b1120;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.team-group-card .team-name { font-weight: 700; color: #e2e8f0; margin-bottom: 0.5rem; }
+.team-group-card .group-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #93c5fd;
+  margin: 0.75rem 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.qa-pair { margin-bottom: 0.5rem; font-size: 0.85rem; }
+.qa-pair .qa-q { color: #9ca3af; margin-bottom: 0.1rem; }
+.qa-pair .qa-a { color: #e2e8f0; white-space: pre-wrap; word-break: break-word; }
+.qa-pair .qa-a.empty { color: #374151; font-style: italic; }
 {% endblock %}
 
 {% block content %}
@@ -124,5 +148,29 @@ table.response-table td { color: #cbd5e1; }
   </div>
 {% else %}
   <p style="color:#6b7280;">No responses submitted yet.</p>
+{% endif %}
+
+{% if groups and response_matrix %}
+  <div class="group-responses-section">
+    <h2>Group Question Responses</h2>
+    {% for row in response_matrix %}
+      <div class="team-group-card">
+        <div class="team-name">{{ row.team.team_name }} <span style="color:#6b7280;font-size:0.8rem;">#{{ row.team.team_number }}</span></div>
+        {% for group_row in row.group_rows %}
+          {% if group_row.qa_pairs %}
+            <div class="group-name">{{ group_row.group.name }}</div>
+            {% for q, answer in group_row.qa_pairs %}
+              <div class="qa-pair">
+                <div class="qa-q">{{ q.question_text }}</div>
+                <div class="qa-a {% if not answer %}empty{% endif %}">
+                  {% if answer %}{{ answer }}{% else %}No answer provided{% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endfor %}
+      </div>
+    {% endfor %}
+  </div>
 {% endif %}
 {% endblock %}
