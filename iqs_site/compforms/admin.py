@@ -3,6 +3,7 @@ from django.db.models import Count
 from .models import (
     Question, CompForm, FormQuestion, EventForm, FormResponse, QuestionResponse,
     QuestionGroup, GroupQuestion, TeamQuestionAssignment, QuestionSwap,
+    OverlayLayout, GroupOverlayConfig,
 )
 
 
@@ -35,6 +36,13 @@ class GroupQuestionInline(admin.TabularInline):
     model = GroupQuestion
     extra = 1
     ordering = ('display_order',)
+    fields = ('question', 'display_order', 'required', 'overlay_role')
+
+
+class GroupOverlayConfigInline(admin.StackedInline):
+    model = GroupOverlayConfig
+    extra = 0
+    can_delete = True
 
 
 class QuestionGroupInline(admin.StackedInline):
@@ -58,7 +66,18 @@ class FormQuestionAdmin(admin.ModelAdmin):
 class QuestionGroupAdmin(admin.ModelAdmin):
     list_display = ('group_id', 'form', 'name', 'num_assigned', 'order')
     list_filter = ('form',)
-    inlines = [GroupQuestionInline]
+    inlines = [GroupQuestionInline, GroupOverlayConfigInline]
+
+
+@admin.register(OverlayLayout)
+class OverlayLayoutAdmin(admin.ModelAdmin):
+    list_display = ('layout_id', 'name', 'layout_type', 'description')
+
+
+@admin.register(GroupOverlayConfig)
+class GroupOverlayConfigAdmin(admin.ModelAdmin):
+    list_display = ('config_id', 'group', 'layout')
+    list_filter = ('layout',)
 
 
 @admin.register(TeamQuestionAssignment)

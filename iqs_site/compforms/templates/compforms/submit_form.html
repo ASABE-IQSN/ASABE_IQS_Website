@@ -245,7 +245,7 @@
 
 <div class="form-card">
   {% if event_form.is_open %}
-    <form method="post">
+    <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
       {% for section in sections %}
         {% if section.type == 'flat' %}
@@ -261,6 +261,15 @@
                 name="question_{{ fq.question.question_id }}"
                 value="{{ current_answer }}"
                 {% if fq.required %}required{% endif %}>
+            {% elif fq.question.question_type == 'IMAGE' %}
+              {% if current_answer %}
+                <img src="{{ current_answer }}" alt="Current upload" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:.5rem;display:block;">
+              {% endif %}
+              <input type="file" class="question-input"
+                id="q{{ fq.question.question_id }}"
+                name="question_{{ fq.question.question_id }}"
+                accept="image/*"
+                {% if fq.required and not current_answer %}required{% endif %}>
             {% else %}
               <textarea class="question-textarea"
                 id="q{{ fq.question.question_id }}"
@@ -298,6 +307,15 @@
                   id="q{{ q.question_id }}"
                   name="question_{{ q.question_id }}"
                   value="{{ current_answer }}"
+                  data-group="{{ section.group.group_id }}">
+              {% elif q.question_type == 'IMAGE' %}
+                {% if current_answer %}
+                  <img src="{{ current_answer }}" alt="Current upload" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:.5rem;display:block;">
+                {% endif %}
+                <input type="file" class="question-input"
+                  id="q{{ q.question_id }}"
+                  name="question_{{ q.question_id }}"
+                  accept="image/*"
                   data-group="{{ section.group.group_id }}">
               {% else %}
                 <textarea class="question-textarea"

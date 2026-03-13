@@ -142,7 +142,7 @@ def submit_form(request, event_form_id, team_id):
     flagged_qids = {}  # {question_id: flag_reason}
     if existing_response:
         for ans in existing_response.answers.all():
-            existing_answers[ans.question_id] = ans.answer
+            existing_answers[ans.question_id] = ans.image.url if ans.image else ans.answer
             if ans.flagged:
                 flagged_qids[ans.question_id] = ans.flag_reason
 
@@ -162,6 +162,22 @@ def submit_form(request, event_form_id, team_id):
         form_response.submitted_by = request.user
         form_response.save()
 
+        # Pre-fetch question types so we can route text vs. image correctly
+        from .models import Question as QuestionModel
+        question_types = {
+            q.pk: q.question_type
+            for q in QuestionModel.objects.filter(pk__in=valid_question_ids).only('pk', 'question_type')
+        }
+
+        def _clear_flag(qr):
+            if qr.flagged:
+                qr.flagged = False
+                qr.flagged_by = None
+                qr.flagged_at = None
+                qr.flag_reason = ''
+                qr.save(update_fields=['flagged', 'flagged_by', 'flagged_at', 'flag_reason'])
+
+        # Text answers
         for key, value in request.POST.items():
             if not key.startswith('question_'):
                 continue
@@ -171,18 +187,33 @@ def submit_form(request, event_form_id, team_id):
                 continue
             if qid not in valid_question_ids:
                 continue
+            if question_types.get(qid) == QuestionModel.IMAGE:
+                continue  # handled via FILES
             qr, _ = QuestionResponse.objects.update_or_create(
                 form_response=form_response,
                 question_id=qid,
                 defaults={'answer': value.strip()},
             )
-            # Re-answering a flagged question auto-clears the flag
-            if qr.flagged:
-                qr.flagged = False
-                qr.flagged_by = None
-                qr.flagged_at = None
-                qr.flag_reason = ''
-                qr.save(update_fields=['flagged', 'flagged_by', 'flagged_at', 'flag_reason'])
+            _clear_flag(qr)
+
+        # Image answers
+        for key, file in request.FILES.items():
+            if not key.startswith('question_'):
+                continue
+            try:
+                qid = int(key[len('question_'):])
+            except ValueError:
+                continue
+            if qid not in valid_question_ids:
+                continue
+            if question_types.get(qid) != QuestionModel.IMAGE:
+                continue
+            qr, _ = QuestionResponse.objects.update_or_create(
+                form_response=form_response,
+                question_id=qid,
+                defaults={'image': file, 'answer': ''},
+            )
+            _clear_flag(qr)
 
         messages.success(request, "Your answers have been saved.")
         return redirect('compforms:submit_form', event_form_id=event_form_id, team_id=team_id)

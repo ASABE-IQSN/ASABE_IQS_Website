@@ -151,9 +151,7 @@ function startStaleMonitor() {
 function startSSE() {
   setStatus("neutral", "Connecting…");
 
-  // If you want to avoid hardcoding, you can inject this from Django as data-attr
-  const STREAM_URL = "https://api.internationalquarterscale.com/api/stream";
-  const es = new EventSource(STREAM_URL);
+  const es = new EventSource(window.IQS.apiUrl + "/api/stream");
 
   es.addEventListener("open", () => {
     setStatus("neutral", "Connected");
@@ -204,11 +202,135 @@ function startSSE() {
     pushPoint(distance, speed, force);
   });
 
+  es.addEventListener("overlay_card", (e) => {
+    const data = JSON.parse(e.data);
+    showOverlayCard(data);
+  });
+
   es.onerror = (err) => {
     // Browser auto-reconnects; this fires frequently during reconnect
     console.warn("SSE error", err);
     setStatus("stale", "Reconnecting…");
   };
+}
+
+// --- overlay cards (GSAP) ---
+const CARD_HOLD_S = 12;
+
+// Stat card
+const ocStatCard = document.getElementById("ocStatCard");
+const ocBadge    = document.getElementById("ocBadge");
+const ocTeam     = document.getElementById("ocTeam");
+const ocQuestion = document.getElementById("ocQuestion");
+const ocAnswer   = document.getElementById("ocAnswer");
+const ocProgress = document.getElementById("ocProgress");
+
+// Profile card
+const ocProfileCard        = document.getElementById("ocProfileCard");
+const ocProfilePhoto       = document.getElementById("ocProfilePhoto");
+const ocProfilePhotoHolder = document.getElementById("ocProfilePhotoPlaceholder");
+const ocProfileBadge       = document.getElementById("ocProfileBadge");
+const ocProfileTeam        = document.getElementById("ocProfileTeam");
+const ocProfileName        = document.getElementById("ocProfileName");
+const ocProfileBio         = document.getElementById("ocProfileBio");
+const ocProfileStats       = document.getElementById("ocProfileStats");
+const ocProfileProgress    = document.getElementById("ocProfileProgress");
+
+// Image card
+const ocImageCard     = document.getElementById("ocImageCard");
+const ocImagePhoto    = document.getElementById("ocImagePhoto");
+const ocImageBadge    = document.getElementById("ocImageBadge");
+const ocImageCaption  = document.getElementById("ocImageCaption");
+const ocImageProgress = document.getElementById("ocImageProgress");
+
+let cardTimeline = null;
+const ALL_CARDS = [ocStatCard, ocProfileCard, ocImageCard];
+
+function _animateCard(wrap, progressEl, innerEls) {
+  if (cardTimeline) cardTimeline.kill();
+  // Hide all other cards first
+  ALL_CARDS.forEach(c => { if (c !== wrap) gsap.set(c, { visibility: "hidden", opacity: 0 }); });
+
+  gsap.set(progressEl, { scaleX: 1 });
+  cardTimeline = gsap.timeline()
+    .set(wrap, { visibility: "visible" })
+    .fromTo(wrap,
+      { y: 50, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.55, ease: "back.out(1.5)" }
+    )
+    .fromTo(innerEls,
+      { y: 8, opacity: 0 },
+      { y: 0, opacity: 1, duration: 0.3, stagger: 0.06, ease: "power2.out" },
+      "-=0.25"
+    )
+    .to(progressEl,
+      { scaleX: 0, duration: CARD_HOLD_S, ease: "none" },
+      "+=0.2"
+    )
+    .to(wrap,
+      { y: 40, opacity: 0, duration: 0.4, ease: "power2.in" }
+    )
+    .set(wrap, { visibility: "hidden" });
+}
+
+function showOverlayCard(data) {
+  const ageS = Date.now() / 1000 - (data.ts || 0);
+  if (ageS > 30) return;
+
+  const layout = data.layout || "stat";
+
+  if (layout === "profile") {
+    _showProfileCard(data);
+  } else if (layout === "image") {
+    _showImageCard(data);
+  } else {
+    _showStatCard(data);
+  }
+}
+
+function _showStatCard(data) {
+  ocBadge.textContent    = data.form_name || "Form Response";
+  ocTeam.textContent     = data.team_name || "";
+  ocQuestion.textContent = data.question  || "";
+  ocAnswer.textContent   = data.answer    || "";
+  _animateCard(ocStatCard, ocProgress, [ocBadge, ocTeam, ocQuestion, ocAnswer]);
+}
+
+function _showProfileCard(data) {
+  const f = data.fields || {};
+  ocProfileBadge.textContent = data.form_name || "Profile";
+  ocProfileTeam.textContent  = data.team_name || "";
+  ocProfileName.textContent  = f.name || "";
+  ocProfileBio.textContent   = f.bio  || "";
+
+  // Photo
+  if (f.photo) {
+    ocProfilePhoto.src = f.photo;
+    ocProfilePhoto.style.display = "";
+    ocProfilePhotoHolder.style.display = "none";
+  } else {
+    ocProfilePhoto.style.display = "none";
+    ocProfilePhotoHolder.style.display = "";
+  }
+
+  // Extra stat slots: any field that isn't photo/name/bio
+  const RESERVED = new Set(["photo", "name", "bio"]);
+  ocProfileStats.innerHTML = Object.entries(f)
+    .filter(([k]) => !RESERVED.has(k))
+    .map(([, v]) => `<div class="oc-profile-stat">${v}</div>`)
+    .join("");
+
+  _animateCard(ocProfileCard, ocProfileProgress,
+    [ocProfileBadge, ocProfileTeam, ocProfileName, ocProfileBio, ocProfileStats]);
+}
+
+function _showImageCard(data) {
+  const f = data.fields || {};
+  const imgUrl = f.photo || data.image_url || "";
+  ocImagePhoto.src         = imgUrl;
+  ocImageBadge.textContent = data.form_name || "Photo";
+  ocImageCaption.textContent = f.caption || data.answer || data.team_name || "";
+  _animateCard(ocImageCard, ocImageProgress, [ocImageBadge, ocImageCaption]);
 }
 
 // --- boot ---

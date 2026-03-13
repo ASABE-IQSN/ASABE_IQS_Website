@@ -190,8 +190,8 @@ table.response-table td { color: #cbd5e1; }
         {% for group_row in row.group_rows %}
           {% if group_row.qa_pairs %}
             <div class="group-name">{{ group_row.group.name }}</div>
-            {% for q, answer in group_row.qa_pairs %}
-              <div class="qa-pair">
+            {% for q, answer, flagged in group_row.qa_pairs %}
+              <div class="qa-pair{% if flagged %} flagged{% endif %}">
                 <div class="qa-q">{{ q.question_text }}</div>
                 <div class="qa-a {% if not answer %}empty{% endif %}">
                   {% if answer %}{{ answer }}{% else %}No answer provided{% endif %}

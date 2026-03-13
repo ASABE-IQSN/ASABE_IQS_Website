@@ -859,3 +859,178 @@ def announcer_dur_data(request, run_id):
     payload["run_state"] = run.state
     payload["total_laps"] = run.total_laps
     return Response(payload)
+
+
+# ── Overlay Producer ─────────────────────────────────────────────────
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def overlay_active_responses(request):
+    """Return form responses for the team linked to the given pull_id.
+
+    Responses are split into:
+      - individual_responses: single Q&A or image answers (for stat/image cards)
+      - layout_groups: groups configured with an OverlayLayout (multi-field cards)
+    """
+    from collections import defaultdict
+    from compforms.models import FormResponse, GroupOverlayConfig, GroupQuestion, TeamQuestionAssignment
+
+    pull_id = request.query_params.get("pull_id")
+    if not pull_id:
+        return Response({"team": None, "individual_responses": [], "layout_groups": []})
+
+    pull = get_object_or_404(
+        Pull.objects.select_related("team", "event"),
+        pk=pull_id,
+    )
+    team = pull.team
+    event = pull.event
+    event_team = EventTeam.objects.filter(event=event, team=team).first()
+    if not event_team:
+        return Response({
+            "team": {"team_name": team.team_name, "team_number": team.team_number},
+            "individual_responses": [],
+            "layout_groups": [],
+        })
+
+    form_responses = (
+        FormResponse.objects
+        .filter(event_form__event=event, event_team=event_team)
+        .select_related("event_form__form")
+        .prefetch_related("answers__question")
+    )
+
+    individual_responses = []
+    layout_groups = []
+
+    for fr in form_responses:
+        form_name = fr.event_form.form.name
+
+        # Build answer lookup for this form response
+        answer_map = {qa.question_id: qa for qa in fr.answers.select_related("question")}
+
+        # Get all team question assignments for this form's groups, with overlay config
+        assignments = (
+            TeamQuestionAssignment.objects
+            .filter(event_team=event_team, group__form=fr.event_form.form)
+            .select_related("group__overlay_config__layout", "question")
+            .order_by("group__order", "display_order")
+        )
+
+        # Build group → assignments map
+        group_assignments = defaultdict(list)
+        for a in assignments:
+            group_assignments[a.group_id].append(a)
+
+        # Build role map: (group_id, question_id) → overlay_role
+        group_ids = list(group_assignments.keys())
+        role_map = {}
+        if group_ids:
+            for gq in GroupQuestion.objects.filter(group_id__in=group_ids).values("group_id", "question_id", "overlay_role"):
+                role_map[(gq["group_id"], gq["question_id"])] = gq["overlay_role"]
+
+        # Track which question_ids are consumed by a layout group
+        layout_question_ids = set()
+
+        for group_id, group_asns in group_assignments.items():
+            group = group_asns[0].group
+            config = getattr(group, "overlay_config", None)
+            if not config or not config.layout:
+                continue
+
+            fields = {}
+            for asn in group_asns:
+                role = role_map.get((group_id, asn.question_id), "")
+                if not role:
+                    continue
+                qa = answer_map.get(asn.question_id)
+                if qa:
+                    if qa.image:
+                        fields[role] = request.build_absolute_uri(qa.image.url)
+                    elif qa.answer:
+                        fields[role] = qa.answer
+                layout_question_ids.add(asn.question_id)
+
+            if fields:
+                layout_groups.append({
+                    "group_id": group_id,
+                    "group_name": group.name,
+                    "form_name": form_name,
+                    "layout_type": config.layout.layout_type,
+                    "layout_name": config.layout.name,
+                    "team_name": team.team_name,
+                    "fields": fields,
+                })
+
+        # Individual responses: answers not consumed by a layout group
+        for qid, qa in answer_map.items():
+            if qid in layout_question_ids:
+                continue
+            if qa.answer or qa.image:
+                individual_responses.append({
+                    "form_name": form_name,
+                    "question": qa.question.question_text,
+                    "question_id": qid,
+                    "answer": qa.answer,
+                    "image_url": request.build_absolute_uri(qa.image.url) if qa.image else None,
+                })
+
+    return Response({
+        "team": {"team_name": team.team_name, "team_number": team.team_number},
+        "individual_responses": individual_responses,
+        "layout_groups": layout_groups,
+    })
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def overlay_card_trigger(request):
+    """Publish a card to all overlay clients via Redis → SSE.
+
+    For stat/image cards: { layout, question, answer, image_url, form_name, team_name }
+    For layout cards:     { layout, layout_type, group_name, fields, form_name, team_name }
+    """
+    import redis as redis_lib
+    import json as json_lib
+    import time as time_lib
+    from django.conf import settings as django_settings
+
+    layout = request.data.get("layout", "stat")
+    team_name = request.data.get("team_name", "")
+    form_name = request.data.get("form_name", "")
+
+    if layout in ("profile", "image"):
+        fields = request.data.get("fields")
+        if not fields:
+            return Response({"error": "fields required for layout cards"}, status=status.HTTP_400_BAD_REQUEST)
+        payload = {
+            "layout": layout,
+            "layout_name": request.data.get("layout_name", ""),
+            "group_name": request.data.get("group_name", ""),
+            "fields": fields,
+            "form_name": form_name,
+            "team_name": team_name,
+            "ts": time_lib.time(),
+        }
+    else:
+        question = request.data.get("question", "")
+        answer = request.data.get("answer", "")
+        image_url = request.data.get("image_url", "")
+        if not question or (not answer and not image_url):
+            return Response({"error": "question and answer (or image_url) required"}, status=status.HTTP_400_BAD_REQUEST)
+        payload = {
+            "layout": "image" if image_url and not answer else "stat",
+            "question": question,
+            "answer": answer,
+            "image_url": image_url,
+            "form_name": form_name,
+            "team_name": team_name,
+            "ts": time_lib.time(),
+        }
+
+    r = redis_lib.Redis.from_url(django_settings.REDIS_URL, decode_responses=True)
+    payload_str = json_lib.dumps(payload)
+    r.set("overlay:card:latest", payload_str)
+    r.publish("overlay:card", payload_str)
+
+    return Response({"ok": True})

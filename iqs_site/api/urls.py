@@ -53,4 +53,8 @@ urlpatterns = [
     path("announcer/pull/<int:pull_id>/", views.announcer_pull_data, name="announcer_pull"),
     path("announcer/maneuverability/<int:run_id>/", views.announcer_man_data, name="announcer_man"),
     path("announcer/durability/<int:run_id>/", views.announcer_dur_data, name="announcer_dur"),
+
+    # ── Overlay Producer ──────────────────────────────────────────
+    path("overlay/active-responses/", views.overlay_active_responses, name="overlay_active_responses"),
+    path("overlay/card/", views.overlay_card_trigger, name="overlay_card"),
 ]

@@ -31,7 +31,15 @@ def live_durability(request):
 
 @log_view
 def overlay(request):
-    return render(request,"overlay.html")
+    context = {"api_url": settings.APIURL}
+    return render(request, "overlay.html", context)
+
+
+@staff_member_required
+@log_view
+def overlay_producer(request):
+    context = {"api_url": settings.APIURL}
+    return render(request, "overlay_producer.html", context)
 
 
 @staff_member_required

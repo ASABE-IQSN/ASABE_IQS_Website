@@ -7,9 +7,11 @@ from django.contrib.auth import get_user_model
 class Question(models.Model):
     SHORT_TEXT = 'SHORT_TEXT'
     LONG_TEXT = 'LONG_TEXT'
+    IMAGE = 'IMAGE'
     QUESTION_TYPE_CHOICES = [
         (SHORT_TEXT, 'Short Text'),
         (LONG_TEXT, 'Long Text'),
+        (IMAGE, 'Image Upload'),
     ]
 
     question_id = models.AutoField(primary_key=True)
@@ -126,6 +128,7 @@ class QuestionResponse(models.Model):
         related_name='answers',
     )
     answer = models.TextField(blank=True)
+    image = models.ImageField(upload_to='form_responses/', null=True, blank=True)
     flagged = models.BooleanField(default=False)
     flagged_by = models.ForeignKey(
         get_user_model(),
@@ -171,6 +174,11 @@ class GroupQuestion(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name='group_questions')
     display_order = models.PositiveIntegerField(default=0)
     required = models.BooleanField(default=True)
+    overlay_role = models.CharField(
+        max_length=50,
+        blank=True,
+        help_text="Role this question plays in the overlay layout (e.g. photo, name, bio, stat_1, stat_2).",
+    )
 
     class Meta:
         unique_together = ('group', 'question')
@@ -231,6 +239,43 @@ class QuestionSwap(models.Model):
 
     def __str__(self):
         return f"{self.event_team} swapped Q{self.old_question_id} → Q{self.new_question_id}"
+
+
+class OverlayLayout(models.Model):
+    STAT    = 'stat'
+    PROFILE = 'profile'
+    IMAGE   = 'image'
+    LAYOUT_TYPE_CHOICES = [
+        (STAT,    'Stat Card'),
+        (PROFILE, 'Profile Card'),
+        (IMAGE,   'Image Card'),
+    ]
+
+    layout_id   = models.AutoField(primary_key=True)
+    name        = models.CharField(max_length=255)
+    layout_type = models.CharField(max_length=50, choices=LAYOUT_TYPE_CHOICES)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"{self.name} ({self.get_layout_type_display()})"
+
+
+class GroupOverlayConfig(models.Model):
+    config_id = models.AutoField(primary_key=True)
+    group  = models.OneToOneField(
+        QuestionGroup,
+        on_delete=models.CASCADE,
+        related_name='overlay_config',
+    )
+    layout = models.ForeignKey(
+        OverlayLayout,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='group_configs',
+    )
+
+    def __str__(self):
+        return f"{self.group} → {self.layout}"
 
 
 def get_or_create_group_assignments(event_team, question_group):

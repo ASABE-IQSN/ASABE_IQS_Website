@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Overlay Producer | IQS{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'live/css/announcer.css' %}">
+  <style>
+    .response-list {
+      display: grid;
+      gap: .75rem;
+    }
+
+    .response-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 1rem;
+      padding: 1rem 1.1rem;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: rgba(255,255,255,.02);
+      transition: border-color .15s, background .15s;
+    }
+
+    .response-card:hover {
+      border-color: rgba(96,165,250,.3);
+      background: rgba(96,165,250,.04);
+    }
+
+    .response-card-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .response-badge {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      margin-bottom: .35rem;
+    }
+
+    .response-question {
+      font-size: .85rem;
+      color: var(--muted);
+      margin: 0 0 .3rem;
+      line-height: 1.4;
+    }
+
+    .response-answer {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .send-btn {
+      flex-shrink: 0;
+      align-self: center;
+      padding: .45rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: .85rem;
+      font-weight: 700;
+      transition: all .15s;
+      white-space: nowrap;
+    }
+
+    .send-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .send-btn:disabled {
+      opacity: .45;
+      pointer-events: none;
+    }
+
+    .send-btn.sent {
+      background: rgba(52,211,153,.15);
+      border-color: rgba(52,211,153,.4);
+      color: var(--good);
+    }
+
+    #sentToast {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid rgba(52,211,153,.35);
+      border-radius: 10px;
+      padding: .65rem 1.2rem;
+      font-size: .9rem;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s;
+      z-index: 200;
+    }
+
+    #sentToast.show { opacity: 1; }
+
+    .response-card--layout { border-color: rgba(96,165,250,.25); }
+
+    .layout-fields { display: flex; flex-direction: column; gap: .35rem; margin-top: .4rem; }
+
+    .layout-field {
+      display: flex;
+      align-items: baseline;
+      gap: .5rem;
+      font-size: .875rem;
+    }
+
+    .layout-role {
+      flex-shrink: 0;
+      width: 70px;
+      font-size: .75rem;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .layout-val { color: var(--text); }
+  </style>
+{% endblock %}
+
+{% block content %}
+<script>
+  window.IQS = { apiUrl: "{{ api_url }}" };
+</script>
+<script defer src="{% static 'live/js/overlay_producer.js' %}"></script>
+
+<div class="live-page">
+
+  <div class="announcer-header">
+    <h1>Overlay Producer</h1>
+    <div class="header-meta">
+      <span class="muted">Active team:&nbsp;<strong id="activeTeamName">Waiting…</strong></span>
+      <span class="chip" id="sseStatus">SSE</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2 class="panel-title">Form Responses &mdash; <span id="teamNameInline">current team</span></h2>
+      <button id="refreshBtn" class="chip" style="cursor:pointer;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:.8rem;" title="Refresh responses">&#8635; Refresh</button>
+    </div>
+    <div class="panel-body" id="responsesBody">
+      <div class="empty">Waiting for active team&hellip;</div>
+    </div>
+  </div>
+
+</div>
+
+<div id="sentToast">Sent to overlay &#10003;</div>
+{% endblock %}
