@@ -377,6 +377,7 @@
                 <select name="question_type">
                   <option value="{{ LONG_TEXT }}"{% if fq.question.question_type == LONG_TEXT %} selected{% endif %}>Long text</option>
                   <option value="{{ SHORT_TEXT }}"{% if fq.question.question_type == SHORT_TEXT %} selected{% endif %}>Short text</option>
+                  <option value="{{ IMAGE }}"{% if fq.question.question_type == IMAGE %} selected{% endif %}>Image upload</option>
                 </select>
               </div>
               <div class="inline-edit-actions">
@@ -449,6 +450,7 @@
                         <select name="question_type">
                           <option value="{{ LONG_TEXT }}"{% if gq.question.question_type == LONG_TEXT %} selected{% endif %}>Long text</option>
                           <option value="{{ SHORT_TEXT }}"{% if gq.question.question_type == SHORT_TEXT %} selected{% endif %}>Short text</option>
+                          <option value="{{ IMAGE }}"{% if gq.question.question_type == IMAGE %} selected{% endif %}>Image upload</option>
                         </select>
                       </div>
                       <div class="inline-edit-actions">
@@ -481,6 +483,7 @@
                   <select id="qtype-{{ section.group.group_id }}" name="question_type">
                     <option value="{{ LONG_TEXT }}">Long text</option>
                     <option value="{{ SHORT_TEXT }}">Short text</option>
+                    <option value="{{ IMAGE }}">Image upload</option>
                   </select>
                 </div>
                 <button type="submit" class="add-btn">Add question</button>

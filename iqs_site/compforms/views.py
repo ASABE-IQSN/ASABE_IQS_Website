@@ -692,7 +692,7 @@ def form_template(request, form_id):
 
             if not question_text:
                 messages.error(request, "Question text cannot be empty.")
-            elif question_type not in (Question.SHORT_TEXT, Question.LONG_TEXT):
+            elif question_type not in (Question.SHORT_TEXT, Question.LONG_TEXT, Question.IMAGE):
                 messages.error(request, "Invalid question type.")
             else:
                 next_order = (
@@ -726,7 +726,7 @@ def form_template(request, form_id):
                 messages.error(request, "Question not found on this form.")
             elif not question_text:
                 messages.error(request, "Question text cannot be empty.")
-            elif question_type not in (Question.SHORT_TEXT, Question.LONG_TEXT):
+            elif question_type not in (Question.SHORT_TEXT, Question.LONG_TEXT, Question.IMAGE):
                 messages.error(request, "Invalid question type.")
             else:
                 q.question_text = question_text
@@ -792,4 +792,5 @@ def form_template(request, form_id):
         'sections': sections,
         'SHORT_TEXT': Question.SHORT_TEXT,
         'LONG_TEXT': Question.LONG_TEXT,
+        'IMAGE': Question.IMAGE,
     })
