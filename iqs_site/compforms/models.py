@@ -241,6 +241,20 @@ class QuestionSwap(models.Model):
         return f"{self.event_team} swapped Q{self.old_question_id} → Q{self.new_question_id}"
 
 
+class OverlayScene(models.Model):
+    scene_id     = models.AutoField(primary_key=True)
+    name         = models.CharField(max_length=255)
+    description  = models.TextField(blank=True)
+    canvas_width  = models.PositiveIntegerField(default=1920, help_text="Reference canvas width in px")
+    canvas_height = models.PositiveIntegerField(default=1080, help_text="Reference canvas height in px")
+    elements     = models.JSONField(default=list, blank=True)
+    created_at   = models.DateTimeField(auto_now_add=True)
+    updated_at   = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name
+
+
 class OverlayLayout(models.Model):
     STAT    = 'stat'
     PROFILE = 'profile'
@@ -255,6 +269,13 @@ class OverlayLayout(models.Model):
     name        = models.CharField(max_length=255)
     layout_type = models.CharField(max_length=50, choices=LAYOUT_TYPE_CHOICES)
     description = models.TextField(blank=True)
+    scene = models.ForeignKey(
+        'OverlayScene',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='layouts',
+        help_text='If set, the overlay renders this scene definition instead of the hardcoded template.',
+    )
 
     def __str__(self):
         return f"{self.name} ({self.get_layout_type_display()})"

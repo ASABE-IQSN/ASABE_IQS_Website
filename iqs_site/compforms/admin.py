@@ -3,7 +3,7 @@ from django.db.models import Count
 from .models import (
     Question, CompForm, FormQuestion, EventForm, FormResponse, QuestionResponse,
     QuestionGroup, GroupQuestion, TeamQuestionAssignment, QuestionSwap,
-    OverlayLayout, GroupOverlayConfig,
+    OverlayLayout, GroupOverlayConfig, OverlayScene,
 )
 
 
@@ -69,9 +69,14 @@ class QuestionGroupAdmin(admin.ModelAdmin):
     inlines = [GroupQuestionInline, GroupOverlayConfigInline]
 
 
+@admin.register(OverlayScene)
+class OverlaySceneAdmin(admin.ModelAdmin):
+    list_display = ('scene_id', 'name', 'canvas_width', 'canvas_height', 'updated_at')
+
+
 @admin.register(OverlayLayout)
 class OverlayLayoutAdmin(admin.ModelAdmin):
-    list_display = ('layout_id', 'name', 'layout_type', 'description')
+    list_display = ('layout_id', 'name', 'layout_type', 'scene', 'description')
 
 
 @admin.register(GroupOverlayConfig)

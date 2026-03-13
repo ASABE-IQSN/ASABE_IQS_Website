@@ -243,8 +243,12 @@ const ocImageBadge    = document.getElementById("ocImageBadge");
 const ocImageCaption  = document.getElementById("ocImageCaption");
 const ocImageProgress = document.getElementById("ocImageProgress");
 
+// Dynamic scene card
+const ocSceneCard     = document.getElementById("ocSceneCard");
+const ocSceneProgress = document.getElementById("ocSceneProgress");
+
 let cardTimeline = null;
-const ALL_CARDS = [ocStatCard, ocProfileCard, ocImageCard];
+const ALL_CARDS = [ocStatCard, ocProfileCard, ocImageCard, ocSceneCard];
 
 function _animateCard(wrap, progressEl, innerEls) {
   if (cardTimeline) cardTimeline.kill();
@@ -273,9 +277,80 @@ function _animateCard(wrap, progressEl, innerEls) {
     .set(wrap, { visibility: "hidden" });
 }
 
+function _showSceneCard(data) {
+  const scene = data.scene_definition;
+  if (!scene || !scene.elements || !scene.elements.length) return false;
+
+  // Clear previous content (keep progress bar)
+  Array.from(ocSceneCard.children).forEach(child => {
+    if (child.id !== 'ocSceneProgress' && !child.classList.contains('oc-progress')) {
+      child.remove();
+    }
+  });
+
+  const cw = scene.canvas_width  || 460;
+  const ch = scene.canvas_height || 260;
+
+  ocSceneCard.style.width  = cw + 'px';
+  ocSceneCard.style.height = ch + 'px';
+
+  const fields = data.fields || {};
+  // Also expose top-level fields
+  const allFields = { team_name: data.team_name, form_name: data.form_name, ...fields };
+
+  for (const el of scene.elements) {
+    const div = document.createElement('div');
+    div.style.position = 'absolute';
+    div.style.left   = el.x + '%';
+    div.style.top    = el.y + '%';
+    div.style.width  = el.width + '%';
+    div.style.height = el.height + '%';
+    div.style.boxSizing = 'border-box';
+    div.style.overflow = 'hidden';
+
+    const s = el.style || {};
+    div.style.background    = s.background || 'transparent';
+    div.style.borderRadius  = (s.border_radius || 0) + 'px';
+    div.style.border        = s.border || '';
+    div.style.opacity       = s.opacity ?? 1;
+    if (s.backdrop_filter)  div.style.backdropFilter = s.backdrop_filter;
+
+    const value = el.binding ? (allFields[el.binding] || '') : (el.content || '');
+
+    if (el.type === 'text') {
+      const fsPx = (s.font_size || 2) / 100 * ch;
+      div.style.fontSize   = fsPx + 'px';
+      div.style.fontWeight = s.font_weight || 400;
+      div.style.color      = s.color || '#ffffff';
+      div.style.textAlign  = s.text_align || 'left';
+      div.style.display    = 'flex';
+      div.style.alignItems = 'center';
+      div.style.padding    = '0 4px';
+      div.style.lineHeight = '1.3';
+      div.style.whiteSpace = 'nowrap';
+      div.textContent = value;
+    } else if (el.type === 'image' && value) {
+      const img = document.createElement('img');
+      img.src = value;
+      img.style.cssText = `width:100%;height:100%;display:block;object-fit:${s.object_fit||'cover'};border-radius:${s.border_radius||0}px`;
+      div.appendChild(img);
+    }
+
+    ocSceneCard.insertBefore(div, ocSceneCard.querySelector('.oc-progress'));
+  }
+
+  return true;
+}
+
 function showOverlayCard(data) {
   const ageS = Date.now() / 1000 - (data.ts || 0);
   if (ageS > 30) return;
+
+  // Try scene renderer first
+  if (data.scene_definition && _showSceneCard(data)) {
+    _animateCard(ocSceneCard, ocSceneProgress, [ocSceneCard]);
+    return;
+  }
 
   const layout = data.layout || "stat";
 

@@ -958,6 +958,7 @@ def overlay_active_responses(request):
                     "form_name": form_name,
                     "layout_type": config.layout.layout_type,
                     "layout_name": config.layout.name,
+                    "layout_id": config.layout.layout_id,
                     "team_name": team.team_name,
                     "fields": fields,
                 })
@@ -1027,6 +1028,21 @@ def overlay_card_trigger(request):
             "team_name": team_name,
             "ts": time_lib.time(),
         }
+
+    # Attach scene definition if a layout_id is provided
+    layout_id = request.data.get("layout_id")
+    if layout_id:
+        from compforms.models import OverlayLayout
+        try:
+            layout_obj = OverlayLayout.objects.select_related('scene').get(pk=layout_id)
+            if layout_obj.scene:
+                payload['scene_definition'] = {
+                    'canvas_width':  layout_obj.scene.canvas_width,
+                    'canvas_height': layout_obj.scene.canvas_height,
+                    'elements':      layout_obj.scene.elements,
+                }
+        except OverlayLayout.DoesNotExist:
+            pass
 
     r = redis_lib.Redis.from_url(django_settings.REDIS_URL, decode_responses=True)
     payload_str = json_lib.dumps(payload)

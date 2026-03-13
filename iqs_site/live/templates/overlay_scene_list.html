@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Overlay Scenes | IQS{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'live/css/announcer.css' %}">
+  <style>
+    .scene-table { width:100%; border-collapse:collapse; font-size:.9rem; }
+    .scene-table th { text-align:left; font-size:.75rem; text-transform:uppercase; letter-spacing:.1em; color:var(--muted); padding:.5rem .75rem; border-bottom:1px solid var(--border); }
+    .scene-table td { padding:.7rem .75rem; border-bottom:1px solid rgba(148,163,184,.07); }
+    .scene-table tr:last-child td { border-bottom:none; }
+    .scene-link { color:var(--accent); text-decoration:none; font-weight:600; }
+    .scene-link:hover { text-decoration:underline; }
+    .new-scene-form { display:flex; gap:.75rem; align-items:flex-end; flex-wrap:wrap; margin-top:1rem; }
+    .new-scene-form input { background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:8px; padding:.45rem .75rem; color:var(--text); font-size:.9rem; }
+    .new-scene-form select { background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:8px; padding:.45rem .75rem; color:var(--text); font-size:.9rem; }
+    .new-scene-form button { padding:.45rem 1rem; background:var(--accent); border:none; border-radius:8px; color:#fff; font-weight:700; cursor:pointer; }
+    .dim-chip { font-size:.75rem; color:var(--muted); background:rgba(255,255,255,.04); border:1px solid var(--border); border-radius:6px; padding:2px 7px; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="live-page">
+  <div class="announcer-header">
+    <h1>Overlay Scenes</h1>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2 class="panel-title">Scenes</h2>
+    </div>
+    <div class="panel-body" style="padding:0">
+      {% if scenes %}
+        <table class="scene-table">
+          <thead><tr>
+            <th>Name</th><th>Canvas</th><th>Elements</th><th>Updated</th><th></th>
+          </tr></thead>
+          <tbody>
+          {% for s in scenes %}
+            <tr>
+              <td><a class="scene-link" href="{% url 'live:overlay_scene_editor' s.scene_id %}">{{ s.name }}</a></td>
+              <td><span class="dim-chip">{{ s.canvas_width }}&times;{{ s.canvas_height }}</span></td>
+              <td>{{ s.elements|length }}</td>
+              <td class="muted">{{ s.updated_at|date:"M d, Y H:i" }}</td>
+              <td><a class="scene-link" href="{% url 'live:overlay_scene_editor' s.scene_id %}">Edit &rarr;</a></td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty" style="margin:1rem">No scenes yet. Create one below.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top:1rem">
+    <div class="panel-head"><h2 class="panel-title">New Scene</h2></div>
+    <div class="panel-body">
+      <form method="post" class="new-scene-form">
+        {% csrf_token %}
+        <div>
+          <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.25rem">Name</label>
+          <input type="text" name="name" placeholder="Driver Profile Card" style="width:220px">
+        </div>
+        <div>
+          <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.25rem">Canvas Preset</label>
+          <select name="_preset" onchange="applyPreset(this)">
+            <option value="card">Card (460&times;260)</option>
+            <option value="overlay">Full Overlay (1920&times;1080)</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.25rem">Width</label>
+          <input type="number" name="canvas_width" id="canvasW" value="460" style="width:90px">
+        </div>
+        <div>
+          <label style="font-size:.8rem;color:var(--muted);display:block;margin-bottom:.25rem">Height</label>
+          <input type="number" name="canvas_height" id="canvasH" value="260" style="width:90px">
+        </div>
+        <button type="submit">Create &amp; Edit</button>
+      </form>
+      <script>
+        function applyPreset(sel) {
+          const presets = { card: [460,260], overlay: [1920,1080] };
+          const v = presets[sel.value];
+          if (v) { document.getElementById('canvasW').value=v[0]; document.getElementById('canvasH').value=v[1]; }
+        }
+      </script>
+    </div>
+  </div>
+</div>
+{% endblock %}

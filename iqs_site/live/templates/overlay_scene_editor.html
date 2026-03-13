@@ -1,0 +1,266 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Scene Editor – {{ scene.name }} | IQS</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:     #0b1120;
+      --panel:  #111827;
+      --panel2: #0f172a;
+      --border: rgba(148,163,184,.15);
+      --text:   #e2e8f0;
+      --muted:  rgba(148,163,184,.8);
+      --accent: #60a5fa;
+      --good:   #34d399;
+      --danger: #f87171;
+    }
+
+    html, body { height: 100%; background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; overflow: hidden; }
+
+    /* ── Layout ── */
+    .editor-root { display: grid; grid-template-rows: 48px 1fr; height: 100vh; }
+
+    .toolbar {
+      display: flex; align-items: center; gap: .75rem;
+      padding: 0 1rem;
+      background: var(--panel2);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .toolbar a { color: var(--muted); text-decoration: none; font-size: .85rem; }
+    .toolbar a:hover { color: var(--text); }
+
+    #sceneNameInput {
+      flex: 1; max-width: 320px;
+      background: transparent; border: none; border-bottom: 1px solid var(--border);
+      color: var(--text); font-size: 1rem; font-weight: 700;
+      padding: .2rem .3rem; outline: none;
+    }
+    #sceneNameInput:focus { border-bottom-color: var(--accent); }
+
+    .toolbar-spacer { flex: 1; }
+
+    .toolbar-btn {
+      padding: .35rem .9rem; border-radius: 7px; border: 1px solid var(--border);
+      background: rgba(255,255,255,.04); color: var(--text);
+      cursor: pointer; font-size: .85rem; font-weight: 600;
+    }
+    .toolbar-btn:hover { background: rgba(255,255,255,.08); }
+    .toolbar-btn.primary { background: var(--accent); border-color: var(--accent); color: #0f172a; }
+    .toolbar-btn.primary:hover { opacity: .9; }
+    #saveStatus { font-size: .78rem; color: var(--muted); min-width: 60px; }
+
+    /* ── Body ── */
+    .editor-body { display: grid; grid-template-columns: 200px 1fr 268px; overflow: hidden; }
+
+    /* ── Left panel ── */
+    .left-panel {
+      background: var(--panel); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    .panel-section { padding: .65rem .75rem; border-bottom: 1px solid var(--border); }
+    .panel-section-title { font-size: .7rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); margin-bottom: .5rem; }
+
+    .add-btn {
+      display: block; width: 100%; text-align: left;
+      padding: .4rem .6rem; margin-bottom: .3rem; border-radius: 7px;
+      border: 1px solid var(--border); background: rgba(255,255,255,.03);
+      color: var(--text); cursor: pointer; font-size: .85rem;
+    }
+    .add-btn:hover { background: rgba(96,165,250,.1); border-color: rgba(96,165,250,.3); }
+
+    .layer-list { flex: 1; overflow-y: auto; padding: .5rem; }
+
+    .layer-item {
+      display: flex; align-items: center; gap: .4rem;
+      padding: .35rem .5rem; border-radius: 6px; cursor: pointer;
+      border: 1px solid transparent; margin-bottom: .25rem;
+      font-size: .82rem;
+    }
+    .layer-item:hover { background: rgba(255,255,255,.04); }
+    .layer-item.selected { background: rgba(96,165,250,.12); border-color: rgba(96,165,250,.3); }
+
+    .layer-type-badge {
+      font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+      padding: 1px 5px; border-radius: 4px;
+    }
+    .badge-text { background: rgba(96,165,250,.2); color: #93c5fd; }
+    .badge-image { background: rgba(52,211,153,.2); color: #6ee7b7; }
+    .badge-rect { background: rgba(148,163,184,.15); color: #94a3b8; }
+
+    .layer-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .layer-order-btns { display: flex; flex-direction: column; gap: 1px; }
+    .layer-order-btn { border: none; background: transparent; color: var(--muted); cursor: pointer; font-size: .7rem; padding: 0 2px; line-height: 1; }
+    .layer-order-btn:hover { color: var(--text); }
+
+    .left-bottom { padding: .65rem .75rem; border-top: 1px solid var(--border); }
+    .delete-btn {
+      width: 100%; padding: .4rem; border-radius: 7px;
+      border: 1px solid rgba(248,113,113,.3); background: rgba(248,113,113,.08);
+      color: var(--danger); cursor: pointer; font-size: .85rem; font-weight: 600;
+    }
+    .delete-btn:hover { background: rgba(248,113,113,.18); }
+    .delete-btn:disabled { opacity: .3; cursor: default; }
+
+    /* ── Canvas area ── */
+    .canvas-area {
+      background: #050a14;
+      display: flex; align-items: center; justify-content: center;
+      overflow: hidden; position: relative;
+    }
+
+    .canvas-outer {
+      position: relative;
+      box-shadow: 0 0 0 1px rgba(148,163,184,.2), 0 20px 60px rgba(0,0,0,.6);
+    }
+
+    #editorCanvas {
+      position: relative;
+      background: rgba(10,15,26,.85);
+      overflow: hidden;
+      cursor: default;
+      user-select: none;
+    }
+
+    /* Canvas checkerboard hint when empty */
+    #editorCanvas.empty::after {
+      content: 'Click + buttons on the left to add elements';
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: rgba(148,163,184,.3); font-size: 1rem; pointer-events: none;
+    }
+
+    /* ── Scene elements on canvas ── */
+    .scene-el {
+      position: absolute;
+      cursor: move;
+      box-sizing: border-box;
+    }
+
+    .scene-el.selected {
+      outline: 2px solid var(--accent);
+      outline-offset: 0px;
+    }
+
+    .scene-el .el-label {
+      position: absolute; top: -20px; left: 0;
+      font-size: 10px; color: var(--accent); white-space: nowrap;
+      pointer-events: none; background: rgba(10,15,26,.8); padding: 1px 4px; border-radius: 3px;
+    }
+
+    /* ── Resize handles ── */
+    .resize-handle {
+      position: absolute; width: 10px; height: 10px;
+      background: #fff; border: 2px solid var(--accent);
+      border-radius: 2px;
+      z-index: 10;
+    }
+    .resize-nw { top:-5px; left:-5px; cursor:nw-resize; }
+    .resize-n  { top:-5px; left:50%; transform:translateX(-50%); cursor:n-resize; }
+    .resize-ne { top:-5px; right:-5px; cursor:ne-resize; }
+    .resize-e  { top:50%; right:-5px; transform:translateY(-50%); cursor:e-resize; }
+    .resize-se { bottom:-5px; right:-5px; cursor:se-resize; }
+    .resize-s  { bottom:-5px; left:50%; transform:translateX(-50%); cursor:s-resize; }
+    .resize-sw { bottom:-5px; left:-5px; cursor:sw-resize; }
+    .resize-w  { top:50%; left:-5px; transform:translateY(-50%); cursor:w-resize; }
+
+    /* ── Right panel ── */
+    .right-panel {
+      background: var(--panel); border-left: 1px solid var(--border);
+      overflow-y: auto; padding: .75rem;
+    }
+
+    .prop-group { margin-bottom: 1rem; }
+    .prop-group-title {
+      font-size: .7rem; text-transform: uppercase; letter-spacing: .1em;
+      color: var(--muted); margin-bottom: .5rem; padding-bottom: .3rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .prop-row { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem; margin-bottom: .4rem; }
+    .prop-row.full { grid-template-columns: 1fr; }
+
+    .prop-label { font-size: .72rem; color: var(--muted); margin-bottom: .2rem; display: block; }
+
+    .prop-input {
+      width: 100%; padding: .3rem .4rem; border-radius: 6px;
+      border: 1px solid var(--border); background: rgba(255,255,255,.04);
+      color: var(--text); font-size: .82rem; outline: none;
+    }
+    .prop-input:focus { border-color: var(--accent); }
+
+    select.prop-input { cursor: pointer; }
+
+    .color-row { display: flex; gap: .4rem; align-items: center; }
+    .color-swatch { width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); cursor: pointer; flex-shrink: 0; }
+
+    .no-selection {
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; color: var(--muted); font-size: .85rem; text-align: center;
+      padding: 2rem;
+    }
+  </style>
+</head>
+<body>
+<div class="editor-root">
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <a href="{% url 'live:overlay_scene_list' %}">&#8592; Scenes</a>
+    <input type="text" id="sceneNameInput" value="{{ scene.name }}">
+    <div class="toolbar-spacer"></div>
+    <span id="saveStatus"></span>
+    <button class="toolbar-btn primary" id="saveBtn">Save</button>
+  </div>
+
+  <!-- Body -->
+  <div class="editor-body">
+
+    <!-- Left panel -->
+    <div class="left-panel">
+      <div class="panel-section">
+        <div class="panel-section-title">Add Element</div>
+        <button class="add-btn" data-add="rect">&#9632; Rectangle</button>
+        <button class="add-btn" data-add="text">T&nbsp; Text</button>
+        <button class="add-btn" data-add="image">&#128247; Image</button>
+      </div>
+      <div class="panel-section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;border:none">
+        <div class="panel-section-title">Layers</div>
+        <div class="layer-list" id="layerList"></div>
+      </div>
+      <div class="left-bottom">
+        <button class="delete-btn" id="deleteBtn" disabled>Delete Selected</button>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="canvas-area" id="canvasArea">
+      <div class="canvas-outer" id="canvasOuter">
+        <div id="editorCanvas"></div>
+      </div>
+    </div>
+
+    <!-- Right panel -->
+    <div class="right-panel" id="rightPanel">
+      <div class="no-selection">Select an element to edit its properties</div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  window.SCENE_ID      = {{ scene.scene_id }};
+  window.SCENE_DATA    = {{ scene_json|safe }};
+  window.SAVE_URL      = "{% url 'live:overlay_scene_save' scene.scene_id %}";
+  window.CSRF_TOKEN    = "{{ csrf_token }}";
+</script>
+<script src="{% static 'live/js/overlay_scene_editor.js' %}"></script>
+</body>
+</html>

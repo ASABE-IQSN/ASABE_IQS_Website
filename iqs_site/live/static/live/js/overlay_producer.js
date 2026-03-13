@@ -166,6 +166,7 @@ async function sendLayoutCard(group, btn) {
   await _postCard({
     layout:      group.layout_type,
     layout_name: group.layout_name,
+    layout_id:   group.layout_id,
     group_name:  group.group_name,
     fields:      group.fields,
     form_name:   group.form_name,
