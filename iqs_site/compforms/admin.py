@@ -1,14 +1,21 @@
 from django.contrib import admin
 from django.db.models import Count
 from .models import (
-    Question, CompForm, FormQuestion, EventForm, FormResponse, QuestionResponse,
+    Question, QuestionOption, CompForm, FormQuestion, EventForm, FormResponse, QuestionResponse,
     QuestionGroup, GroupQuestion, TeamQuestionAssignment, QuestionSwap,
     OverlayLayout, GroupOverlayConfig, OverlayScene,
 )
 
 
+class QuestionOptionInline(admin.TabularInline):
+    model = QuestionOption
+    extra = 1
+    fields = ('option_text', 'order')
+
+
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
+    inlines = [QuestionOptionInline]
     list_display = ('question_id', 'question_text_truncated', 'question_type', 'skip_count', 'created_at')
 
     def get_queryset(self, request):

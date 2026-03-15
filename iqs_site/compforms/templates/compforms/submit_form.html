@@ -197,6 +197,26 @@
 .swap-btn.flag-swap:hover:not(:disabled) { border-color: #ef4444; color: #ef4444; }
 .swap-note { font-size: 0.75rem; color: #4b5563; }
 
+/* Radio button questions */
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.radio-option-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #e2e8f0;
+  cursor: pointer;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.4rem;
+  border: 1px solid transparent;
+}
+.radio-option-label:hover { background: #0f172a; border-color: #334155; }
+.radio-option-label input[type="radio"] { accent-color: #6687fc; width: 1rem; height: 1rem; flex-shrink: 0; }
+
 /* Flagged alert at top */
 .flagged-alert {
   background: #1a0a0a;
@@ -270,6 +290,35 @@
                 name="question_{{ fq.question.question_id }}"
                 accept="image/*"
                 {% if fq.required and not current_answer %}required{% endif %}>
+            {% elif fq.question.question_type == 'RADIO' %}
+              <div class="radio-group">
+                {% for opt in fq.question.radio_opts %}
+                  <label class="radio-option-label">
+                    <input type="radio"
+                      name="question_{{ fq.question.question_id }}"
+                      value="{{ opt.option_text }}"
+                      {% if current_answer == opt.option_text %}checked{% endif %}
+                      {% if fq.required %}required{% endif %}>
+                    {{ opt.option_text }}
+                  </label>
+                {% empty %}
+                  <span style="color:#4b5563;font-style:italic;font-size:0.85rem;">No options configured</span>
+                {% endfor %}
+              </div>
+            {% elif fq.question.question_type == 'MULTI_SELECT' %}
+              <div class="radio-group">
+                {% for opt in fq.question.radio_opts %}
+                  <label class="radio-option-label">
+                    <input type="checkbox"
+                      name="question_{{ fq.question.question_id }}"
+                      value="{{ opt.option_text }}"
+                      {% if opt.option_text in current_answer %}checked{% endif %}>
+                    {{ opt.option_text }}
+                  </label>
+                {% empty %}
+                  <span style="color:#4b5563;font-style:italic;font-size:0.85rem;">No options configured</span>
+                {% endfor %}
+              </div>
             {% else %}
               <textarea class="question-textarea"
                 id="q{{ fq.question.question_id }}"
@@ -317,6 +366,34 @@
                   name="question_{{ q.question_id }}"
                   accept="image/*"
                   data-group="{{ section.group.group_id }}">
+              {% elif q.question_type == 'RADIO' %}
+                <div class="radio-group" data-group="{{ section.group.group_id }}">
+                  {% for opt in q.radio_opts %}
+                    <label class="radio-option-label">
+                      <input type="radio"
+                        name="question_{{ q.question_id }}"
+                        value="{{ opt.option_text }}"
+                        {% if current_answer == opt.option_text %}checked{% endif %}>
+                      {{ opt.option_text }}
+                    </label>
+                  {% empty %}
+                    <span style="color:#4b5563;font-style:italic;font-size:0.85rem;">No options configured</span>
+                  {% endfor %}
+                </div>
+              {% elif q.question_type == 'MULTI_SELECT' %}
+                <div class="radio-group" data-group="{{ section.group.group_id }}">
+                  {% for opt in q.radio_opts %}
+                    <label class="radio-option-label">
+                      <input type="checkbox"
+                        name="question_{{ q.question_id }}"
+                        value="{{ opt.option_text }}"
+                        {% if opt.option_text in current_answer %}checked{% endif %}>
+                      {{ opt.option_text }}
+                    </label>
+                  {% empty %}
+                    <span style="color:#4b5563;font-style:italic;font-size:0.85rem;">No options configured</span>
+                  {% endfor %}
+                </div>
               {% else %}
                 <textarea class="question-textarea"
                   id="q{{ q.question_id }}"
@@ -425,9 +502,13 @@ function doSwap(groupId, questionId, msg) {
 }
 
 function doExtra(groupId) {
-  // Check all inputs/textareas in this group have a non-empty value
+  // Check all inputs/textareas/radio groups in this group have a non-empty value
   var fields = document.querySelectorAll('[data-group="' + groupId + '"]');
   var allFilled = Array.prototype.every.call(fields, function(el) {
+    if (el.tagName === 'DIV') {
+      // radio-group / multi-select div — check if any option is checked
+      return el.querySelector('input[type="radio"]:checked, input[type="checkbox"]:checked') !== null;
+    }
     return el.value.trim() !== '';
   });
   if (!allFilled) {

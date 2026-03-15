@@ -8,10 +8,14 @@ class Question(models.Model):
     SHORT_TEXT = 'SHORT_TEXT'
     LONG_TEXT = 'LONG_TEXT'
     IMAGE = 'IMAGE'
+    RADIO = 'RADIO'
+    MULTI_SELECT = 'MULTI_SELECT'
     QUESTION_TYPE_CHOICES = [
         (SHORT_TEXT, 'Short Text'),
         (LONG_TEXT, 'Long Text'),
         (IMAGE, 'Image Upload'),
+        (RADIO, 'Radio Select'),
+        (MULTI_SELECT, 'Multi Select'),
     ]
 
     question_id = models.AutoField(primary_key=True)
@@ -25,6 +29,23 @@ class Question(models.Model):
 
     def __str__(self):
         return self.question_text[:80]
+
+
+class QuestionOption(models.Model):
+    option_id = models.AutoField(primary_key=True)
+    question = models.ForeignKey(
+        Question,
+        on_delete=models.CASCADE,
+        related_name='options',
+    )
+    option_text = models.CharField(max_length=255)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order']
+
+    def __str__(self):
+        return self.option_text
 
 
 class CompForm(models.Model):

@@ -315,6 +315,45 @@
 }
 .notice.error   { background: #1a0a0a; border-color: #4b1515; color: #fca5a5; }
 .notice.success { background: #0a1a0f; border-color: #15402a; color: #6ee7b7; }
+
+/* Radio options management */
+.radio-options-block {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: #060d1c;
+  border: 1px solid #1e3a5f;
+  border-radius: 0.5rem;
+}
+.radio-option-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0;
+  border-bottom: 1px solid #111827;
+}
+.radio-option-row:last-of-type { border-bottom: none; }
+.radio-option-text {
+  flex: 1;
+  font-size: 0.85rem;
+  color: #c7d2e0;
+}
+.add-option-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  align-items: center;
+}
+.option-text-input {
+  flex: 1;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.4rem;
+  color: #e2e8f0;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.83rem;
+  font-family: inherit;
+}
+.option-text-input:focus { outline: none; border-color: #6687fc; }
 {% endblock %}
 
 {% block content %}
@@ -359,6 +398,16 @@
 
           {% if fq.question.question_type == 'SHORT_TEXT' %}
             <div class="question-mock-input">Team answer</div>
+          {% elif fq.question.question_type == 'RADIO' or fq.question.question_type == 'MULTI_SELECT' %}
+            <div class="question-mock-input">
+              {% for opt in fq.question.options.all %}
+                <label style="display:block;color:#6b7280;font-size:0.85rem;margin-bottom:0.2rem;">
+                  <input type="{% if fq.question.question_type == 'MULTI_SELECT' %}checkbox{% else %}radio{% endif %}" disabled style="margin-right:0.4rem;">{{ opt.option_text }}
+                </label>
+              {% empty %}
+                <span style="color:#4b5563;font-style:italic;">No options yet</span>
+              {% endfor %}
+            </div>
           {% else %}
             <div class="question-mock-input question-mock-textarea">Team answer</div>
           {% endif %}
@@ -378,6 +427,8 @@
                   <option value="{{ LONG_TEXT }}"{% if fq.question.question_type == LONG_TEXT %} selected{% endif %}>Long text</option>
                   <option value="{{ SHORT_TEXT }}"{% if fq.question.question_type == SHORT_TEXT %} selected{% endif %}>Short text</option>
                   <option value="{{ IMAGE }}"{% if fq.question.question_type == IMAGE %} selected{% endif %}>Image upload</option>
+                  <option value="{{ RADIO }}"{% if fq.question.question_type == RADIO %} selected{% endif %}>Radio select</option>
+                  <option value="{{ MULTI_SELECT }}"{% if fq.question.question_type == MULTI_SELECT %} selected{% endif %}>Multi select</option>
                 </select>
               </div>
               <div class="inline-edit-actions">
@@ -387,6 +438,31 @@
               </div>
             </form>
           </div>
+
+          {% if fq.question.question_type == RADIO or fq.question.question_type == MULTI_SELECT %}
+            <div class="radio-options-block">
+              {% for opt in fq.question.options.all %}
+                <div class="radio-option-row">
+                  <span class="radio-option-text">{{ opt.option_text }}</span>
+                  <form method="post" style="margin:0;"
+                    onsubmit="return confirm('Remove this option?')">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete_option">
+                    <input type="hidden" name="option_id" value="{{ opt.option_id }}">
+                    <button type="submit" class="q-action-btn delete">✕</button>
+                  </form>
+                </div>
+              {% endfor %}
+              <form method="post" class="add-option-form">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="add_option">
+                <input type="hidden" name="question_id" value="{{ fq.question.question_id }}">
+                <input type="text" name="option_text" class="option-text-input"
+                  placeholder="New option…" required>
+                <button type="submit" class="q-action-btn edit">Add option</button>
+              </form>
+            </div>
+          {% endif %}
         </div>
         {% endwith %}
 
@@ -451,6 +527,8 @@
                           <option value="{{ LONG_TEXT }}"{% if gq.question.question_type == LONG_TEXT %} selected{% endif %}>Long text</option>
                           <option value="{{ SHORT_TEXT }}"{% if gq.question.question_type == SHORT_TEXT %} selected{% endif %}>Short text</option>
                           <option value="{{ IMAGE }}"{% if gq.question.question_type == IMAGE %} selected{% endif %}>Image upload</option>
+                          <option value="{{ RADIO }}"{% if gq.question.question_type == RADIO %} selected{% endif %}>Radio select</option>
+                          <option value="{{ MULTI_SELECT }}"{% if gq.question.question_type == MULTI_SELECT %} selected{% endif %}>Multi select</option>
                         </select>
                       </div>
                       <div class="inline-edit-actions">
@@ -460,6 +538,31 @@
                       </div>
                     </form>
                   </div>
+
+                  {% if gq.question.question_type == RADIO or gq.question.question_type == MULTI_SELECT %}
+                    <div class="radio-options-block">
+                      {% for opt in gq.question.options.all %}
+                        <div class="radio-option-row">
+                          <span class="radio-option-text">{{ opt.option_text }}</span>
+                          <form method="post" style="margin:0;"
+                            onsubmit="return confirm('Remove this option?')">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_option">
+                            <input type="hidden" name="option_id" value="{{ opt.option_id }}">
+                            <button type="submit" class="q-action-btn delete">✕</button>
+                          </form>
+                        </div>
+                      {% endfor %}
+                      <form method="post" class="add-option-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="add_option">
+                        <input type="hidden" name="question_id" value="{{ gq.question.question_id }}">
+                        <input type="text" name="option_text" class="option-text-input"
+                          placeholder="New option…" required>
+                        <button type="submit" class="q-action-btn edit">Add option</button>
+                      </form>
+                    </div>
+                  {% endif %}
                 </div>
               {% endfor %}
             </div>
@@ -484,6 +587,8 @@
                     <option value="{{ LONG_TEXT }}">Long text</option>
                     <option value="{{ SHORT_TEXT }}">Short text</option>
                     <option value="{{ IMAGE }}">Image upload</option>
+                    <option value="{{ RADIO }}">Radio select</option>
+                    <option value="{{ MULTI_SELECT }}">Multi select</option>
                   </select>
                 </div>
                 <button type="submit" class="add-btn">Add question</button>

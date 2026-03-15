@@ -11,7 +11,7 @@ from django.utils import timezone
 from events.models import EventTeam
 from users.models import GroupProfile
 from .models import (
-    CompForm, EventForm, FormQuestion, FormResponse, Question, QuestionResponse,
+    CompForm, EventForm, FormQuestion, FormResponse, Question, QuestionOption, QuestionResponse,
     QuestionGroup, GroupQuestion,
     TeamQuestionAssignment, QuestionSwap,
     MAX_QUESTION_SWAPS, get_or_create_group_assignments,
@@ -177,8 +177,8 @@ def submit_form(request, event_form_id, team_id):
                 qr.flag_reason = ''
                 qr.save(update_fields=['flagged', 'flagged_by', 'flagged_at', 'flag_reason'])
 
-        # Text answers
-        for key, value in request.POST.items():
+        # Text / radio / multi-select answers
+        for key in request.POST.keys():
             if not key.startswith('question_'):
                 continue
             try:
@@ -187,12 +187,17 @@ def submit_form(request, event_form_id, team_id):
                 continue
             if qid not in valid_question_ids:
                 continue
-            if question_types.get(qid) == QuestionModel.IMAGE:
+            qtype = question_types.get(qid)
+            if qtype == QuestionModel.IMAGE:
                 continue  # handled via FILES
+            if qtype == QuestionModel.MULTI_SELECT:
+                answer = '\n'.join(v.strip() for v in request.POST.getlist(key) if v.strip())
+            else:
+                answer = request.POST[key].strip()
             qr, _ = QuestionResponse.objects.update_or_create(
                 form_response=form_response,
                 question_id=qid,
-                defaults={'answer': value.strip()},
+                defaults={'answer': answer},
             )
             _clear_flag(qr)
 
@@ -225,6 +230,31 @@ def submit_form(request, event_form_id, team_id):
             section['extras_added'] = info['extras_added']
             section['extra_available'] = info['extra_available']
 
+    # Collect RADIO / MULTI_SELECT question IDs to preload options
+    radio_qids = set()
+    for section in sections:
+        if section['type'] == 'flat':
+            if section['fq'].question.question_type in (Question.RADIO, Question.MULTI_SELECT):
+                radio_qids.add(section['fq'].question.question_id)
+        else:
+            for q, _, _ in section['questions']:
+                if q.question_type in (Question.RADIO, Question.MULTI_SELECT):
+                    radio_qids.add(q.question_id)
+    question_options = {}
+    for opt in QuestionOption.objects.filter(question_id__in=radio_qids).order_by('order'):
+        question_options.setdefault(opt.question_id, []).append(opt)
+
+    # Attach options directly to question objects so templates can access them
+    for section in sections:
+        if section['type'] == 'flat':
+            q = section['fq'].question
+            if q.question_type in (Question.RADIO, Question.MULTI_SELECT):
+                q.radio_opts = question_options.get(q.question_id, [])
+        else:
+            for q, _, _ in section['questions']:
+                if q.question_type in (Question.RADIO, Question.MULTI_SELECT):
+                    q.radio_opts = question_options.get(q.question_id, [])
+
     effective_limit = MAX_QUESTION_SWAPS + total_extras
     swaps_used = QuestionSwap.objects.filter(
         event_team=event_team,
@@ -250,6 +280,8 @@ def submit_form(request, event_form_id, team_id):
         'has_flagged': bool(flagged_qids),
         'active_page': 'my account',
         'autosave_url': autosave_url,
+        'question_options': question_options,
+        'MULTI_SELECT': Question.MULTI_SELECT,
     })
 
 
@@ -296,7 +328,11 @@ def autosave_form(request, event_form_id, team_id):
     form_response.submitted_by = request.user
     form_response.save()
 
-    for key, value in request.POST.items():
+    autosave_question_types = {
+        q.pk: q.question_type
+        for q in Question.objects.filter(pk__in=valid_question_ids).only('pk', 'question_type')
+    }
+    for key in request.POST.keys():
         if not key.startswith('question_'):
             continue
         try:
@@ -305,10 +341,14 @@ def autosave_form(request, event_form_id, team_id):
             continue
         if qid not in valid_question_ids:
             continue
+        if autosave_question_types.get(qid) == Question.MULTI_SELECT:
+            answer = '\n'.join(v.strip() for v in request.POST.getlist(key) if v.strip())
+        else:
+            answer = request.POST[key].strip()
         qr, _ = QuestionResponse.objects.update_or_create(
             form_response=form_response,
             question_id=qid,
-            defaults={'answer': value.strip()},
+            defaults={'answer': answer},
         )
         if qr.flagged:
             qr.flagged = False
@@ -692,7 +732,7 @@ def form_template(request, form_id):
 
             if not question_text:
                 messages.error(request, "Question text cannot be empty.")
-            elif question_type not in (Question.SHORT_TEXT, Question.LONG_TEXT, Question.IMAGE):
+            elif question_type not in (Question.SHORT_TEXT, Question.LONG_TEXT, Question.IMAGE, Question.RADIO, Question.MULTI_SELECT):
                 messages.error(request, "Invalid question type.")
             else:
                 next_order = (
@@ -726,7 +766,7 @@ def form_template(request, form_id):
                 messages.error(request, "Question not found on this form.")
             elif not question_text:
                 messages.error(request, "Question text cannot be empty.")
-            elif question_type not in (Question.SHORT_TEXT, Question.LONG_TEXT, Question.IMAGE):
+            elif question_type not in (Question.SHORT_TEXT, Question.LONG_TEXT, Question.IMAGE, Question.RADIO, Question.MULTI_SELECT):
                 messages.error(request, "Invalid question type.")
             else:
                 q.question_text = question_text
@@ -744,6 +784,41 @@ def form_template(request, form_id):
             gq.delete()
             messages.success(request, "Question removed from group.")
 
+        elif action == 'add_option':
+            question_id = request.POST.get('question_id')
+            option_text = request.POST.get('option_text', '').strip()
+            q = get_object_or_404(Question, pk=question_id)
+            on_form = (
+                FormQuestion.objects.filter(form=form, question=q).exists()
+                or GroupQuestion.objects.filter(group__form=form, question=q).exists()
+            )
+            if not on_form:
+                messages.error(request, "Question not found on this form.")
+            elif q.question_type not in (Question.RADIO, Question.MULTI_SELECT):
+                messages.error(request, "Options can only be added to Radio Select or Multi Select questions.")
+            elif not option_text:
+                messages.error(request, "Option text cannot be empty.")
+            else:
+                next_order = (
+                    QuestionOption.objects.filter(question=q)
+                    .order_by('-order').values_list('order', flat=True).first() or 0
+                ) + 1
+                QuestionOption.objects.create(question=q, option_text=option_text, order=next_order)
+                messages.success(request, "Option added.")
+
+        elif action == 'delete_option':
+            opt = get_object_or_404(
+                QuestionOption,
+                pk=request.POST.get('option_id'),
+                question__in=Question.objects.filter(
+                    form_questions__form=form
+                ) | Question.objects.filter(
+                    group_questions__group__form=form
+                ),
+            )
+            opt.delete()
+            messages.success(request, "Option removed.")
+
         return redirect('compforms:form_template', form_id=form_id)
 
     flat_fqs = list(form.form_questions.select_related('question').order_by('order'))
@@ -752,6 +827,16 @@ def form_template(request, form_id):
         .prefetch_related('group_questions__question')
         .order_by('order')
     )
+
+    # Preload options for all RADIO questions on this form
+    all_question_ids = [fq.question_id for fq in flat_fqs] + [
+        gq.question_id
+        for group in groups
+        for gq in group.group_questions.all()
+    ]
+    radio_options = {}
+    for opt in QuestionOption.objects.filter(question_id__in=all_question_ids).order_by('order'):
+        radio_options.setdefault(opt.question_id, []).append(opt)
 
     # Build skip-count map: how many times each question has been swapped away from
     all_gq_question_ids = [
@@ -790,7 +875,10 @@ def form_template(request, form_id):
     return render(request, 'compforms/form_template.html', {
         'form': form,
         'sections': sections,
+        'radio_options': radio_options,
         'SHORT_TEXT': Question.SHORT_TEXT,
         'LONG_TEXT': Question.LONG_TEXT,
         'IMAGE': Question.IMAGE,
+        'RADIO': Question.RADIO,
+        'MULTI_SELECT': Question.MULTI_SELECT,
     })
