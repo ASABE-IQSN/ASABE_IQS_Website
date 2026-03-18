@@ -10,12 +10,14 @@ class Question(models.Model):
     IMAGE = 'IMAGE'
     RADIO = 'RADIO'
     MULTI_SELECT = 'MULTI_SELECT'
+    TRACTOR_SELECT = 'TRACTOR_SELECT'
     QUESTION_TYPE_CHOICES = [
         (SHORT_TEXT, 'Short Text'),
         (LONG_TEXT, 'Long Text'),
         (IMAGE, 'Image Upload'),
         (RADIO, 'Radio Select'),
         (MULTI_SELECT, 'Multi Select'),
+        (TRACTOR_SELECT, 'Tractor Select'),
     ]
 
     question_id = models.AutoField(primary_key=True)
@@ -98,10 +100,18 @@ class EventForm(models.Model):
         on_delete=models.DO_NOTHING,
         related_name='event_forms',
     )
+    team_class = models.ForeignKey(
+        'events.TeamClass',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='event_forms',
+        help_text="Restrict this form to a specific team class. Leave blank to show to all classes.",
+    )
     is_open = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ('event', 'form')
+        unique_together = ('event', 'form', 'team_class')
 
     def __str__(self):
         return f"{self.form.name} — {self.event}"

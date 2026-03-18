@@ -133,6 +133,12 @@ def submit_form(request, event_form_id, team_id):
     if not _user_on_team(request.user, team):
         return HttpResponseForbidden("You are not a member of this team.")
 
+    if (
+        event_form.team_class_id is not None
+        and team.team_class_id != event_form.team_class_id
+    ):
+        return HttpResponseForbidden("This form is not available for your team's class.")
+
     existing_response = FormResponse.objects.filter(
         event_form=event_form,
         event_team=event_team,
@@ -223,6 +229,24 @@ def submit_form(request, event_form_id, team_id):
         messages.success(request, "Your answers have been saved.")
         return redirect('compforms:submit_form', event_form_id=event_form_id, team_id=team_id)
 
+    from django.db.models import Prefetch
+    from events.models import Tractor, TractorInfo
+    _tractors = list(
+        Tractor.objects.filter(original_team=event_team.team)
+        .prefetch_related(
+            Prefetch(
+                'tractorinfo_set',
+                queryset=TractorInfo.objects.filter(info_type=TractorInfo.InfoTypes.NICKNAME),
+                to_attr='nickname_infos',
+            )
+        )
+        .order_by('tractor_name')
+    )
+    for _t in _tractors:
+        _nickname = _t.nickname_infos[0].info if _t.nickname_infos else None
+        _t.display_label = _nickname or _t.tractor_name or 'Unnamed'
+    team_tractors = _tractors
+
     extra_info, total_extras = _extra_info_for_groups(event_team, event_form)
     for section in sections:
         if section['type'] == 'group' and section['swappable']:
@@ -282,6 +306,8 @@ def submit_form(request, event_form_id, team_id):
         'autosave_url': autosave_url,
         'question_options': question_options,
         'MULTI_SELECT': Question.MULTI_SELECT,
+        'TRACTOR_SELECT': Question.TRACTOR_SELECT,
+        'team_tractors': team_tractors,
     })
 
 
@@ -562,6 +588,64 @@ def extra_question(request, event_form_id, team_id):
 
 
 @staff_member_required
+def forms_list(request):
+    forms = (
+        CompForm.objects
+        .prefetch_related('event_forms__event', 'event_forms__team_class')
+        .order_by('name')
+    )
+    return render(request, 'compforms/forms_list.html', {
+        'forms': forms,
+    })
+
+
+@staff_member_required
+def copy_form(request, form_id):
+    if request.method != 'POST':
+        return HttpResponseForbidden()
+
+    original = get_object_or_404(CompForm, pk=form_id)
+    new_name = request.POST.get('new_name', '').strip() or f"Copy of {original.name}"
+
+    from django.db import transaction
+    with transaction.atomic():
+        new_form = CompForm.objects.create(
+            name=new_name,
+            description=original.description,
+        )
+
+        # Copy flat FormQuestion rows — same Question objects, new order rows
+        for fq in original.form_questions.select_related('question').order_by('order'):
+            FormQuestion.objects.create(
+                form=new_form,
+                question=fq.question,
+                order=fq.order,
+                required=fq.required,
+            )
+
+        # Copy QuestionGroups and their GroupQuestion rows
+        for group in original.question_groups.prefetch_related('group_questions').order_by('order'):
+            new_group = QuestionGroup.objects.create(
+                form=new_form,
+                name=group.name,
+                description=group.description,
+                num_assigned=group.num_assigned,
+                order=group.order,
+            )
+            for gq in group.group_questions.select_related('question').order_by('display_order'):
+                GroupQuestion.objects.create(
+                    group=new_group,
+                    question=gq.question,
+                    display_order=gq.display_order,
+                    required=gq.required,
+                    overlay_role=gq.overlay_role,
+                )
+
+    messages.success(request, f'Form "{new_form.name}" created. You can now edit its template.')
+    return redirect('compforms:form_template', form_id=new_form.form_id)
+
+
+@staff_member_required
 def form_responses_overview(request, event_form_id):
     event_form = get_object_or_404(
         EventForm.objects.select_related('form', 'event'),
@@ -732,7 +816,7 @@ def form_template(request, form_id):
 
             if not question_text:
                 messages.error(request, "Question text cannot be empty.")
-            elif question_type not in (Question.SHORT_TEXT, Question.LONG_TEXT, Question.IMAGE, Question.RADIO, Question.MULTI_SELECT):
+            elif question_type not in (Question.SHORT_TEXT, Question.LONG_TEXT, Question.IMAGE, Question.RADIO, Question.MULTI_SELECT, Question.TRACTOR_SELECT):
                 messages.error(request, "Invalid question type.")
             else:
                 next_order = (
@@ -766,13 +850,27 @@ def form_template(request, form_id):
                 messages.error(request, "Question not found on this form.")
             elif not question_text:
                 messages.error(request, "Question text cannot be empty.")
-            elif question_type not in (Question.SHORT_TEXT, Question.LONG_TEXT, Question.IMAGE, Question.RADIO, Question.MULTI_SELECT):
+            elif question_type not in (Question.SHORT_TEXT, Question.LONG_TEXT, Question.IMAGE, Question.RADIO, Question.MULTI_SELECT, Question.TRACTOR_SELECT):
                 messages.error(request, "Invalid question type.")
             else:
                 q.question_text = question_text
                 q.question_type = question_type
                 q.save(update_fields=['question_text', 'question_type'])
                 messages.success(request, "Question updated.")
+
+        elif action == 'edit_group':
+            group_id = request.POST.get('group_id')
+            group = get_object_or_404(QuestionGroup, pk=group_id, form=form)
+            try:
+                num_assigned = int(request.POST.get('num_assigned', 0))
+                if num_assigned < 0:
+                    raise ValueError
+            except (ValueError, TypeError):
+                messages.error(request, "Number of assigned questions must be a non-negative integer.")
+            else:
+                group.num_assigned = num_assigned
+                group.save(update_fields=['num_assigned'])
+                messages.success(request, f'"{group.name}" updated: {num_assigned or "all"} question{"s" if num_assigned != 1 else ""} assigned per team.')
 
         elif action == 'delete_flat_question':
             fq = get_object_or_404(FormQuestion, pk=request.POST.get('form_question_id'), form=form)
@@ -881,4 +979,5 @@ def form_template(request, form_id):
         'IMAGE': Question.IMAGE,
         'RADIO': Question.RADIO,
         'MULTI_SELECT': Question.MULTI_SELECT,
+        'TRACTOR_SELECT': Question.TRACTOR_SELECT,
     })

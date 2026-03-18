@@ -182,6 +182,31 @@
   white-space: nowrap;
 }
 
+.num-assigned-form {
+  display: none;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+.num-assigned-form.open { display: flex; }
+.num-assigned-input {
+  width: 4rem;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.4rem;
+  color: #e2e8f0;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.82rem;
+  font-family: inherit;
+  text-align: center;
+}
+.num-assigned-input:focus { outline: none; border-color: #6687fc; }
+.num-assigned-hint {
+  font-size: 0.75rem;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
 .group-description {
   font-size: 0.85rem;
   color: #6b7280;
@@ -408,6 +433,10 @@
                 <span style="color:#4b5563;font-style:italic;">No options yet</span>
               {% endfor %}
             </div>
+          {% elif fq.question.question_type == 'TRACTOR_SELECT' %}
+            <div class="question-mock-input" style="color:#6b7280;font-style:italic;font-size:0.85rem;">
+              Options are populated from the team's registered tractors for this event.
+            </div>
           {% else %}
             <div class="question-mock-input question-mock-textarea">Team answer</div>
           {% endif %}
@@ -429,6 +458,7 @@
                   <option value="{{ IMAGE }}"{% if fq.question.question_type == IMAGE %} selected{% endif %}>Image upload</option>
                   <option value="{{ RADIO }}"{% if fq.question.question_type == RADIO %} selected{% endif %}>Radio select</option>
                   <option value="{{ MULTI_SELECT }}"{% if fq.question.question_type == MULTI_SELECT %} selected{% endif %}>Multi select</option>
+                  <option value="{{ TRACTOR_SELECT }}"{% if fq.question.question_type == TRACTOR_SELECT %} selected{% endif %}>Tractor select</option>
                 </select>
               </div>
               <div class="inline-edit-actions">
@@ -466,19 +496,38 @@
         </div>
         {% endwith %}
 
+
       {% else %}
         {# Group section #}
         <div class="group-card">
           <div class="group-card-header">
             <h3>{{ section.group.name }}</h3>
             <span class="group-meta">{{ section.group_questions|length }} question{{ section.group_questions|length|pluralize }} in pool</span>
-            <span class="shown-badge">
+            <span class="shown-badge" id="shown-badge-{{ section.group.group_id }}">
               {% if section.group.num_assigned == 0 %}
                 All {{ section.shown }} shown
               {% else %}
                 {{ section.shown }} of {{ section.group_questions|length }} shown per team
               {% endif %}
             </span>
+            <button type="button" class="q-action-btn edit"
+              id="num-edit-btn-{{ section.group.group_id }}"
+              onclick="toggleNumAssigned('{{ section.group.group_id }}')">Edit</button>
+            <form method="post"
+              id="num-assigned-form-{{ section.group.group_id }}"
+              class="num-assigned-form">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="edit_group">
+              <input type="hidden" name="group_id" value="{{ section.group.group_id }}">
+              <input type="number" name="num_assigned" min="0"
+                class="num-assigned-input"
+                value="{{ section.group.num_assigned }}"
+                title="Questions assigned per team (0 = show all)">
+              <span class="num-assigned-hint">per team (0 = all)</span>
+              <button type="submit" class="save-btn" style="padding:0.2rem 0.7rem;font-size:0.78rem;">Save</button>
+              <button type="button" class="cancel-btn" style="padding:0.2rem 0.6rem;font-size:0.78rem;"
+                onclick="toggleNumAssigned('{{ section.group.group_id }}')">Cancel</button>
+            </form>
           </div>
 
           {% if section.group.description %}
@@ -529,6 +578,7 @@
                           <option value="{{ IMAGE }}"{% if gq.question.question_type == IMAGE %} selected{% endif %}>Image upload</option>
                           <option value="{{ RADIO }}"{% if gq.question.question_type == RADIO %} selected{% endif %}>Radio select</option>
                           <option value="{{ MULTI_SELECT }}"{% if gq.question.question_type == MULTI_SELECT %} selected{% endif %}>Multi select</option>
+                          <option value="{{ TRACTOR_SELECT }}"{% if gq.question.question_type == TRACTOR_SELECT %} selected{% endif %}>Tractor select</option>
                         </select>
                       </div>
                       <div class="inline-edit-actions">
@@ -589,6 +639,7 @@
                     <option value="{{ IMAGE }}">Image upload</option>
                     <option value="{{ RADIO }}">Radio select</option>
                     <option value="{{ MULTI_SELECT }}">Multi select</option>
+                    <option value="{{ TRACTOR_SELECT }}">Tractor select</option>
                   </select>
                 </div>
                 <button type="submit" class="add-btn">Add question</button>
@@ -612,6 +663,16 @@ function toggleEdit(id) {
   } else {
     el.style.display = 'none';
   }
+}
+
+function toggleNumAssigned(groupId) {
+  var form  = document.getElementById('num-assigned-form-' + groupId);
+  var badge = document.getElementById('shown-badge-' + groupId);
+  var btn   = document.getElementById('num-edit-btn-' + groupId);
+  var open  = form.classList.toggle('open');
+  badge.style.display = open ? 'none' : '';
+  btn.style.display   = open ? 'none' : '';
+  if (open) form.querySelector('.num-assigned-input').focus();
 }
 </script>
 {% endblock %}

@@ -104,8 +104,8 @@ class TeamQuestionAssignmentAdmin(admin.ModelAdmin):
 
 @admin.register(EventForm)
 class EventFormAdmin(admin.ModelAdmin):
-    list_display = ('event_form_id', 'event', 'form', 'is_open')
-    list_filter = ('is_open', 'event')
+    list_display = ('event_form_id', 'event', 'form', 'team_class', 'is_open')
+    list_filter = ('is_open', 'event', 'team_class')
 
 
 @admin.register(FormResponse)

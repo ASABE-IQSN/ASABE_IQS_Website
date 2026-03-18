@@ -319,6 +319,23 @@
                   <span style="color:#4b5563;font-style:italic;font-size:0.85rem;">No options configured</span>
                 {% endfor %}
               </div>
+            {% elif fq.question.question_type == 'TRACTOR_SELECT' %}
+              <select class="question-input"
+                id="q{{ fq.question.question_id }}"
+                name="question_{{ fq.question.question_id }}"
+                {% if fq.required %}required{% endif %}>
+                <option value="">— Select a tractor —</option>
+                {% for tractor in team_tractors %}
+                  {% with label=tractor.display_label %}
+                  <option value="{{ label }} ({{ tractor.year }})"
+                    {% if current_answer == label|add:" ("|add:tractor.year|stringformat:"s"|add:")" %}selected{% endif %}>
+                    {{ label }} ({{ tractor.year }})
+                  </option>
+                  {% endwith %}
+                {% empty %}
+                  <option disabled>No tractors found for this team</option>
+                {% endfor %}
+              </select>
             {% else %}
               <textarea class="question-textarea"
                 id="q{{ fq.question.question_id }}"
@@ -394,6 +411,23 @@
                     <span style="color:#4b5563;font-style:italic;font-size:0.85rem;">No options configured</span>
                   {% endfor %}
                 </div>
+              {% elif q.question_type == 'TRACTOR_SELECT' %}
+                <select class="question-input"
+                  id="q{{ q.question_id }}"
+                  name="question_{{ q.question_id }}"
+                  data-group="{{ section.group.group_id }}">
+                  <option value="">— Select a tractor —</option>
+                  {% for tractor in team_tractors %}
+                    {% with label=tractor.display_label %}
+                    <option value="{{ label }} ({{ tractor.year }})"
+                      {% if current_answer == label|add:" ("|add:tractor.year|stringformat:"s"|add:")" %}selected{% endif %}>
+                      {{ label }} ({{ tractor.year }})
+                    </option>
+                    {% endwith %}
+                  {% empty %}
+                    <option disabled>No tractors found for this team</option>
+                  {% endfor %}
+                </select>
               {% else %}
                 <textarea class="question-textarea"
                   id="q{{ q.question_id }}"

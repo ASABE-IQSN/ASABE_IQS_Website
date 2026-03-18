@@ -116,6 +116,12 @@ def account(request):
     team_form_statuses = []
     for event_form in open_event_forms:
         for team in teams_member:
+            # Skip if form is class-restricted and team's class doesn't match
+            if (
+                event_form.team_class_id is not None
+                and team.team_class_id != event_form.team_class_id
+            ):
+                continue
             event_team = EventTeam.objects.filter(
                 event=event_form.event,
                 team=team,
