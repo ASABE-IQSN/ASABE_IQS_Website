@@ -232,7 +232,7 @@ def submit_form(request, event_form_id, team_id):
     from django.db.models import Prefetch
     from events.models import Tractor, TractorInfo
     _tractors = list(
-        Tractor.objects.filter(original_team=event_team.team)
+        Tractor.objects
         .prefetch_related(
             Prefetch(
                 'tractorinfo_set',
@@ -240,7 +240,7 @@ def submit_form(request, event_form_id, team_id):
                 to_attr='nickname_infos',
             )
         )
-        .order_by('tractor_name')
+        .order_by('original_team__team_id','year')
     )
     for _t in _tractors:
         _nickname = _t.nickname_infos[0].info if _t.nickname_infos else None
