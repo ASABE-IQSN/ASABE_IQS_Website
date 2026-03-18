@@ -513,6 +513,13 @@
             <button type="button" class="q-action-btn edit"
               id="num-edit-btn-{{ section.group.group_id }}"
               onclick="toggleNumAssigned('{{ section.group.group_id }}')">Edit</button>
+            <form method="post" style="margin:0;"
+              onsubmit="return confirm('Copy group &quot;{{ section.group.name|escapejs }}&quot;? All questions will be shared with the original.')">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="copy_group">
+              <input type="hidden" name="group_id" value="{{ section.group.group_id }}">
+              <button type="submit" class="q-action-btn edit">Copy</button>
+            </form>
             <form method="post"
               id="num-assigned-form-{{ section.group.group_id }}"
               class="num-assigned-form">

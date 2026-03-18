@@ -872,6 +872,40 @@ def form_template(request, form_id):
                 group.save(update_fields=['num_assigned'])
                 messages.success(request, f'"{group.name}" updated: {num_assigned or "all"} question{"s" if num_assigned != 1 else ""} assigned per team.')
 
+        elif action == 'copy_group':
+            group = get_object_or_404(QuestionGroup, pk=request.POST.get('group_id'), form=form)
+            # Find a unique name: "Name (2)", "Name (3)", …
+            existing_names = set(QuestionGroup.objects.filter(form=form).values_list('name', flat=True))
+            base = group.name
+            new_name = base
+            counter = 2
+            while new_name in existing_names:
+                new_name = f"{base} ({counter})"
+                counter += 1
+            # Place after the last existing order value
+            max_order = (
+                QuestionGroup.objects.filter(form=form)
+                .order_by('-order').values_list('order', flat=True).first() or 0
+            )
+            from django.db import transaction as _tx
+            with _tx.atomic():
+                new_group = QuestionGroup.objects.create(
+                    form=form,
+                    name=new_name,
+                    description=group.description,
+                    num_assigned=group.num_assigned,
+                    order=max_order + 1,
+                )
+                for gq in group.group_questions.select_related('question').order_by('display_order'):
+                    GroupQuestion.objects.create(
+                        group=new_group,
+                        question=gq.question,
+                        display_order=gq.display_order,
+                        required=gq.required,
+                        overlay_role=gq.overlay_role,
+                    )
+            messages.success(request, f'Group copied as "{new_name}".')
+
         elif action == 'delete_flat_question':
             fq = get_object_or_404(FormQuestion, pk=request.POST.get('form_question_id'), form=form)
             fq.delete()
