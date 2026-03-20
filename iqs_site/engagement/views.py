@@ -114,7 +114,9 @@ def staff_hub(request):
 @staff_member_required
 def producer_queue(request):
     r = _redis()
-    pending = CrowdSubmission.objects.filter(status='pending').select_related('submitted_by', 'event')
+    pending = CrowdSubmission.objects.filter(status='pending').select_related(
+        'submitted_by', 'submitted_by__profile', 'submitted_by__profile__team', 'event'
+    )
     return render(request, 'engagement/producer_queue.html', {
         'submissions': pending,
         'cooldown_seconds': _get_cooldown(r),
@@ -130,27 +132,34 @@ def approve_submission(request, submission_id):
     sub.reviewed_at = timezone.now()
     sub.save()
 
+    # Resolve team from the submitter's profile
+    team_name = ''
+    if sub.submitted_by:
+        try:
+            team_name = sub.submitted_by.profile.team.team_name or ''
+        except Exception:
+            pass
+
+    username = sub.submitted_by.username if sub.submitted_by else 'Fan'
     r = _redis()
     if sub.submission_type == 'photo' and sub.photo:
         image_url = request.build_absolute_uri(sub.photo.url)
-        caption = sub.text or ''
         payload = {
             'layout': 'image',
             'image_url': image_url,
-            'question': f'From: {sub.submitted_by.username if sub.submitted_by else "Fan"}',
-            'answer': caption,
+            'question': f'From: {username}',
+            'answer': sub.text or '',
             'form_name': 'Fan Submission',
-            'team_name': '',
+            'team_name': team_name,
             'ts': time.time(),
         }
     else:
-        username = sub.submitted_by.username if sub.submitted_by else 'Fan'
         payload = {
             'layout': 'stat',
             'question': f'From: {username}',
             'answer': sub.text,
             'form_name': 'Fan Comment',
-            'team_name': '',
+            'team_name': team_name,
             'ts': time.time(),
         }
 
