@@ -85,6 +85,11 @@ function setType(type) {
   document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === type));
   document.getElementById('commentSection').style.display = type === 'comment' ? '' : 'none';
   document.getElementById('photoSection').style.display  = type === 'photo'   ? '' : 'none';
+
+  // Disable inputs in the hidden section so they aren't submitted
+  document.getElementById('textInput').disabled    = type !== 'comment';
+  document.getElementById('captionInput').disabled = type !== 'photo';
+  document.getElementById('photoInput').disabled   = type !== 'photo';
 }
 document.getElementById('textInput').addEventListener('input', function() {
   document.getElementById('charCount').textContent = this.value.length;
