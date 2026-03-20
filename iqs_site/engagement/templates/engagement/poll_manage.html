@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Manage Polls – IQS Live{% endblock %}
+
+{% block extra_styles %}
+h1 { font-size: 1.4rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; }
+.section { margin-bottom: 2rem; }
+.section h2 { font-size: 1rem; font-weight: 700; color: #9ca3af; text-transform: uppercase;
+  letter-spacing: .06em; margin-bottom: 0.8rem; }
+.form-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; padding: 1.2rem; }
+.field { margin-bottom: 0.8rem; }
+.field label { display: block; font-size: 0.8rem; color: #9ca3af; text-transform: uppercase;
+  letter-spacing: .05em; margin-bottom: 0.3rem; }
+.field input, .field select { width: 100%; box-sizing: border-box; background: #020617;
+  border: 1px solid #1e293b; border-radius: 6px; color: #e2e8f0; padding: 0.5rem 0.7rem; font-size: 0.9rem; }
+#optionsList { margin-bottom: 0.8rem; }
+.option-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+.option-row input { flex: 1; }
+.btn { padding: 0.4rem 0.9rem; border-radius: 6px; border: none; font-size: 0.85rem;
+  font-weight: 600; cursor: pointer; }
+.btn-primary { background: rgba(96,165,250,.85); color: #fff; }
+.btn-sm { padding: 0.3rem 0.7rem; font-size: 0.8rem; }
+.btn-activate { background: rgba(34,197,94,.2); color: #4ade80; border: 1px solid rgba(34,197,94,.3); }
+.btn-close    { background: rgba(239,68,68,.15); color: #f87171; border: 1px solid rgba(239,68,68,.3); }
+.btn-add-opt  { background: transparent; color: #60a5fa; border: 1px dashed rgba(96,165,250,.3);
+  width: 100%; margin-bottom: 0.8rem; }
+.poll-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 10px;
+  padding: 1rem 1.2rem; margin-bottom: 0.7rem; }
+.poll-q { font-size: 0.95rem; color: #e2e8f0; font-weight: 600; margin-bottom: 0.4rem; }
+.poll-meta { font-size: 0.78rem; color: #6b7280; margin-bottom: 0.6rem; }
+.poll-opts { font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.6rem; }
+.poll-status { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+.s-draft   { background: rgba(148,163,184,.1); color: #9ca3af; }
+.s-active  { background: rgba(34,197,94,.1);   color: #4ade80; }
+.s-closed  { background: rgba(100,116,139,.1); color: #64748b; }
+.poll-actions { display: flex; gap: 0.5rem; }
+{% endblock %}
+
+{% block content %}
+<h1>Manage Polls</h1>
+<p style="color:#9ca3af;font-size:0.85rem;margin-bottom:1rem;">
+  <a href="{% url 'engagement:staff_hub' %}">← Staff Hub</a>
+  <a href="{% url 'engagement:producer_queue' %}" style="margin-left:1rem">Producer Queue →</a>
+</p>
+
+<div class="section">
+  <h2>Create New Poll</h2>
+  <div class="form-card">
+    <div class="field">
+      <label>Question</label>
+      <input type="text" id="pollQuestion" maxlength="500" placeholder="Enter poll question…">
+    </div>
+    <div id="optionsList">
+      <div class="option-row"><input type="text" class="opt-input" placeholder="Option 1…"></div>
+      <div class="option-row"><input type="text" class="opt-input" placeholder="Option 2…"></div>
+    </div>
+    <button class="btn btn-add-opt" onclick="addOption()">+ Add Option</button>
+    <button class="btn btn-primary" onclick="createPoll()">Create Poll</button>
+    <div id="createMsg" style="margin-top:0.5rem;font-size:0.85rem;color:#9ca3af;"></div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>All Polls</h2>
+  {% for poll in polls %}
+  <div class="poll-card" id="poll-{{ poll.poll_id }}">
+    <div class="poll-q">{{ poll.question }}</div>
+    <div class="poll-meta">
+      <span class="poll-status s-{{ poll.status }}">{{ poll.status|upper }}</span>
+      · Created {{ poll.created_at|date:"M d H:i" }}
+      {% if poll.event %} · {{ poll.event.event_name }}{% endif %}
+    </div>
+    <div class="poll-opts">
+      {% for opt in poll.options.all %}
+        {{ opt.option_text }} ({{ opt.vote_count }}){% if not forloop.last %} · {% endif %}
+      {% endfor %}
+    </div>
+    <div class="poll-actions">
+      {% if poll.status != 'active' and poll.status != 'closed' %}
+        <button class="btn btn-sm btn-activate" onclick="activatePoll({{ poll.poll_id }})">▶ Activate</button>
+      {% endif %}
+      {% if poll.status == 'active' %}
+        <button class="btn btn-sm btn-close" onclick="closePoll({{ poll.poll_id }})">■ Close</button>
+      {% endif %}
+    </div>
+  </div>
+  {% empty %}
+    <p class="queue-empty">No polls yet.</p>
+  {% endfor %}
+</div>
+
+<script>
+function getCsrf() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+
+function addOption() {
+  const list = document.getElementById('optionsList');
+  const n = list.querySelectorAll('.opt-input').length + 1;
+  const row = document.createElement('div');
+  row.className = 'option-row';
+  row.innerHTML = `<input type="text" class="opt-input" placeholder="Option ${n}…">`;
+  list.appendChild(row);
+}
+
+function createPoll() {
+  const q = document.getElementById('pollQuestion').value.trim();
+  const opts = Array.from(document.querySelectorAll('.opt-input'))
+    .map(i => i.value.trim()).filter(Boolean);
+  const msg = document.getElementById('createMsg');
+
+  if (!q || opts.length < 2) {
+    msg.textContent = 'Please enter a question and at least 2 options.';
+    msg.style.color = '#f87171';
+    return;
+  }
+
+  const body = new FormData();
+  body.append('question', q);
+  opts.forEach(o => body.append('option_text', o));
+
+  fetch('/engagement/polls/create/', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrf() },
+    body: body,
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      msg.textContent = 'Poll created! Reload to see it in the list.';
+      msg.style.color = '#4ade80';
+      document.getElementById('pollQuestion').value = '';
+      document.querySelectorAll('.opt-input').forEach(i => i.value = '');
+    } else {
+      msg.textContent = data.error || 'Error creating poll.';
+      msg.style.color = '#f87171';
+    }
+  });
+}
+
+function activatePoll(id) {
+  fetch(`/engagement/polls/${id}/activate/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrf() },
+  })
+  .then(r => r.json())
+  .then(data => { if (data.ok) window.location.reload(); });
+}
+
+function closePoll(id) {
+  fetch(`/engagement/polls/${id}/close/`, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrf() },
+  })
+  .then(r => r.json())
+  .then(data => { if (data.ok) window.location.reload(); });
+}
+</script>
+{% endblock %}

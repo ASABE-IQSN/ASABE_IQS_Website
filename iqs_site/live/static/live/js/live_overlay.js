@@ -207,6 +207,16 @@ function startSSE() {
     showOverlayCard(data);
   });
 
+  es.addEventListener("reactions", (e) => {
+    const data = JSON.parse(e.data);
+    updateReactionCounts(data);
+  });
+
+  es.addEventListener("poll", (e) => {
+    const data = JSON.parse(e.data);
+    updatePollCard(data);
+  });
+
   es.onerror = (err) => {
     // Browser auto-reconnects; this fires frequently during reconnect
     console.warn("SSE error", err);
@@ -406,6 +416,75 @@ function _showImageCard(data) {
   ocImageBadge.textContent = data.form_name || "Photo";
   ocImageCaption.textContent = f.caption || data.answer || data.team_name || "";
   _animateCard(ocImageCard, ocImageProgress, [ocImageBadge, ocImageCaption]);
+}
+
+// --- reaction burst ---
+const ocReactionBurst = document.getElementById("ocReactionBurst");
+let reactionBurstTimeline = null;
+
+function updateReactionCounts(data) {
+  if (!data || !data.counts) return;
+
+  const counts = data.counts;
+  const emojiMap = { fire: "rc-fire", clap: "rc-clap", wow: "rc-wow", tractor: "rc-tractor" };
+  Object.entries(emojiMap).forEach(([emoji, id]) => {
+    const el = document.getElementById(id);
+    if (el && counts[emoji] !== undefined) {
+      el.textContent = counts[emoji];
+    }
+  });
+
+  if (!ocReactionBurst) return;
+  if (reactionBurstTimeline) reactionBurstTimeline.kill();
+  reactionBurstTimeline = gsap.timeline()
+    .set(ocReactionBurst, { opacity: 0 })
+    .to(ocReactionBurst, { opacity: 1, duration: 0.4, ease: "power2.out" })
+    .to(ocReactionBurst, { opacity: 0, duration: 0.5, ease: "power2.in" }, "+=4");
+}
+
+// --- poll card ---
+const ocPollCard = document.getElementById("ocPollCard");
+const ocPollQuestion = document.getElementById("ocPollQuestion");
+const ocPollOptions = document.getElementById("ocPollOptions");
+let pollCardTimeline = null;
+
+function updatePollCard(data) {
+  if (!ocPollCard) return;
+
+  if (data.status === "closed") {
+    if (pollCardTimeline) pollCardTimeline.kill();
+    gsap.to(ocPollCard, {
+      opacity: 0,
+      y: 20,
+      duration: 0.4,
+      ease: "power2.in",
+      onComplete: () => gsap.set(ocPollCard, { visibility: "hidden" }),
+    });
+    return;
+  }
+
+  if (!data.question || !data.options) return;
+
+  ocPollQuestion.textContent = data.question;
+  ocPollOptions.innerHTML = data.options.map(opt => `
+    <div class="poll-option-row">
+      <div class="poll-option-label">
+        <span>${opt.text}</span>
+        <span>${opt.votes} (${opt.pct}%)</span>
+      </div>
+      <div class="poll-bar-track">
+        <div class="poll-bar-fill" style="width:${opt.pct}%"></div>
+      </div>
+    </div>
+  `).join("");
+
+  if (pollCardTimeline) pollCardTimeline.kill();
+  pollCardTimeline = gsap.timeline()
+    .set(ocPollCard, { visibility: "visible" })
+    .fromTo(ocPollCard,
+      { opacity: 0, y: 20 },
+      { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.5)" }
+    );
 }
 
 // --- boot ---

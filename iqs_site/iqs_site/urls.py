@@ -52,6 +52,7 @@ urlpatterns = [
     path(root_prefix+"schedule/", include("schedule.urls", namespace="schedule")),
     path(root_prefix+"awards/", include("awards.urls", namespace="awards")),
     path(root_prefix+"forms/", include("compforms.urls", namespace="compforms")),
+    path(root_prefix+"engagement/", include("engagement.urls", namespace="engagement")),
     path("sitemap.xml", sitemap, {"sitemaps": sitemaps}),
     path("health/", lambda r: HttpResponse("ok")),
 ]

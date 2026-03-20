@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Share a Comment or Photo – IQS Live{% endblock %}
+
+{% block extra_styles %}
+.submit-wrap { max-width: 560px; margin: 0 auto; }
+.submit-wrap h1 { font-size: 1.4rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.5rem; }
+.submit-wrap p.sub { color: #9ca3af; font-size: 0.9rem; margin-bottom: 1.5rem; }
+.alert { padding: 0.8rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: 0.9rem; }
+.alert-success { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.3); color: #4ade80; }
+.alert-error   { background: rgba(239,68,68,.12);  border: 1px solid rgba(239,68,68,.3);  color: #f87171; }
+.form-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 14px; padding: 1.5rem; }
+.type-tabs { display: flex; gap: 8px; margin-bottom: 1.2rem; }
+.type-tab { flex: 1; padding: 0.5rem; border: 1px solid #1e293b; border-radius: 8px; background: transparent;
+  color: #9ca3af; cursor: pointer; font-size: 0.9rem; text-align: center; transition: all .2s; }
+.type-tab.active { background: rgba(96,165,250,.15); border-color: rgba(96,165,250,.4); color: #60a5fa; }
+.field { margin-bottom: 1rem; }
+.field label { display: block; font-size: 0.8rem; color: #9ca3af; text-transform: uppercase;
+  letter-spacing: .05em; margin-bottom: 0.4rem; }
+.field textarea, .field input[type=file] { width: 100%; box-sizing: border-box;
+  background: #020617; border: 1px solid #1e293b; border-radius: 8px;
+  color: #e2e8f0; padding: 0.6rem 0.8rem; font-size: 0.95rem; resize: vertical; }
+.char-counter { font-size: 0.75rem; color: #6b7280; text-align: right; margin-top: 2px; }
+.btn-submit { width: 100%; padding: 0.7rem; border-radius: 8px; border: none;
+  background: rgba(96,165,250,.85); color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+{% endblock %}
+
+{% block content %}
+<div class="submit-wrap">
+  <h1>Share with the crowd</h1>
+  <p class="sub">Your submission goes to the producer queue before appearing on the live stream.</p>
+
+  {% if success %}
+    <div class="alert alert-success">Submitted! Your message is pending review.</div>
+  {% endif %}
+
+  {% if error %}
+    <div class="alert alert-error">{{ error }}</div>
+  {% endif %}
+
+  {% if throttled and not success %}
+    <div class="alert alert-error">You submitted recently. Please wait before submitting again.</div>
+  {% endif %}
+
+  {% if not throttled or success %}
+  <div class="form-card">
+    <form method="post" enctype="multipart/form-data" id="submitForm">
+      {% csrf_token %}
+
+      <div class="type-tabs">
+        <button type="button" class="type-tab active" data-type="comment" onclick="setType('comment')">💬 Comment</button>
+        <button type="button" class="type-tab" data-type="photo" onclick="setType('photo')">📷 Photo</button>
+      </div>
+
+      <input type="hidden" name="submission_type" id="submissionType" value="comment">
+
+      <div id="commentSection" class="field">
+        <label for="textInput">Your comment</label>
+        <textarea id="textInput" name="text" maxlength="280" rows="4"
+          placeholder="Share your thoughts… (280 chars max)"></textarea>
+        <div class="char-counter"><span id="charCount">0</span>/280</div>
+      </div>
+
+      <div id="photoSection" class="field" style="display:none">
+        <label for="photoInput">Photo</label>
+        <input type="file" id="photoInput" name="photo" accept="image/*">
+        <div class="field" style="margin-top:0.8rem">
+          <label for="captionInput">Caption (optional)</label>
+          <textarea id="captionInput" name="text" maxlength="280" rows="2"
+            placeholder="Add a caption…"></textarea>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit" id="submitBtn">Send to Producer</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function setType(type) {
+  document.getElementById('submissionType').value = type;
+  document.querySelectorAll('.type-tab').forEach(t => t.classList.toggle('active', t.dataset.type === type));
+  document.getElementById('commentSection').style.display = type === 'comment' ? '' : 'none';
+  document.getElementById('photoSection').style.display  = type === 'photo'   ? '' : 'none';
+}
+document.getElementById('textInput').addEventListener('input', function() {
+  document.getElementById('charCount').textContent = this.value.length;
+});
+</script>
+{% endblock %}

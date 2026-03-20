@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Fan Vote – IQS Live{% endblock %}
+
+{% block extra_styles %}
+h1 { font-size: 1.4rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.5rem; }
+.sub { color: #9ca3af; font-size: 0.9rem; margin-bottom: 1.5rem; }
+.category-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
+  padding: 1.2rem; margin-bottom: 1.2rem; }
+.cat-name { font-size: 1.05rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.3rem; }
+.cat-desc { font-size: 0.85rem; color: #9ca3af; margin-bottom: 1rem; }
+.nominee-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.8rem; }
+.nominee-btn { padding: 0.4rem 0.9rem; border-radius: 8px; border: 1px solid #1e293b;
+  background: #020617; color: #9ca3af; font-size: 0.85rem; cursor: pointer; transition: all .2s; }
+.nominee-btn:hover { border-color: rgba(96,165,250,.5); color: #60a5fa; }
+.nominee-btn.selected { background: rgba(96,165,250,.15); border-color: rgba(96,165,250,.5); color: #60a5fa; }
+.voted-badge { display: inline-block; padding: 4px 10px; border-radius: 6px;
+  background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.25);
+  color: #4ade80; font-size: 0.85rem; font-weight: 600; }
+.btn-vote { padding: 0.45rem 1.1rem; border-radius: 8px; border: none;
+  background: rgba(96,165,250,.85); color: #fff; font-size: 0.9rem; font-weight: 600;
+  cursor: pointer; display: none; }
+.vote-msg { font-size: 0.82rem; color: #9ca3af; margin-top: 0.4rem; }
+{% endblock %}
+
+{% block content %}
+<h1>Fan Vote</h1>
+<p class="sub">Cast your vote for each category. One vote per category.</p>
+
+<a href="{% url 'engagement:fan_vote_results' %}" style="font-size:0.85rem;color:#9ca3af;display:block;margin-bottom:1.2rem;">View Results →</a>
+
+{% for item in categories_data %}
+{% with item.category as cat %}
+<div class="category-card" id="cat-{{ cat.category_id }}">
+  <div class="cat-name">{{ cat.name }}</div>
+  {% if cat.description %}
+    <div class="cat-desc">{{ cat.description }}</div>
+  {% endif %}
+
+  {% if item.voted_team %}
+    <div class="voted-badge">✓ You voted for {{ item.voted_team.team_name }}</div>
+  {% else %}
+    <div class="nominee-grid" id="nominees-{{ cat.category_id }}">
+      {% for et in item.nominees %}
+        <button class="nominee-btn"
+          data-cat="{{ cat.category_id }}"
+          data-team="{{ et.team.team_id }}"
+          onclick="selectNominee(this, {{ cat.category_id }}, {{ et.team.team_id }})">
+          {{ et.team.team_name }} <span style="opacity:.6;font-size:0.8em">#{{ et.team.team_number }}</span>
+        </button>
+      {% empty %}
+        <p style="color:#6b7280;font-size:0.85rem;">No nominees yet.</p>
+      {% endfor %}
+    </div>
+    <button class="btn-vote" id="vote-btn-{{ cat.category_id }}"
+      onclick="castVote({{ cat.category_id }})">
+      Vote
+    </button>
+    <div class="vote-msg" id="vote-msg-{{ cat.category_id }}"></div>
+  {% endif %}
+</div>
+{% endwith %}
+{% empty %}
+  <p style="color:#9ca3af;">No active vote categories at this time.</p>
+{% endfor %}
+
+<script>
+const selected = {};
+
+function getCsrf() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+
+function selectNominee(btn, catId, teamId) {
+  document.querySelectorAll(`[data-cat="${catId}"]`).forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selected[catId] = teamId;
+  const voteBtn = document.getElementById('vote-btn-' + catId);
+  if (voteBtn) voteBtn.style.display = 'inline-block';
+}
+
+function castVote(catId) {
+  const teamId = selected[catId];
+  if (!teamId) return;
+
+  const btn = document.getElementById('vote-btn-' + catId);
+  const msg = document.getElementById('vote-msg-' + catId);
+  btn.disabled = true;
+
+  const body = new FormData();
+  body.append('category_id', catId);
+  body.append('team_id', teamId);
+
+  fetch('/engagement/vote/cast/', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrf() },
+    body: body,
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      const nominees = document.getElementById('nominees-' + catId);
+      const selectedBtn = nominees ? nominees.querySelector('.selected') : null;
+      const teamName = selectedBtn ? selectedBtn.textContent.trim() : 'your team';
+      if (nominees) nominees.innerHTML = `<div class="voted-badge">✓ You voted for ${teamName}</div>`;
+      btn.style.display = 'none';
+    } else {
+      msg.textContent = data.error || 'Error casting vote.';
+      msg.style.color = '#f87171';
+      btn.disabled = false;
+    }
+  })
+  .catch(() => {
+    msg.textContent = 'Network error. Please try again.';
+    msg.style.color = '#f87171';
+    btn.disabled = false;
+  });
+}
+</script>
+{% endblock %}

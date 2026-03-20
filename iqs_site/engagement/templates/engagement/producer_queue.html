@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Producer Queue – Crowd Submissions{% endblock %}
+
+{% block extra_styles %}
+h1 { font-size: 1.4rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; }
+.queue-empty { color: #9ca3af; font-size: 0.9rem; }
+.sub-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
+  padding: 1rem 1.2rem; margin-bottom: 0.8rem; display: flex; gap: 1rem; align-items: flex-start; }
+.sub-photo { width: 120px; height: 90px; object-fit: cover; border-radius: 8px; flex-shrink: 0; }
+.sub-body { flex: 1; min-width: 0; }
+.sub-meta { font-size: 0.75rem; color: #6b7280; margin-bottom: 0.3rem; }
+.sub-text { color: #e2e8f0; font-size: 0.95rem; margin-bottom: 0.7rem; word-break: break-word; }
+.sub-actions { display: flex; gap: 0.5rem; }
+.btn { padding: 0.4rem 0.9rem; border-radius: 6px; border: none; font-size: 0.85rem;
+  font-weight: 600; cursor: pointer; }
+.btn-approve { background: rgba(34,197,94,.2); color: #4ade80; border: 1px solid rgba(34,197,94,.3); }
+.btn-reject  { background: rgba(239,68,68,.15); color: #f87171; border: 1px solid rgba(239,68,68,.3); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.status-msg { font-size: 0.8rem; color: #9ca3af; margin-top: 0.3rem; }
+{% endblock %}
+
+{% block content %}
+<h1>Producer Queue</h1>
+<p style="color:#9ca3af;font-size:0.85rem;margin-bottom:1rem;">
+  Pending submissions — auto-refreshing every 15s.
+  <a href="{% url 'engagement:staff_hub' %}">← Staff Hub</a>
+  <a href="{% url 'engagement:poll_manage' %}" style="margin-left:1rem">Manage Polls →</a>
+</p>
+
+<div id="queueList">
+  {% if not submissions %}
+    <p class="queue-empty" id="emptyMsg">No pending submissions.</p>
+  {% else %}
+    {% for sub in submissions %}
+    <div class="sub-card" id="sub-{{ sub.submission_id }}">
+      {% if sub.photo %}
+        <img class="sub-photo" src="{{ sub.photo.url }}" alt="submission photo">
+      {% endif %}
+      <div class="sub-body">
+        <div class="sub-meta">
+          {{ sub.submission_type|capfirst }} · by {{ sub.submitted_by.username|default:"Anonymous" }}
+          · {{ sub.created_at|date:"M d H:i" }}
+        </div>
+        {% if sub.text %}
+          <div class="sub-text">{{ sub.text }}</div>
+        {% endif %}
+        <div class="sub-actions">
+          <button class="btn btn-approve" onclick="act({{ sub.submission_id }}, 'approve')">✓ Push to Overlay</button>
+          <button class="btn btn-reject"  onclick="act({{ sub.submission_id }}, 'reject')">✗ Reject</button>
+        </div>
+        <div class="status-msg" id="status-{{ sub.submission_id }}"></div>
+      </div>
+    </div>
+    {% endfor %}
+  {% endif %}
+</div>
+
+<script>
+function getCsrf() {
+  const m = document.cookie.match(/csrftoken=([^;]+)/);
+  return m ? m[1] : '';
+}
+
+function act(id, action) {
+  const url = action === 'approve'
+    ? `/engagement/producer/submissions/${id}/approve/`
+    : `/engagement/producer/submissions/${id}/reject/`;
+
+  const card = document.getElementById('sub-' + id);
+  const btns = card.querySelectorAll('.btn');
+  btns.forEach(b => b.disabled = true);
+
+  fetch(url, {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrf() },
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      const msg = document.getElementById('status-' + id);
+      msg.textContent = action === 'approve' ? '✓ Pushed to overlay!' : '✗ Rejected.';
+      msg.style.color = action === 'approve' ? '#4ade80' : '#f87171';
+      setTimeout(() => card.remove(), 1500);
+    }
+  })
+  .catch(() => {
+    btns.forEach(b => b.disabled = false);
+  });
+}
+
+// Auto-refresh every 15s by reloading the page
+setInterval(() => window.location.reload(), 15000);
+</script>
+{% endblock %}

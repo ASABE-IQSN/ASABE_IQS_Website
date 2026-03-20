@@ -1,0 +1,128 @@
+{% load static %}
+<style>
+.engagement-widget {
+  margin-top: 1.5rem;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+}
+.engagement-widget-title {
+  font-size: 0.78rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 0.8rem;
+}
+.reaction-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+.reaction-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #1e293b;
+  background: #020617;
+  color: #e2e8f0;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all .2s;
+}
+.reaction-btn:hover { border-color: rgba(96,165,250,.4); background: rgba(96,165,250,.07); }
+.reaction-btn:active { transform: scale(0.94); }
+.reaction-btn .rc { font-size: 0.8rem; color: #9ca3af; min-width: 18px; text-align: center; }
+.submission-link {
+  display: inline-block;
+  font-size: 0.85rem;
+  color: #60a5fa;
+  text-decoration: none;
+  margin-top: 0.3rem;
+}
+.submission-link:hover { text-decoration: underline; }
+.react-toast {
+  font-size: 0.8rem;
+  color: #4ade80;
+  margin-top: 0.4rem;
+  min-height: 1.2rem;
+}
+</style>
+
+<div class="engagement-widget">
+  <div class="engagement-widget-title">Fan Reactions</div>
+  <div class="reaction-row">
+    <button class="reaction-btn" onclick="sendReaction('fire')" title="🔥 Fire">
+      🔥 <span class="rc" id="live-rc-fire">—</span>
+    </button>
+    <button class="reaction-btn" onclick="sendReaction('clap')" title="👏 Clap">
+      👏 <span class="rc" id="live-rc-clap">—</span>
+    </button>
+    <button class="reaction-btn" onclick="sendReaction('wow')" title="😮 Wow">
+      😮 <span class="rc" id="live-rc-wow">—</span>
+    </button>
+    <button class="reaction-btn" onclick="sendReaction('tractor')" title="🚜 Tractor">
+      🚜 <span class="rc" id="live-rc-tractor">—</span>
+    </button>
+  </div>
+  <div class="react-toast" id="reactToast"></div>
+  <a class="submission-link" href="{% url 'engagement:submit' %}">💬 Share a comment or photo →</a>
+</div>
+
+<script>
+(function() {
+  function getCsrf() {
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : '';
+  }
+
+  window.sendReaction = function(emoji) {
+    const toast = document.getElementById('reactToast');
+    const body = new FormData();
+    body.append('emoji', emoji);
+
+    fetch('/engagement/react/', {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCsrf() },
+      body: body,
+    })
+    .then(r => r.json())
+    .then(data => {
+      if (data.ok && data.counts) {
+        updateLiveCounts(data.counts);
+        toast.textContent = 'Reaction sent!';
+        setTimeout(() => { toast.textContent = ''; }, 2000);
+      } else if (data.error === 'throttled') {
+        toast.textContent = 'Please wait before reacting again.';
+        toast.style.color = '#f87171';
+        setTimeout(() => { toast.textContent = ''; toast.style.color = '#4ade80'; }, 2000);
+      }
+    })
+    .catch(() => {});
+  };
+
+  function updateLiveCounts(counts) {
+    const map = { fire: 'live-rc-fire', clap: 'live-rc-clap', wow: 'live-rc-wow', tractor: 'live-rc-tractor' };
+    Object.entries(map).forEach(([emoji, id]) => {
+      const el = document.getElementById(id);
+      if (el && counts[emoji] !== undefined) el.textContent = counts[emoji];
+    });
+  }
+
+  // Hook into SSE stream if available on this page
+  document.addEventListener('DOMContentLoaded', function() {
+    if (typeof window.IQS === 'undefined' || !window.IQS.apiUrl) return;
+    const es = new EventSource(window.IQS.apiUrl + '/api/stream');
+    es.addEventListener('reactions', function(e) {
+      try {
+        const data = JSON.parse(e.data);
+        if (data.counts) updateLiveCounts(data.counts);
+      } catch(ex) {}
+    });
+    // Don't keep SSE open indefinitely if the overlay also opens one — acceptable duplicate
+  });
+})();
+</script>

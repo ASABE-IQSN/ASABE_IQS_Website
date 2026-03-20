@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Fan Vote Results – IQS Live{% endblock %}
+
+{% block extra_styles %}
+h1 { font-size: 1.4rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.5rem; }
+.sub { color: #9ca3af; font-size: 0.9rem; margin-bottom: 1.5rem; }
+.category-card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px;
+  padding: 1.2rem; margin-bottom: 1.2rem; }
+.cat-name { font-size: 1.05rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; }
+.result-row { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.7rem; }
+.rank { font-size: 0.85rem; color: #6b7280; width: 20px; text-align: right; flex-shrink: 0; }
+.team-name { font-size: 0.9rem; color: #e2e8f0; min-width: 160px; }
+.bar-wrap { flex: 1; }
+.result-bar-track { height: 8px; background: rgba(148,163,184,.1); border-radius: 999px; overflow: hidden; }
+.result-bar-fill { height: 100%; background: rgba(96,165,250,.6); border-radius: 999px; }
+.vote-count { font-size: 0.8rem; color: #9ca3af; width: 60px; text-align: right; flex-shrink: 0; }
+{% endblock %}
+
+{% block content %}
+<h1>Fan Vote Results</h1>
+<p class="sub">
+  Live results. <a href="{% url 'engagement:fan_vote_ballot' %}">← Back to voting</a>
+</p>
+
+{% for item in results %}
+{% with item.category as cat %}
+<div class="category-card">
+  <div class="cat-name">{{ cat.name }}</div>
+  {% if item.ranked %}
+    {% with item.ranked.0.vote_count as max_votes %}
+    {% for row in item.ranked %}
+    <div class="result-row">
+      <div class="rank">#{{ forloop.counter }}</div>
+      <div class="team-name">
+        {{ row.team__team_name }}
+        <span style="font-size:0.78em;color:#6b7280;">#{{ row.team__team_number }}</span>
+      </div>
+      <div class="bar-wrap">
+        <div class="result-bar-track">
+          <div class="result-bar-fill"
+            style="width:{% if max_votes %}{% widthratio row.vote_count max_votes 100 %}%{% else %}0%{% endif %}">
+          </div>
+        </div>
+      </div>
+      <div class="vote-count">{{ row.vote_count }} vote{{ row.vote_count|pluralize }}</div>
+    </div>
+    {% endfor %}
+    {% endwith %}
+  {% else %}
+    <p style="color:#6b7280;font-size:0.85rem;">No votes yet.</p>
+  {% endif %}
+</div>
+{% endwith %}
+{% empty %}
+  <p style="color:#9ca3af;">No active vote categories at this time.</p>
+{% endfor %}
+{% endblock %}

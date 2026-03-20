@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+
+{% block title %}Engagement Staff Hub – IQS Live{% endblock %}
+
+{% block extra_styles %}
+h1 { font-size: 1.4rem; font-weight: 700; color: #e2e8f0; margin-bottom: 0.3rem; }
+.page-sub { color: #9ca3af; font-size: 0.9rem; margin-bottom: 2rem; }
+.section { margin-bottom: 2rem; }
+.section-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+  margin-bottom: 0.7rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid #1e293b;
+}
+.hub-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.75rem;
+}
+.hub-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  text-decoration: none;
+  transition: border-color .15s, background .15s;
+}
+.hub-card:hover {
+  border-color: rgba(96,165,250,.4);
+  background: rgba(96,165,250,.05);
+  text-decoration: none;
+}
+.hub-card-icon { font-size: 1.4rem; line-height: 1; }
+.hub-card-name { font-size: 0.95rem; font-weight: 700; color: #e2e8f0; }
+.hub-card-desc { font-size: 0.8rem; color: #9ca3af; line-height: 1.4; }
+.hub-card-url  { font-size: 0.72rem; color: #475569; margin-top: 0.2rem; font-family: monospace; }
+
+.divider-section { margin-bottom: 2rem; }
+.public-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+.pub-card {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  background: #0c1424;
+  border: 1px solid #1e293b;
+  border-radius: 10px;
+  padding: 0.7rem 1rem;
+  text-decoration: none;
+  color: #9ca3af;
+  font-size: 0.88rem;
+  transition: border-color .15s;
+}
+.pub-card:hover { border-color: #334155; color: #cbd5e1; text-decoration: none; }
+.pub-card-icon { font-size: 1.1rem; }
+{% endblock %}
+
+{% block content %}
+<h1>Engagement Staff Hub</h1>
+<p class="page-sub">All crowd engagement tools in one place. Staff only.</p>
+
+<div class="section">
+  <div class="section-title">Crowd Submissions</div>
+  <div class="hub-grid">
+    <a class="hub-card" href="{% url 'engagement:producer_queue' %}">
+      <div class="hub-card-icon">📥</div>
+      <div class="hub-card-name">Producer Queue</div>
+      <div class="hub-card-desc">
+        Review pending fan comments and photos. Approve to push directly to the live overlay.
+      </div>
+      <div class="hub-card-url">/engagement/producer/submissions/</div>
+    </a>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Live Polls</div>
+  <div class="hub-grid">
+    <a class="hub-card" href="{% url 'engagement:poll_manage' %}">
+      <div class="hub-card-icon">📊</div>
+      <div class="hub-card-name">Manage Polls</div>
+      <div class="hub-card-desc">
+        Create polls, set answer options, activate one at a time, and close when done.
+        Results push to the overlay bar chart in real time.
+      </div>
+      <div class="hub-card-url">/engagement/polls/manage/</div>
+    </a>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Fan Vote (Best of Show)</div>
+  <div class="hub-grid">
+    <a class="hub-card" href="{% url 'engagement:fan_vote_results' %}">
+      <div class="hub-card-icon">🏆</div>
+      <div class="hub-card-name">Vote Results</div>
+      <div class="hub-card-desc">
+        Live ranked results for every active fan vote category.
+      </div>
+      <div class="hub-card-url">/engagement/vote/results/</div>
+    </a>
+    <a class="hub-card" href="/admin/engagement/fanvotecategory/add/">
+      <div class="hub-card-icon">➕</div>
+      <div class="hub-card-name">Create Vote Category</div>
+      <div class="hub-card-desc">
+        Add a new fan vote category (e.g. "Fan Favorite", "Best Looking") via the Django admin.
+      </div>
+      <div class="hub-card-url">/admin/engagement/fanvotecategory/add/</div>
+    </a>
+    <a class="hub-card" href="/admin/engagement/fanvotecategory/">
+      <div class="hub-card-icon">⚙️</div>
+      <div class="hub-card-name">Manage Categories</div>
+      <div class="hub-card-desc">
+        Activate or deactivate fan vote categories for the current event.
+      </div>
+      <div class="hub-card-url">/admin/engagement/fanvotecategory/</div>
+    </a>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-title">Other Admin</div>
+  <div class="hub-grid">
+    <a class="hub-card" href="/admin/engagement/crowdsubmission/">
+      <div class="hub-card-icon">🗂️</div>
+      <div class="hub-card-name">All Submissions</div>
+      <div class="hub-card-desc">
+        Browse and filter all crowd submissions (pending, approved, rejected) in the Django admin.
+      </div>
+      <div class="hub-card-url">/admin/engagement/crowdsubmission/</div>
+    </a>
+    <a class="hub-card" href="/admin/engagement/reactionaggregate/">
+      <div class="hub-card-icon">🔥</div>
+      <div class="hub-card-name">Reaction Counts</div>
+      <div class="hub-card-desc">
+        View cumulative emoji reaction totals per event in the Django admin.
+      </div>
+      <div class="hub-card-url">/admin/engagement/reactionaggregate/</div>
+    </a>
+  </div>
+</div>
+
+<div class="divider-section">
+  <div class="section-title">Public-facing pages (fan links)</div>
+  <div class="public-grid">
+    <a class="pub-card" href="{% url 'engagement:submit' %}">
+      <span class="pub-card-icon">💬</span> Submit Comment / Photo
+    </a>
+    <a class="pub-card" href="{% url 'engagement:fan_vote_ballot' %}">
+      <span class="pub-card-icon">🗳️</span> Fan Vote Ballot
+    </a>
+    <a class="pub-card" href="{% url 'engagement:fan_vote_results' %}">
+      <span class="pub-card-icon">📈</span> Vote Results (public)
+    </a>
+  </div>
+</div>
+{% endblock %}

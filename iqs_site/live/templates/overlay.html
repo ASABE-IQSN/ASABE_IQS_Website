@@ -311,6 +311,86 @@
       font-weight: 600;
       color: rgba(226,232,240,.92);
     }
+
+    /* ── Reaction burst (top-right) ─────────────────────────────── */
+    #ocReactionBurst {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      display: flex;
+      gap: 10px;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .reaction-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 6px 12px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .reaction-chip .rc-count {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    /* ── Poll card (bottom-left, above chart) ────────────────────── */
+    #ocPollCard {
+      position: absolute;
+      left: 24px;
+      bottom: 308px; /* above chart-card (260px + 24px + some gap) */
+      width: min(480px, calc(100% - 48px));
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      padding: 16px 18px 14px;
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    #ocPollQuestion {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+
+    .poll-option-row {
+      margin-bottom: 8px;
+    }
+
+    .poll-option-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .poll-bar-track {
+      height: 6px;
+      background: rgba(148,163,184,.15);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .poll-bar-fill {
+      height: 100%;
+      background: rgba(96,165,250,.7);
+      border-radius: 999px;
+      transition: width 0.5s ease;
+    }
   </style>
 
   <!-- Chart.js -->
@@ -418,6 +498,20 @@
     <!-- Dynamic scene card -->
     <div id="ocSceneCard" style="position:absolute;right:24px;bottom:24px;overflow:hidden;opacity:0;visibility:hidden;">
       <div class="oc-progress" style="position:absolute;bottom:0;left:0;width:100%;z-index:100;"><div class="oc-progress-fill" id="ocSceneProgress"></div></div>
+    </div>
+
+    <!-- Reaction burst (top-right) -->
+    <div id="ocReactionBurst">
+      <div class="reaction-chip"><span>🔥</span><span class="rc-count" id="rc-fire">0</span></div>
+      <div class="reaction-chip"><span>👏</span><span class="rc-count" id="rc-clap">0</span></div>
+      <div class="reaction-chip"><span>😮</span><span class="rc-count" id="rc-wow">0</span></div>
+      <div class="reaction-chip"><span>🚜</span><span class="rc-count" id="rc-tractor">0</span></div>
+    </div>
+
+    <!-- Poll card (bottom-left, above chart) -->
+    <div id="ocPollCard">
+      <div id="ocPollQuestion"></div>
+      <div id="ocPollOptions"></div>
     </div>
   </div>
 </body>

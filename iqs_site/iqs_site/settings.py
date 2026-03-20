@@ -106,6 +106,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "awards",
     "compforms",
+    "engagement",
 ]
 
 MIDDLEWARE = [
