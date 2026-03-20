@@ -419,7 +419,7 @@ function _showImageCard(data) {
 }
 
 // --- reaction burst ---
-const ocReactionBurst = document.getElementById("ocReactionBurst");
+let ocReactionBurst;
 let reactionBurstTimeline = null;
 
 function updateReactionCounts(data) {
@@ -443,9 +443,7 @@ function updateReactionCounts(data) {
 }
 
 // --- poll card ---
-const ocPollCard = document.getElementById("ocPollCard");
-const ocPollQuestion = document.getElementById("ocPollQuestion");
-const ocPollOptions = document.getElementById("ocPollOptions");
+let ocPollCard, ocPollQuestion, ocPollOptions;
 let pollCardTimeline = null;
 
 function updatePollCard(data) {
@@ -489,6 +487,10 @@ function updatePollCard(data) {
 
 // --- boot ---
 document.addEventListener("DOMContentLoaded", () => {
+  ocReactionBurst = document.getElementById("ocReactionBurst");
+  ocPollCard      = document.getElementById("ocPollCard");
+  ocPollQuestion  = document.getElementById("ocPollQuestion");
+  ocPollOptions   = document.getElementById("ocPollOptions");
   initChart();
   startSSE();
   startStaleMonitor();
