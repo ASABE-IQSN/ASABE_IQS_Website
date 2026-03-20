@@ -29,6 +29,23 @@ h1 { font-size: 1.4rem; font-weight: 700; color: #e2e8f0; margin-bottom: 1rem; }
   <a href="{% url 'engagement:poll_manage' %}" style="margin-left:1rem">Manage Polls →</a>
 </p>
 
+<div style="display:flex;align-items:center;gap:0.75rem;background:#0f172a;border:1px solid #1e293b;
+            border-radius:10px;padding:0.7rem 1rem;margin-bottom:1.2rem;flex-wrap:wrap;">
+  <span style="font-size:0.8rem;color:#9ca3af;">Submission cooldown:</span>
+  <input type="number" id="cooldownInput" min="0" max="3600" value="{{ cooldown_seconds }}"
+    style="width:80px;background:#020617;border:1px solid #1e293b;border-radius:6px;
+           color:#e2e8f0;padding:0.3rem 0.5rem;font-size:0.9rem;">
+  <span style="font-size:0.8rem;color:#6b7280;">seconds</span>
+  <button class="btn btn-sm" onclick="saveCooldown()"
+    style="background:rgba(96,165,250,.2);color:#60a5fa;border:1px solid rgba(96,165,250,.3);">
+    Save
+  </button>
+  <span id="cooldownMsg" style="font-size:0.8rem;color:#9ca3af;"></span>
+  <span style="font-size:0.75rem;color:#475569;margin-left:auto;">
+    Applies to new submissions only — active throttles keep their original TTL.
+  </span>
+</div>
+
 <div id="queueList">
   {% if not submissions %}
     <p class="queue-empty" id="emptyMsg">No pending submissions.</p>
@@ -92,5 +109,33 @@ function act(id, action) {
 
 // Auto-refresh every 15s by reloading the page
 setInterval(() => window.location.reload(), 15000);
+
+function saveCooldown() {
+  const seconds = parseInt(document.getElementById('cooldownInput').value, 10);
+  const msg = document.getElementById('cooldownMsg');
+  if (isNaN(seconds) || seconds < 0) {
+    msg.textContent = 'Invalid value.';
+    msg.style.color = '#f87171';
+    return;
+  }
+  const body = new FormData();
+  body.append('seconds', seconds);
+  fetch('/engagement/producer/cooldown/', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': getCsrf() },
+    body: body,
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      msg.textContent = `Saved — new submissions will cool down for ${data.seconds}s.`;
+      msg.style.color = '#4ade80';
+      setTimeout(() => { msg.textContent = ''; }, 3000);
+    } else {
+      msg.textContent = data.error || 'Error saving.';
+      msg.style.color = '#f87171';
+    }
+  });
+}
 </script>
 {% endblock %}

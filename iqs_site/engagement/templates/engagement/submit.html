@@ -41,7 +41,23 @@
   {% endif %}
 
   {% if throttled and not success %}
-    <div class="alert alert-error">You submitted recently. Please wait before submitting again.</div>
+    <div class="alert alert-error">
+      You submitted recently. Please wait <strong><span id="cooldownTimer">{{ cooldown_seconds }}</span>s</strong> before submitting again.
+    </div>
+  {% endif %}
+
+  {% if success %}
+    <div class="alert alert-error" style="display:none" id="postSuccessCooldown">
+      Next submission available in <strong><span id="cooldownTimer2">{{ cooldown_seconds }}</span>s</strong>.
+    </div>
+  {% endif %}
+
+  {% if form.errors %}
+    <div class="alert alert-error">
+      {% for field, errors in form.errors.items %}
+        <strong>{{ field }}:</strong> {{ errors|join:", " }}<br>
+      {% endfor %}
+    </div>
   {% endif %}
 
   {% if not throttled or success %}
@@ -91,8 +107,34 @@ function setType(type) {
   document.getElementById('captionInput').disabled = type !== 'photo';
   document.getElementById('photoInput').disabled   = type !== 'photo';
 }
-document.getElementById('textInput').addEventListener('input', function() {
-  document.getElementById('charCount').textContent = this.value.length;
+const textInput = document.getElementById('textInput');
+if (textInput) {
+  textInput.addEventListener('input', function() {
+    document.getElementById('charCount').textContent = this.value.length;
+  });
+  setType('comment'); // initialize disabled state on load
+}
+
+// Countdown timer
+document.addEventListener('DOMContentLoaded', function() {
+  function startCountdown(elId, seconds) {
+    const el = document.getElementById(elId);
+    if (!el || seconds <= 0) return;
+    let remaining = seconds;
+    el.textContent = remaining;
+    const interval = setInterval(() => {
+      remaining -= 1;
+      if (remaining <= 0) {
+        clearInterval(interval);
+        window.location.reload();
+      } else {
+        el.textContent = remaining;
+      }
+    }, 1000);
+  }
+
+  startCountdown('cooldownTimer',  {{ cooldown_seconds|default:0 }});
+  startCountdown('cooldownTimer2', {{ cooldown_seconds|default:0 }});
 });
 </script>
 {% endblock %}

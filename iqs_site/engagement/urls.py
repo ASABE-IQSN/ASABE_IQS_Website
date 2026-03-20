@@ -6,6 +6,7 @@ app_name = 'engagement'
 urlpatterns = [
     # Staff hub
     path('staff/', views.staff_hub, name='staff_hub'),
+    path('producer/cooldown/', views.set_cooldown, name='set_cooldown'),
 
     # Feature 1 – Crowd Submission
     path('submit/', views.submit_form, name='submit'),

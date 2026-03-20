@@ -43,18 +43,33 @@ def _active_event():
 
 # ── Feature 1: Crowd Submission ──────────────────────────────────────────────
 
+SUBMIT_COOLDOWN_KEY = 'engagement:submit:cooldown'
+SUBMIT_COOLDOWN_DEFAULT = 180  # seconds
+
+
+def _get_cooldown(r):
+    val = r.get(SUBMIT_COOLDOWN_KEY)
+    try:
+        return max(0, int(val)) if val is not None else SUBMIT_COOLDOWN_DEFAULT
+    except (ValueError, TypeError):
+        return SUBMIT_COOLDOWN_DEFAULT
+
+
 @login_required
 def submit_form(request):
     throttle_key = f"engagement:throttle:submit:{request.user.id}"
     r = _redis()
-    throttled = r.exists(throttle_key)
+    ttl = r.ttl(throttle_key)  # -2 = key absent, -1 = no expiry, >=0 = seconds remaining
+    throttled = ttl > 0
+
+    cooldown = _get_cooldown(r)
 
     if request.method == 'POST':
         if throttled:
             return render(request, 'engagement/submit.html', {
                 'form': CrowdSubmissionForm(),
-                'error': 'You submitted recently. Please wait a moment before submitting again.',
                 'throttled': True,
+                'cooldown_seconds': ttl,
             })
 
         form = CrowdSubmissionForm(request.POST, request.FILES)
@@ -63,10 +78,11 @@ def submit_form(request):
             submission.submitted_by = request.user
             submission.event = _active_event()
             submission.save()
-            r.set(throttle_key, '1', ex=180)
+            r.set(throttle_key, str(time.time()), ex=cooldown)
             return render(request, 'engagement/submit.html', {
                 'form': CrowdSubmissionForm(),
                 'success': True,
+                'cooldown_seconds': cooldown,
             })
     else:
         form = CrowdSubmissionForm()
@@ -74,7 +90,20 @@ def submit_form(request):
     return render(request, 'engagement/submit.html', {
         'form': form,
         'throttled': throttled,
+        'cooldown_seconds': ttl if throttled else 0,
     })
+
+
+@staff_member_required
+@require_POST
+def set_cooldown(request):
+    try:
+        seconds = max(0, int(request.POST.get('seconds', SUBMIT_COOLDOWN_DEFAULT)))
+    except (ValueError, TypeError):
+        return JsonResponse({'error': 'invalid value'}, status=400)
+    r = _redis()
+    r.set(SUBMIT_COOLDOWN_KEY, str(seconds))
+    return JsonResponse({'ok': True, 'seconds': seconds})
 
 
 @staff_member_required
@@ -84,8 +113,12 @@ def staff_hub(request):
 
 @staff_member_required
 def producer_queue(request):
+    r = _redis()
     pending = CrowdSubmission.objects.filter(status='pending').select_related('submitted_by', 'event')
-    return render(request, 'engagement/producer_queue.html', {'submissions': pending})
+    return render(request, 'engagement/producer_queue.html', {
+        'submissions': pending,
+        'cooldown_seconds': _get_cooldown(r),
+    })
 
 
 @staff_member_required
