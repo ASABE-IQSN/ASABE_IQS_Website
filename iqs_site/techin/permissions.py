@@ -33,13 +33,9 @@ def user_can_access_team(user, team):
     Returns True if user belongs to the group for this tractor_event's team
     or is part of Tech_Admin.
     """
-    return True
-    # if team.team_id==1:
-    #     return False
-    # else: 
-    #     return True
-    # if not user.is_authenticated:
-    #     return False
+
+    if not user.is_authenticated:
+        return False
 
     
     # Tech inspectors / administrators always have access
@@ -47,7 +43,8 @@ def user_can_access_team(user, team):
         return True
 
     
-    expected_group = f"Team_{team.team_name.replace(' ', '')}"
+    expected_group = f"team_{team.team_id}_{team.team_name.replace(' ', '_')}"
+    print(expected_group)
     # if getattr(settings, "SITE_VARIANT", "normal") == "testing":
     #     return True
 

@@ -7,7 +7,7 @@ from django.http import HttpResponseForbidden
 from django.contrib import messages
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import login
-from .forms import CustomUserCreationForm
+from .forms import CustomUserCreationForm, UserInfoForm, UserProfileForm
 from .tasks import assign_user_to_teams
 from django.core.mail import send_mail
 from django.utils.http import urlsafe_base64_encode
@@ -24,7 +24,7 @@ from django.views.decorators.cache import cache_control
 from django.views.decorators.vary import vary_on_cookie
 from iqs_site.utilities import log_view
 from django.utils import timezone
-from users.models import GroupProfile, TeamEmail, TeamEnrollmentRequest
+from users.models import GroupProfile, TeamEmail, TeamEnrollmentRequest, UserProfile
 
 @log_view
 @login_required
@@ -41,6 +41,9 @@ def account(request):
         group_profile__admins=user
     ).distinct()
 
+    profile = getattr(user, 'profile', None)
+    is_student = profile is not None and profile.role == UserProfile.Role.STUDENT
+
     # Handle enrollment request submission
     if request.method == "POST":
         team_id = request.POST.get("team_id")
@@ -49,11 +52,9 @@ def account(request):
         if team_id:
             team = get_object_or_404(Team, team_id=team_id)
 
-            # Check if user is already a member
             if teams_member.filter(team_id=team_id).exists():
                 messages.error(request, f"You are already a member of {team.team_name}.")
             else:
-                # Check for existing pending request
                 existing = TeamEnrollmentRequest.objects.filter(
                     user=user,
                     team=team,
@@ -63,14 +64,12 @@ def account(request):
                 if existing:
                     messages.error(request, f"You already have a pending request for {team.team_name}.")
                 else:
-                    # Create the request
                     enrollment_request = TeamEnrollmentRequest.objects.create(
                         user=user,
                         team=team,
                         message=message if message else None
                     )
 
-                    # Send email notification to team admins (async via Celery)
                     from users.tasks import notify_team_admins_of_request
                     notify_team_admins_of_request.delay(enrollment_request.request_id)
 
@@ -141,6 +140,8 @@ def account(request):
 
     return render(request, "account.html", {
         "user": user,
+        "profile": profile,
+        "is_student": is_student,
         "teams_member": teams_member,
         "teams_admin": teams_admin,
         "available_teams": available_teams,
@@ -148,6 +149,38 @@ def account(request):
         "team_form_statuses": team_form_statuses,
         "active_page": "my account",
     })
+
+@log_view
+@login_required
+def edit_profile(request):
+    user = request.user
+    profile = getattr(user, 'profile', None)
+
+    user_info_form = UserInfoForm(instance=user)
+    user_profile_form = UserProfileForm(instance=profile) if profile else None
+
+    if request.method == "POST":
+        user_info_form = UserInfoForm(request.POST, instance=user)
+        if profile:
+            user_profile_form = UserProfileForm(request.POST, instance=profile)
+
+        info_valid = user_info_form.is_valid()
+        profile_valid = user_profile_form.is_valid() if user_profile_form else True
+
+        if info_valid and profile_valid:
+            user_info_form.save()
+            if user_profile_form:
+                user_profile_form.save()
+            messages.success(request, "Your profile has been updated.")
+            return redirect("users:account")
+
+    return render(request, "edit_profile.html", {
+        "user_info_form": user_info_form,
+        "user_profile_form": user_profile_form,
+        "profile": profile,
+        "active_page": "my account",
+    })
+
 
 User = get_user_model()
 

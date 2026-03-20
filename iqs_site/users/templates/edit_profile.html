@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Edit Profile</h1>
+  <p><a href="{% url 'users:account' %}">&larr; Back to My Account</a></p>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <h2>Name</h2>
+    <table>
+      {% for field in user_info_form %}
+        <tr>
+          <th style="text-align:left; padding-right: 1.5rem;">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          </th>
+          <td>
+            {{ field }}
+            {% if field.errors %}
+              <br><span style="color: #ef4444;">{{ field.errors|join:", " }}</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </table>
+
+    {% if user_profile_form and profile %}
+      {% with role=profile.role %}
+        {% if role == 1 %}
+          <h2>Student Info</h2>
+          <table>
+            <tr>
+              <th style="text-align:left; padding-right: 1.5rem;">
+                <label for="{{ user_profile_form.graduation_year.id_for_label }}">{{ user_profile_form.graduation_year.label }}</label>
+              </th>
+              <td>
+                {{ user_profile_form.graduation_year }}
+                {% if user_profile_form.graduation_year.errors %}
+                  <br><span style="color: #ef4444;">{{ user_profile_form.graduation_year.errors|join:", " }}</span>
+                {% endif %}
+              </td>
+            </tr>
+          </table>
+        {% elif role == 3 %}
+          <h2>Sponsor Info</h2>
+          <table>
+            <tr>
+              <th style="text-align:left; padding-right: 1.5rem;">
+                <label for="{{ user_profile_form.company_name.id_for_label }}">{{ user_profile_form.company_name.label }}</label>
+              </th>
+              <td>
+                {{ user_profile_form.company_name }}
+                {% if user_profile_form.company_name.errors %}
+                  <br><span style="color: #ef4444;">{{ user_profile_form.company_name.errors|join:", " }}</span>
+                {% endif %}
+              </td>
+            </tr>
+          </table>
+        {% elif role == 4 %}
+          <h2>Alumni Info</h2>
+          <table>
+            <tr>
+              <th style="text-align:left; padding-right: 1.5rem;">
+                <label for="{{ user_profile_form.alumni_graduation_year.id_for_label }}">{{ user_profile_form.alumni_graduation_year.label }}</label>
+              </th>
+              <td>
+                {{ user_profile_form.alumni_graduation_year }}
+                {% if user_profile_form.alumni_graduation_year.errors %}
+                  <br><span style="color: #ef4444;">{{ user_profile_form.alumni_graduation_year.errors|join:", " }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            <tr>
+              <th style="text-align:left; padding-right: 1.5rem;">
+                <label for="{{ user_profile_form.years_participated.id_for_label }}">{{ user_profile_form.years_participated.label }}</label>
+              </th>
+              <td>
+                {{ user_profile_form.years_participated }}
+                {% if user_profile_form.years_participated.errors %}
+                  <br><span style="color: #ef4444;">{{ user_profile_form.years_participated.errors|join:", " }}</span>
+                {% endif %}
+              </td>
+            </tr>
+          </table>
+        {% endif %}
+      {% endwith %}
+    {% endif %}
+
+    <br>
+    <button type="submit">Save Changes</button>
+    <a href="{% url 'users:account' %}" style="margin-left: 1rem;">Cancel</a>
+  </form>
+{% endblock %}

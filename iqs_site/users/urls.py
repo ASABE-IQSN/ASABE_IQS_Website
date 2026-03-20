@@ -6,6 +6,7 @@ app_name = "users"
 urlpatterns = [
     # ... your other urls ...
     path("account/", views.account, name="account"),
+    path("account/edit/", views.edit_profile, name="edit_profile"),
     path(
         "teams/<int:team_id>/members/",
         views.manage_team_members,

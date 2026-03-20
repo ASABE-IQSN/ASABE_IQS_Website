@@ -16,6 +16,8 @@ ALUMNI_YEAR_CHOICES = [('', 'Select a year...')] + [
     (y, str(y)) for y in range(_current_year, 1997, -1)
 ]
 
+YEARS_PARTICIPATED_CHOICES = [('', 'Select...')] + [(y, str(y)) for y in range(1, 9)]
+
 
 class CustomUserCreationForm(UserCreationForm):
     email = forms.EmailField(required=True)
@@ -52,8 +54,9 @@ class CustomUserCreationForm(UserCreationForm):
         choices=ALUMNI_YEAR_CHOICES, coerce=int, required=False, label="Graduation Year",
         empty_value='',
     )
-    years_participated = forms.IntegerField(
-        required=False, min_value=0, label="Years Participated"
+    years_participated = forms.TypedChoiceField(
+        choices=YEARS_PARTICIPATED_CHOICES, coerce=int, required=False,
+        label="Years Participated", empty_value=None,
     )
 
     class Meta:
@@ -94,3 +97,28 @@ class CustomUserCreationForm(UserCreationForm):
                 years_participated=self.cleaned_data.get('years_participated'),
             )
         return user
+
+
+class UserInfoForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ['first_name', 'last_name']
+
+
+class UserProfileForm(forms.ModelForm):
+    graduation_year = forms.TypedChoiceField(
+        choices=STUDENT_YEAR_CHOICES, coerce=int, required=False,
+        label="Graduation Year", empty_value=None,
+    )
+    alumni_graduation_year = forms.TypedChoiceField(
+        choices=ALUMNI_YEAR_CHOICES, coerce=int, required=False,
+        label="Graduation Year", empty_value=None,
+    )
+    years_participated = forms.TypedChoiceField(
+        choices=YEARS_PARTICIPATED_CHOICES, coerce=int, required=False,
+        label="Years Participated", empty_value=None,
+    )
+
+    class Meta:
+        model = UserProfile
+        fields = ['graduation_year', 'company_name', 'alumni_graduation_year', 'years_participated']
