@@ -60,11 +60,11 @@ class EventForm(forms.ModelForm):
 @admin.register(Event)
 class EventAdmin(admin.ModelAdmin):
     form = EventForm
-    list_display = ("event_id", "event_name", "event_datetime")
+    list_display = ("event_id", "event_name", "event_datetime", "scores_released", "techin_released")
     search_fields = ("event_name",)
-    list_filter = ("event_datetime",)
+    list_filter = ("event_datetime", "scores_released")
 
-    fields = ("event_id", "event_name", "event_datetime", "event_active", "techin_released")
+    fields = ("event_id", "event_name", "event_datetime", "event_active", "techin_released", "scores_released")
 
     def get_readonly_fields(self, request, obj=None):
         # Make event_id readonly when editing an existing event, but editable when creating new one

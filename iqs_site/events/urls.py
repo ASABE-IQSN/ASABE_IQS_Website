@@ -32,4 +32,7 @@ urlpatterns = [
     path("team-event/<int:event_id>/<int:team_id>/edit/", views.team_event_edit, name="team_event_edit"),
     path("team-event/<int:event_id>/<int:team_id>/upload-report/", views.upload_report, name="upload_report"),
     path("events/<int:event_id>/scores/", views.event_scores, name="event_scores"),
+    path("events/<int:event_id>/scores/<int:category_id>/", views.event_category_breakdown, name="event_category_breakdown"),
+    path("teams/<int:team_id>/scores/", views.team_score_history, name="team_score_history"),
+    path("scores/categories/<int:category_id>/", views.category_leaderboard, name="category_leaderboard"),
 ]

@@ -410,7 +410,13 @@
   <!-- Events -->
   <section style="margin-top: 1.5rem;">
     <div class="card">
-      <h3>Events</h3>
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
+        <h3 style="margin:0;">Events</h3>
+        <a href="{% url 'events:team_score_history' team.team_id %}"
+           style="font-size:0.8rem; color:#9ca3af; text-decoration:none; border:1px solid #1f2937; padding:0.2rem 0.6rem; border-radius:999px;">
+          Score History &rarr;
+        </a>
+      </div>
       {% if event_teams %}
         <ul class="event-list">
           {% for et in event_teams %}

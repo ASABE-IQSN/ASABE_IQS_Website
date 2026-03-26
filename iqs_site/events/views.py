@@ -36,7 +36,7 @@ from django.urls import reverse
 
 
 from .models import DurabilityRun, DurabilityData, ManeuverabilityRun, PerformanceEventMedia
-from .models import ScoreCategoryInstance, ScoreCategoryScore, ScoreSubCategoryScore
+from .models import ScoreCategoryInstance, ScoreCategoryScore, ScoreSubCategoryScore, ScoreSubCategoryInstance, ScoreCategory
 from .models import Tractor, TractorInfo
 from .forms import TractorProfileEditForm
 from .permissions import can_edit_tractor
@@ -454,30 +454,30 @@ def team_event_detail(request, event_id, team_id):
             .order_by('display_order')
         )
 
-    # Score breakdown for this team
-    cat_scores = (
-        ScoreCategoryScore.objects
-        .select_related("category_instance__score_category")
-        .filter(category_instance__event=event, team=team)
-        .order_by("category_instance__display_order")
-    )
-    sub_scores = (
-        ScoreSubCategoryScore.objects
-        .select_related("subcategory__score_subcategory", "subcategory__category_instance")
-        .filter(subcategory__event=event, team=team)
-        .order_by(
-            "subcategory__category_instance__display_order",
-            "subcategory__score_subcategory__subcategory_name",
-        )
-    )
-    # Build ordered dict: {cat_instance_id: {"cat": cat_score, "subs": [sub_score, ...]}}
+    # Score breakdown — only shown when scores are publicly released
     score_breakdown = {}
-    for cs in cat_scores:
-        score_breakdown[cs.category_instance_id] = {"cat": cs, "subs": []}
-    for ss in sub_scores:
-        cat_id = ss.subcategory.category_instance_id
-        if cat_id in score_breakdown:
-            score_breakdown[cat_id]["subs"].append(ss)
+    if event.scores_released:
+        cat_scores = (
+            ScoreCategoryScore.objects
+            .select_related("category_instance__score_category")
+            .filter(category_instance__event=event, team=team)
+            .order_by("category_instance__display_order")
+        )
+        sub_scores = (
+            ScoreSubCategoryScore.objects
+            .select_related("subcategory__score_subcategory", "subcategory__category_instance")
+            .filter(subcategory__event=event, team=team)
+            .order_by(
+                "subcategory__category_instance__display_order",
+                "subcategory__score_subcategory__subcategory_name",
+            )
+        )
+        for cs in cat_scores:
+            score_breakdown[cs.category_instance_id] = {"cat": cs, "subs": []}
+        for ss in sub_scores:
+            cat_id = ss.subcategory.category_instance_id
+            if cat_id in score_breakdown:
+                score_breakdown[cat_id]["subs"].append(ss)
 
     context = {
         "team": team,
@@ -511,6 +511,8 @@ def allowed_file(filename: str) -> bool:
 @cache_page(300)
 def event_scores(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
+    if not event.scores_released and not request.user.is_staff:
+        raise Http404
     team_class_id = request.GET.get("class")
 
     event_teams_qs = (
@@ -527,13 +529,14 @@ def event_scores(request, event_id):
     cat_instances = list(
         ScoreCategoryInstance.objects
         .select_related("score_category")
-        .filter(event=event)
+        .filter(event=event, released=True)
         .order_by("display_order")
     )
 
     team_ids = [et.team_id for et in event_teams]
     cat_scores = ScoreCategoryScore.objects.filter(
         category_instance__event=event,
+        category_instance__released=True,
         team_id__in=team_ids,
     )
     # {team_id: {cat_instance_id: score}}
@@ -558,6 +561,220 @@ def event_scores(request, event_id):
         "active_page": "events",
     }
     return render(request, "events/event_scores.html", context)
+
+
+@log_view
+@cache_page(300)
+def event_category_breakdown(request, event_id, category_id):
+    event = get_object_or_404(Event, pk=event_id)
+    if not event.scores_released and not request.user.is_staff:
+        raise Http404
+
+    cat_instance = get_object_or_404(
+        ScoreCategoryInstance.objects.select_related("score_category"),
+        event=event,
+        score_category_id=category_id,
+        released=True,
+    )
+
+    team_class_id = request.GET.get("class")
+
+    event_teams_qs = (
+        EventTeam.objects
+        .select_related("team", "team__team_class")
+        .filter(event=event)
+    )
+    if team_class_id:
+        event_teams_qs = event_teams_qs.filter(team__team_class_id=team_class_id)
+
+    # Order by category score desc
+    cat_scores_qs = ScoreCategoryScore.objects.filter(
+        category_instance=cat_instance
+    ).values("team_id", "score")
+    cat_score_map = {row["team_id"]: row["score"] for row in cat_scores_qs}
+
+    event_teams = sorted(
+        list(event_teams_qs),
+        key=lambda et: cat_score_map.get(et.team_id) or 0,
+        reverse=True,
+    )
+
+    sub_instances = list(
+        ScoreSubCategoryInstance.objects
+        .select_related("score_subcategory")
+        .filter(category_instance=cat_instance, released=True)
+        .order_by("score_subcategory__subcategory_name")
+    )
+
+    team_ids = [et.team_id for et in event_teams]
+    sub_scores_qs = ScoreSubCategoryScore.objects.filter(
+        subcategory__category_instance=cat_instance,
+        subcategory__released=True,
+        team_id__in=team_ids,
+    )
+    # {team_id: {sub_inst_id: score}}
+    sub_matrix = defaultdict(dict)
+    for ss in sub_scores_qs:
+        sub_matrix[ss.team_id][ss.subcategory_id] = ss.score
+
+    classes = (
+        TeamClass.objects
+        .filter(teams__event_teams__event=event)
+        .distinct()
+        .order_by("name")
+    )
+
+    context = {
+        "event": event,
+        "cat_instance": cat_instance,
+        "event_teams": event_teams,
+        "sub_instances": sub_instances,
+        "cat_score_map": cat_score_map,
+        "sub_matrix": dict(sub_matrix),
+        "classes": classes,
+        "selected_class": team_class_id,
+        "active_page": "events",
+    }
+    return render(request, "events/event_category_breakdown.html", context)
+
+
+@log_view
+@cache_page(300)
+def team_score_history(request, team_id):
+    team = get_object_or_404(Team, pk=team_id)
+
+    events = list(
+        Event.objects
+        .filter(event_teams__team=team, scores_released=True)
+        .order_by("event_datetime")
+        .distinct()
+    )
+
+    if not events:
+        return render(request, "events/team_score_history.html", {
+            "team": team,
+            "events": [],
+            "cat_instances_by_event": {},
+            "score_matrix": {},
+            "total_scores": {},
+            "active_page": "events",
+        })
+
+    # All category instances across these events (released only)
+    cat_instances_qs = (
+        ScoreCategoryInstance.objects
+        .select_related("score_category")
+        .filter(event__in=events, released=True)
+        .order_by("display_order")
+    )
+    # {event_id: [cat_instances]}
+    cat_instances_by_event = defaultdict(list)
+    all_cat_instances = list(cat_instances_qs)
+    for ci in all_cat_instances:
+        cat_instances_by_event[ci.event_id].append(ci)
+
+    # Distinct categories across all events (for column headers)
+    seen = {}
+    all_categories = []
+    for ci in all_cat_instances:
+        cid = ci.score_category_id
+        if cid not in seen:
+            seen[cid] = ci.score_category
+            all_categories.append(ci.score_category)
+
+    # Category scores: {event_id: {category_id: score}}
+    cat_scores_qs = ScoreCategoryScore.objects.filter(
+        team=team,
+        category_instance__event__in=events,
+        category_instance__released=True,
+    ).select_related("category_instance__score_category")
+    score_matrix = defaultdict(dict)
+    for cs in cat_scores_qs:
+        score_matrix[cs.category_instance.event_id][cs.category_instance.score_category_id] = cs.score
+
+    # Total scores per event
+    total_scores = {
+        et.event_id: et.total_score
+        for et in EventTeam.objects.filter(team=team, event__in=events)
+    }
+
+    context = {
+        "team": team,
+        "events": events,
+        "all_categories": all_categories,
+        "cat_instances_by_event": dict(cat_instances_by_event),
+        "score_matrix": dict(score_matrix),
+        "total_scores": total_scores,
+        "active_page": "events",
+    }
+    return render(request, "events/team_score_history.html", context)
+
+
+@log_view
+@cache_page(300)
+def category_leaderboard(request, category_id):
+    category = get_object_or_404(ScoreCategory, pk=category_id)
+
+    released_filter = Q(event__scores_released=True)
+    if request.user.is_staff:
+        released_filter = Q()
+
+    cat_instances = list(
+        ScoreCategoryInstance.objects
+        .select_related("event")
+        .filter(released_filter, score_category=category, released=True)
+        .order_by("-event__event_datetime")
+    )
+
+    if not cat_instances:
+        return render(request, "events/category_leaderboard.html", {
+            "category": category,
+            "cat_instances": [],
+            "rows": [],
+            "active_page": "events",
+        })
+
+    # All scores for these instances
+    cat_scores_qs = (
+        ScoreCategoryScore.objects
+        .select_related("team", "category_instance__event")
+        .filter(category_instance__in=cat_instances)
+        .order_by("category_instance__event__event_datetime")
+    )
+
+    # {cat_instance_id: [scores sorted by score desc]}
+    scores_by_instance = defaultdict(list)
+    for cs in cat_scores_qs:
+        scores_by_instance[cs.category_instance_id].append(cs)
+    for lst in scores_by_instance.values():
+        lst.sort(key=lambda x: x.score or 0, reverse=True)
+
+    # Per-team normalized average across all events
+    # {team_id: {"team": team, "scores": {cat_instance_id: score}, "avg_pct": float}}
+    team_data = {}
+    for cs in cat_scores_qs:
+        tid = cs.team_id
+        if tid not in team_data:
+            team_data[tid] = {"team": cs.team, "scores": {}, "total_pct": 0.0, "count": 0}
+        pct = (cs.score / cs.category_instance.max_points * 100) if cs.category_instance.max_points and cs.score is not None else None
+        team_data[tid]["scores"][cs.category_instance_id] = {"score": cs.score, "pct": pct}
+        if pct is not None:
+            team_data[tid]["total_pct"] += pct
+            team_data[tid]["count"] += 1
+
+    for td in team_data.values():
+        td["avg_pct"] = td["total_pct"] / td["count"] if td["count"] else 0
+
+    rows = sorted(team_data.values(), key=lambda x: x["avg_pct"], reverse=True)
+
+    context = {
+        "category": category,
+        "cat_instances": cat_instances,
+        "scores_by_instance": dict(scores_by_instance),
+        "rows": rows,
+        "active_page": "events",
+    }
+    return render(request, "events/category_leaderboard.html", context)
 
 
 @csrf_exempt

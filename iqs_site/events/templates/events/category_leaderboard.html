@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% load static dict_extras %}
+
+{% block title %}{{ category.category_name }} – All-Time Leaderboard{% endblock %}
+
+{% block extra_styles %}
+  .breadcrumbs {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .breadcrumbs a { color: #9ca3af; }
+
+  .hero {
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0f172a;
+    border: 1px solid #1f2937;
+    margin-bottom: 1.25rem;
+  }
+  .hero h1 { margin: 0 0 0.2rem; font-size: 1.4rem; }
+  .hero-meta { font-size: 0.9rem; color: #9ca3af; }
+
+  .table-wrapper {
+    overflow-x: auto;
+    border-radius: 0.75rem;
+    border: 1px solid #1f2937;
+    margin-bottom: 1.5rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #020617;
+    min-width: 500px;
+  }
+  th, td {
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid #1f2937;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  th {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #9ca3af;
+    background: #030712;
+    text-align: right;
+  }
+  th:first-child, th:nth-child(2) { text-align: left; }
+  td { text-align: right; }
+  td:first-child, td:nth-child(2) { text-align: left; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(even) { background: #0b1220; }
+  tbody tr:hover { background: #101c30; }
+
+  .rank-cell { color: #6b7280; }
+  .team-link { color: #f3f6e7; text-decoration: none; }
+  .team-link:hover { color: #93c5fd; }
+  .avg-cell { font-weight: 700; color: #93c5fd; }
+  .max-hint { font-size: 0.72rem; color: #4b5563; }
+  .pct-bar-bg {
+    height: 4px;
+    background: #1f2937;
+    border-radius: 2px;
+    margin-top: 3px;
+    width: 60px;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  .pct-bar-fill {
+    height: 100%;
+    background: #3b82f6;
+    border-radius: 2px;
+  }
+  .empty { font-size: 0.9rem; color: #9ca3af; }
+{% endblock %}
+
+{% block content %}
+
+  <div class="breadcrumbs">
+    <a href="{% url 'events:event_list' %}">Events</a>
+    <span>›</span>
+    <span>{{ category.category_name }} Leaderboard</span>
+  </div>
+
+  <section class="hero">
+    <h1>{{ category.category_name }}</h1>
+    <div class="hero-meta">All-time rankings by normalized score (score ÷ max × 100)</div>
+  </section>
+
+  {% if rows %}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:left;">#</th>
+            <th style="text-align:left; min-width:160px;">Team</th>
+            {% for ci in cat_instances %}
+              <th>
+                <a href="{% url 'events:event_category_breakdown' ci.event_id category.score_category_id %}"
+                   style="color:#9ca3af; text-decoration:none;">
+                  {{ ci.event.event_name }}
+                </a>
+                <br><span class="max-hint">/ {{ ci.max_points }}</span>
+              </th>
+            {% endfor %}
+            <th>Avg %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            <tr>
+              <td class="rank-cell">{{ forloop.counter }}</td>
+              <td>
+                <a class="team-link" href="{% url 'events:team_detail' row.team.team_id %}">
+                  {{ row.team.team_name }}
+                </a>
+                &nbsp;<a href="{% url 'events:team_score_history' row.team.team_id %}"
+                          style="font-size:0.72rem;color:#6b7280;text-decoration:none;"
+                          title="Score history">hist</a>
+              </td>
+              {% for ci in cat_instances %}
+                {% with entry=row.scores|get_item:ci.pk %}
+                  <td>
+                    {% if entry %}
+                      {{ entry.score|floatformat:1 }}
+                      {% if entry.pct is not None %}
+                        <br><span class="max-hint">{{ entry.pct|floatformat:1 }}%</span>
+                      {% endif %}
+                    {% else %}
+                      —
+                    {% endif %}
+                  </td>
+                {% endwith %}
+              {% endfor %}
+              <td class="avg-cell">
+                {{ row.avg_pct|floatformat:1 }}%
+                <span class="pct-bar-bg">
+                  <span class="pct-bar-fill" style="width:{{ row.avg_pct|floatformat:0 }}%;"></span>
+                </span>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty">No score data available for this category yet.</p>
+  {% endif %}
+
+{% endblock %}

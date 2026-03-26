@@ -124,9 +124,11 @@ CSV_CONFIGS = [
 NAME_ALIASES = {
     "purdue university": "purdue",
     "université laval": "université laval",
+    "universite laval": "université laval",
     "university of laval": "université laval",
     "university of tennessee - martin": "university of tennessee martin",
     "university of wisconsin madison": "university of wisconsin-madison",
+    "university of wisconsin platteville": "university of wisconsin-platteville",
 }
 
 

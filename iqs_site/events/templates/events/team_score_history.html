@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% load static dict_extras %}
+
+{% block title %}{{ team.team_name }} – Score History{% endblock %}
+
+{% block extra_styles %}
+  .breadcrumbs {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .breadcrumbs a { color: #9ca3af; }
+
+  .hero {
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0f172a;
+    border: 1px solid #1f2937;
+    margin-bottom: 1.25rem;
+  }
+  .hero h1 { margin: 0 0 0.2rem; font-size: 1.4rem; }
+  .hero-meta { font-size: 0.9rem; color: #9ca3af; }
+
+  .table-wrapper {
+    overflow-x: auto;
+    border-radius: 0.75rem;
+    border: 1px solid #1f2937;
+    margin-bottom: 1.5rem;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #020617;
+    min-width: 500px;
+  }
+  th, td {
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid #1f2937;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+  th {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #9ca3af;
+    background: #030712;
+    text-align: right;
+  }
+  th:first-child { text-align: left; }
+  td { text-align: right; }
+  td:first-child { text-align: left; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(even) { background: #0b1220; }
+  tbody tr:hover { background: #101c30; }
+
+  .event-link { color: #f3f6e7; text-decoration: none; }
+  .event-link:hover { color: #93c5fd; }
+  .total-cell { font-weight: 700; color: #f3f6e7; }
+  .max-hint { font-size: 0.72rem; color: #4b5563; }
+
+  .chart-card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .chart-card h3 { margin: 0 0 0.75rem; font-size: 1rem; }
+  canvas { width: 100%; max-width: 100%; height: 260px; }
+
+  .empty { font-size: 0.9rem; color: #9ca3af; }
+{% endblock %}
+
+{% block extra_head %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+
+  <div class="breadcrumbs">
+    <a href="{% url 'events:team_list' %}">Teams</a>
+    <span>›</span>
+    <a href="{% url 'events:team_detail' team.team_id %}">{{ team.team_name }}</a>
+    <span>›</span>
+    <span>Score History</span>
+  </div>
+
+  <section class="hero">
+    <h1>{{ team.team_name }}</h1>
+    <div class="hero-meta">Score history across all events</div>
+  </section>
+
+  {% if events %}
+
+    <!-- Total score chart -->
+    <div class="chart-card">
+      <h3>Total Score by Year</h3>
+      <canvas id="totalChart"></canvas>
+    </div>
+
+    <!-- Category breakdown table -->
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:left; min-width:120px;">Event</th>
+            {% for cat in all_categories %}
+              <th>{{ cat.category_name }}</th>
+            {% endfor %}
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for event in events %}
+            <tr>
+              <td>
+                <a class="event-link" href="{% url 'events:team_event_detail' event.event_id team.team_id %}">
+                  {{ event.event_name }}
+                </a>
+              </td>
+              {% with event_scores=score_matrix|get_item:event.event_id %}
+                {% for cat in all_categories %}
+                  {% with score=event_scores|get_item:cat.score_category_id %}
+                    <td>{% if score is not None %}{{ score|floatformat:1 }}{% else %}—{% endif %}</td>
+                  {% endwith %}
+                {% endfor %}
+              {% endwith %}
+              <td class="total-cell">
+                {% with tot=total_scores|get_item:event.event_id %}
+                  {% if tot is not None %}{{ tot|floatformat:2 }}{% else %}—{% endif %}
+                {% endwith %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  {% else %}
+    <p class="empty">No score data available for this team yet.</p>
+  {% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+{% if events %}
+<script>
+  const labels = [{% for e in events %}"{{ e.event_name }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+
+  // One dataset per category; each dataset has one value per event
+  const categoryData = [
+    {% for cat in all_categories %}
+    {
+      label: "{{ cat.category_name }}",
+      data: [{% for e in events %}{% with s=score_matrix|get_item:e.event_id %}{% with v=s|get_item:cat.score_category_id %}{% if v is not None %}{{ v }}{% else %}null{% endif %}{% endwith %}{% endwith %}{% if not forloop.last %},{% endif %}{% endfor %}],
+    },
+    {% endfor %}
+  ];
+
+  // Distinct colors for up to 8 categories
+  const palette = [
+    ['rgba(59,130,246,0.75)',  'rgba(59,130,246,1)'],
+    ['rgba(16,185,129,0.75)', 'rgba(16,185,129,1)'],
+    ['rgba(245,158,11,0.75)', 'rgba(245,158,11,1)'],
+    ['rgba(239,68,68,0.75)',  'rgba(239,68,68,1)'],
+    ['rgba(139,92,246,0.75)', 'rgba(139,92,246,1)'],
+    ['rgba(236,72,153,0.75)', 'rgba(236,72,153,1)'],
+    ['rgba(20,184,166,0.75)', 'rgba(20,184,166,1)'],
+    ['rgba(251,146,60,0.75)', 'rgba(251,146,60,1)'],
+  ];
+
+  const datasets = categoryData.map((cat, i) => ({
+    label: cat.label,
+    data: cat.data,
+    backgroundColor: palette[i % palette.length][0],
+    borderColor: palette[i % palette.length][1],
+    borderWidth: 1,
+    borderRadius: 3,
+  }));
+
+  new Chart(document.getElementById('totalChart').getContext('2d'), {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: { color: '#9ca3af', boxWidth: 12, padding: 14 },
+        },
+        tooltip: {
+          callbacks: {
+            footer: (items) => {
+              const sum = items.reduce((a, i) => a + (i.parsed.y || 0), 0);
+              return 'Total: ' + sum.toFixed(1);
+            }
+          }
+        }
+      },
+      scales: {
+        x: { stacked: true, grid: { color: '#1f2937' }, ticks: { color: '#9ca3af' } },
+        y: { stacked: true, beginAtZero: true, grid: { color: '#1f2937' }, ticks: { color: '#9ca3af' } },
+      }
+    }
+  });
+</script>
+{% endif %}
+{% endblock %}

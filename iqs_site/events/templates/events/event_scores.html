@@ -145,7 +145,10 @@
             {% for ci in cat_instances %}
               <th>
                 <div class="cat-header">
-                  <span>{{ ci.score_category.category_name }}</span>
+                  <a href="{% url 'events:event_category_breakdown' event.event_id ci.score_category_id %}"
+                     style="color:#9ca3af; text-decoration:none;">
+                    {{ ci.score_category.category_name }}
+                  </a>
                   <span class="max-hint">/ {{ ci.max_points }}</span>
                 </div>
               </th>
