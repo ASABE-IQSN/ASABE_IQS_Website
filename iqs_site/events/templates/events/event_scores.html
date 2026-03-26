@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+{% load static dict_extras %}
+
+{% block title %}{{ event.event_name }} – Scores{% endblock %}
+
+{% block extra_styles %}
+  .breadcrumbs {
+    font-size: 0.8rem;
+    color: #9ca3af;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .breadcrumbs a { color: #9ca3af; }
+
+  .hero {
+    padding: 1rem 1.25rem;
+    border-radius: 0.9rem;
+    background: #0f172a;
+    border: 1px solid #1f2937;
+    margin-bottom: 1.25rem;
+  }
+
+  .hero h1 { margin: 0 0 0.25rem; font-size: 1.5rem; }
+  .hero-meta { font-size: 0.9rem; color: #9ca3af; }
+
+  /* Class filter tabs */
+  .class-tabs {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.25rem;
+  }
+
+  .class-tab {
+    padding: 0.3rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid #1f2937;
+    background: #0b1120;
+    color: #9ca3af;
+    font-size: 0.82rem;
+    text-decoration: none;
+    transition: border-color 0.15s, color 0.15s;
+  }
+
+  .class-tab:hover { border-color: #374151; color: #f3f6e7; }
+
+  .class-tab.active {
+    border-color: #3b82f6;
+    color: #93c5fd;
+    background: rgba(59,130,246,0.08);
+  }
+
+  /* Scrollable table wrapper */
+  .table-wrapper {
+    overflow-x: auto;
+    border-radius: 0.75rem;
+    border: 1px solid #1f2937;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #020617;
+    min-width: 600px;
+  }
+
+  th, td {
+    padding: 0.5rem 0.7rem;
+    border-bottom: 1px solid #1f2937;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  th {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: #9ca3af;
+    background: #030712;
+    text-align: right;
+  }
+
+  th:first-child { text-align: left; }
+
+  td { text-align: right; }
+  td:first-child { text-align: left; }
+
+  tr:last-child td { border-bottom: none; }
+  tbody tr:nth-child(even) { background: #0b1220; }
+  tbody tr:hover { background: #101c30; }
+
+  .rank-cell { color: #6b7280; width: 2rem; }
+  .team-cell { font-weight: 500; }
+  .team-cell a { color: #f3f6e7; text-decoration: none; }
+  .team-cell a:hover { color: #93c5fd; }
+  .total-cell { font-weight: 700; color: #f3f6e7; }
+  .score-cell { color: #d1d5db; }
+  .max-hint { font-size: 0.72rem; color: #4b5563; }
+
+  /* Header row with max pts below category name */
+  .cat-header { display: flex; flex-direction: column; align-items: flex-end; gap: 0.1rem; }
+
+  .empty { font-size: 0.9rem; color: #9ca3af; margin-top: 1rem; }
+{% endblock %}
+
+{% block content %}
+
+  <!-- Breadcrumbs -->
+  <div class="breadcrumbs">
+    <a href="{% url 'events:event_list' %}">Events</a>
+    <span>›</span>
+    <a href="{% url 'events:event_detail' event.event_id %}">{{ event.event_name }}</a>
+    <span>›</span>
+    <span>Scores</span>
+  </div>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1>{{ event.event_name }}</h1>
+    <div class="hero-meta">Score breakdown by category</div>
+  </section>
+
+  <!-- Class filter tabs -->
+  <div class="class-tabs">
+    <a href="{% url 'events:event_scores' event.event_id %}"
+       class="class-tab {% if not selected_class %}active{% endif %}">All</a>
+    {% for cls in classes %}
+      <a href="{% url 'events:event_scores' event.event_id %}?class={{ cls.team_class_id }}"
+         class="class-tab {% if selected_class == cls.team_class_id|stringformat:'s' %}active{% endif %}">
+        {{ cls.name }}
+      </a>
+    {% endfor %}
+  </div>
+
+  {% if event_teams %}
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th style="text-align:left; min-width: 2rem;">#</th>
+            <th style="text-align:left; min-width: 160px;">Team</th>
+            {% for ci in cat_instances %}
+              <th>
+                <div class="cat-header">
+                  <span>{{ ci.score_category.category_name }}</span>
+                  <span class="max-hint">/ {{ ci.max_points }}</span>
+                </div>
+              </th>
+            {% endfor %}
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for et in event_teams %}
+            <tr>
+              <td class="rank-cell">{{ forloop.counter }}</td>
+              <td class="team-cell">
+                <a href="{% url 'events:team_event_detail' event.event_id et.team_id %}">
+                  {{ et.team.team_name }}
+                </a>
+                {% if et.team.team_class %}
+                  <span style="font-size:0.72rem; color:#6b7280; margin-left:0.3rem;">{{ et.team.team_class.name }}</span>
+                {% endif %}
+              </td>
+              {% for ci in cat_instances %}
+                <td class="score-cell">
+                  {% with score=score_matrix|get_item:et.team_id|get_item:ci.pk %}
+                    {% if score is not None %}{{ score|floatformat:1 }}{% else %}—{% endif %}
+                  {% endwith %}
+                </td>
+              {% endfor %}
+              <td class="total-cell">{{ et.total_score|floatformat:2|default:"—" }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty">No teams found for this event.</p>
+  {% endif %}
+
+{% endblock %}

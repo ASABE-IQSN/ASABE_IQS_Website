@@ -22,6 +22,7 @@ from .models import (
     ScoreCategoryInstance,
     ScoreSubCategoryInstance,
     ScoreSubCategoryScore,
+    ScoreCategoryScore,
     EditLog,
 )
 from django.db.models import Q
@@ -212,9 +213,10 @@ class ScoreSubCategoryScoreAdmin(admin.ModelAdmin):
         "score_subcategory_score_id",
         "team",
         "subcategory",
+        "score",
     )
 
-    list_filter = ("team", "subcategory__event")
+    list_filter = ("subcategory__event",)
     search_fields = (
         "team__team_name",
         "subcategory__score_subcategory__subcategory_name",
@@ -222,6 +224,25 @@ class ScoreSubCategoryScoreAdmin(admin.ModelAdmin):
     )
 
     ordering = ("subcategory__event", "team")
+
+
+@admin.register(ScoreCategoryScore)
+class ScoreCategoryScoreAdmin(admin.ModelAdmin):
+    list_display = (
+        "score_category_score_id",
+        "team",
+        "category_instance",
+        "score",
+    )
+
+    list_filter = ("category_instance__event",)
+    search_fields = (
+        "team__team_name",
+        "category_instance__score_category__category_name",
+        "category_instance__event__event_name",
+    )
+
+    ordering = ("category_instance__event", "team")
 
 
 from .models import DurabilityRun, DurabilityData, PerformanceEventMedia

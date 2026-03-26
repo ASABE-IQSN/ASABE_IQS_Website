@@ -36,6 +36,7 @@ from django.urls import reverse
 
 
 from .models import DurabilityRun, DurabilityData, ManeuverabilityRun, PerformanceEventMedia
+from .models import ScoreCategoryInstance, ScoreCategoryScore, ScoreSubCategoryScore
 from .models import Tractor, TractorInfo
 from .forms import TractorProfileEditForm
 from .permissions import can_edit_tractor
@@ -357,11 +358,11 @@ def team_event_detail(request, event_id, team_id):
         .first()
     )
 
-    # Top 3 standings for this event
+    # Top 3 standings for this event, filtered to the same class as this team
     top3 = (
         EventTeam.objects
         .select_related("team")
-        .filter(event=event)
+        .filter(event=event, team__team_class=team.team_class)
         .order_by("-total_score")[:3]
     )
     team_in_top3 = any(et.team_id == team.team_id for et in top3)
@@ -453,6 +454,31 @@ def team_event_detail(request, event_id, team_id):
             .order_by('display_order')
         )
 
+    # Score breakdown for this team
+    cat_scores = (
+        ScoreCategoryScore.objects
+        .select_related("category_instance__score_category")
+        .filter(category_instance__event=event, team=team)
+        .order_by("category_instance__display_order")
+    )
+    sub_scores = (
+        ScoreSubCategoryScore.objects
+        .select_related("subcategory__score_subcategory", "subcategory__category_instance")
+        .filter(subcategory__event=event, team=team)
+        .order_by(
+            "subcategory__category_instance__display_order",
+            "subcategory__score_subcategory__subcategory_name",
+        )
+    )
+    # Build ordered dict: {cat_instance_id: {"cat": cat_score, "subs": [sub_score, ...]}}
+    score_breakdown = {}
+    for cs in cat_scores:
+        score_breakdown[cs.category_instance_id] = {"cat": cs, "subs": []}
+    for ss in sub_scores:
+        cat_id = ss.subcategory.category_instance_id
+        if cat_id in score_breakdown:
+            score_breakdown[cat_id]["subs"].append(ss)
+
     context = {
         "team": team,
         "event": event,
@@ -472,6 +498,7 @@ def team_event_detail(request, event_id, team_id):
         "reports":reports,
         "can_edit": request.user.is_authenticated and can_edit_team(request.user, team),
         "event_awards": event_awards,
+        "score_breakdown": score_breakdown,
     }
     return render(request, "events/team_event_detail.html", context)
 
@@ -479,15 +506,68 @@ def team_event_detail(request, event_id, team_id):
 def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+@log_view
+@cache_page(300)
+def event_scores(request, event_id):
+    event = get_object_or_404(Event, pk=event_id)
+    team_class_id = request.GET.get("class")
+
+    event_teams_qs = (
+        EventTeam.objects
+        .select_related("team", "team__team_class")
+        .filter(event=event)
+        .order_by("team__team_class__name", "-total_score")
+    )
+    if team_class_id:
+        event_teams_qs = event_teams_qs.filter(team__team_class_id=team_class_id)
+
+    event_teams = list(event_teams_qs)
+
+    cat_instances = list(
+        ScoreCategoryInstance.objects
+        .select_related("score_category")
+        .filter(event=event)
+        .order_by("display_order")
+    )
+
+    team_ids = [et.team_id for et in event_teams]
+    cat_scores = ScoreCategoryScore.objects.filter(
+        category_instance__event=event,
+        team_id__in=team_ids,
+    )
+    # {team_id: {cat_instance_id: score}}
+    score_matrix = defaultdict(dict)
+    for cs in cat_scores:
+        score_matrix[cs.team_id][cs.category_instance_id] = cs.score
+
+    classes = (
+        TeamClass.objects
+        .filter(teams__event_teams__event=event)
+        .distinct()
+        .order_by("name")
+    )
+
+    context = {
+        "event": event,
+        "event_teams": event_teams,
+        "cat_instances": cat_instances,
+        "score_matrix": dict(score_matrix),
+        "classes": classes,
+        "selected_class": team_class_id,
+        "active_page": "events",
+    }
+    return render(request, "events/event_scores.html", context)
+
+
 @csrf_exempt
 @require_POST
 def upload_team_photo(request, event_id, team_id):
     print("Uploaded Photo")
-    approved = False
-    approved = request.user.is_authenticated and request.user.has_perm("events.can_auto_approve_team_photos")
     # Look up event & team so we can 404 nicely if bad IDs
     event = get_object_or_404(Event, pk=event_id)
     team = get_object_or_404(Team, pk=team_id)
+    approved = can_edit_team(request.user, team)
 
     # Find EventTeam record
     event_team = (
@@ -1297,7 +1377,7 @@ def tractor_profile_edit(request, tractor_id: int):
             # Handle photo upload if present
             photo_file = request.FILES.get("photo")
             if photo_file and photo_file.name:
-                approved = request.user.has_perm("events.can_auto_approve_tractor_media")
+                approved = can_edit_tractor(request.user, tractor)
 
                 # Get client IP
                 xff = request.META.get("HTTP_X_FORWARDED_FOR")
@@ -1372,7 +1452,7 @@ def _upload_performance_photo(request, team, event_type, event_id, redirect_view
         messages.error(request, "Invalid file type. Please upload an image (png, jpg, jpeg, gif, webp).")
         return redirect(redirect_view, redirect_arg)
 
-    approved = request.user.has_perm("events.can_auto_approve_performance_media")
+    approved = can_edit_team(request.user, team)
 
     xff = request.META.get("HTTP_X_FORWARDED_FOR")
     ip = xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")

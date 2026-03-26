@@ -31,4 +31,5 @@ urlpatterns = [
     path("photo_all",views.all_photos,name="photos"),
     path("team-event/<int:event_id>/<int:team_id>/edit/", views.team_event_edit, name="team_event_edit"),
     path("team-event/<int:event_id>/<int:team_id>/upload-report/", views.upload_report, name="upload_report"),
+    path("events/<int:event_id>/scores/", views.event_scores, name="event_scores"),
 ]

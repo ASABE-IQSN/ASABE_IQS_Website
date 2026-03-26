@@ -489,7 +489,7 @@
   <section class="grid">
     <!-- Left: comparison vs top 3 -->
     <div class="card">
-      <h3>Event Standings (Top 3)</h3>
+      <h3>{{ team.team_class }} Standings (Top 3)</h3>
       {% if top3 %}
         <table>
           <thead>
@@ -541,6 +541,49 @@
       {% endif %}
     </div>
   </section>
+
+  <!-- Score Breakdown -->
+  {% if score_breakdown %}
+  <section class="card" style="margin-top: 1.5rem;">
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+      <h3 style="margin: 0;">Score Breakdown</h3>
+      <a href="{% url 'events:event_scores' event.event_id %}?class={{ team.team_class_id }}"
+         style="font-size: 0.8rem; color: #9ca3af; text-decoration: none; border: 1px solid #1f2937; padding: 0.25rem 0.6rem; border-radius: 999px;">
+        Full event scores &rarr;
+      </a>
+    </div>
+    <table style="margin-bottom: 0;">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th style="text-align: right;">Score</th>
+          <th style="text-align: right;">Max</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for cat_id, data in score_breakdown.items %}
+          <tr>
+            <td style="font-weight: 600;">{{ data.cat.category_instance.score_category.category_name }}</td>
+            <td style="text-align: right;">{{ data.cat.score|floatformat:1 }}</td>
+            <td style="text-align: right; color: #6b7280;">{{ data.cat.category_instance.max_points }}</td>
+          </tr>
+          {% for ss in data.subs %}
+            <tr style="background: transparent;">
+              <td style="padding-left: 1.75rem; color: #9ca3af; font-size: 0.85rem;">{{ ss.subcategory.score_subcategory.subcategory_name }}</td>
+              <td style="text-align: right; font-size: 0.85rem; color: #9ca3af;">{{ ss.score|floatformat:1 }}</td>
+              <td style="text-align: right; font-size: 0.85rem; color: #4b5563;">{{ ss.subcategory.max_points }}</td>
+            </tr>
+          {% endfor %}
+        {% endfor %}
+        <tr style="border-top: 1px solid #374151; font-weight: 700;">
+          <td>Total</td>
+          <td style="text-align: right;">{{ event_team.total_score|floatformat:2 }}</td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+  {% endif %}
 
   <!-- Pulls table + chart -->
   <section style="margin-top: 1.5rem;">

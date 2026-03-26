@@ -494,7 +494,7 @@ class ScoreCategory(models.Model):
         return self.category_name
 
     class Meta:
-        managed=False
+        managed=True
         db_table="score_categories"
 
 class ScoreSubCategory(models.Model):
@@ -505,7 +505,7 @@ class ScoreSubCategory(models.Model):
         return self.subcategory_name
 
     class Meta:
-        managed=False
+        managed=True
         db_table="score_subcategories"
 
 class ScoreCategoryInstance(models.Model):
@@ -514,10 +514,11 @@ class ScoreCategoryInstance(models.Model):
     event=models.ForeignKey(Event,models.DO_NOTHING,db_column="event_id",related_name="score_category_instances",to_field="event_id",)
     max_points=models.IntegerField()
     released=models.BooleanField()
+    display_order=models.IntegerField(default=0)
     def __str__(self):
         return f"{self.event} - {self.score_category}"
     class Meta:
-        managed=False
+        managed=True
         db_table="score_category_instances"
 
 class ScoreSubCategoryInstance(models.Model):
@@ -526,23 +527,47 @@ class ScoreSubCategoryInstance(models.Model):
     event=models.ForeignKey(Event,models.DO_NOTHING,db_column="event_id",related_name="score_subcategory_instances")
     max_points=models.IntegerField()
     released=models.BooleanField()
+    category_instance=models.ForeignKey(
+        ScoreCategoryInstance,
+        models.DO_NOTHING,
+        db_column="category_instance_id",
+        related_name="subcategory_instances",
+        null=True,
+        blank=True,
+        db_constraint=False,
+    )
 
     def __str__(self):
         return f"{self.event} - {self.score_subcategory}"
     class Meta:
-        managed=False
+        managed=True
         db_table="score_subcategory_instances"
 
 class ScoreSubCategoryScore(models.Model):
     score_subcategory_score_id=models.AutoField(primary_key=True)
     team=models.ForeignKey(Team,models.DO_NOTHING,db_column="team_id",related_name="event_score_subcategory_scores")
     subcategory=models.ForeignKey(ScoreSubCategoryInstance,models.DO_NOTHING,db_column="subcategory_instance_id",related_name="team_scores")
+    score=models.FloatField(null=True,blank=True)
     def __str__(self):
         return f"{self.team} → {self.subcategory}"
-    
+
     class Meta:
-        managed=False
+        managed=True
         db_table="score_subcategory_scores"
+
+class ScoreCategoryScore(models.Model):
+    score_category_score_id=models.AutoField(primary_key=True)
+    team=models.ForeignKey(Team,models.DO_NOTHING,db_column="team_id",related_name="category_scores",db_constraint=False)
+    category_instance=models.ForeignKey(ScoreCategoryInstance,models.DO_NOTHING,db_column="category_instance_id",related_name="team_scores",db_constraint=False)
+    score=models.FloatField()
+
+    def __str__(self):
+        return f"{self.team} → {self.category_instance} ({self.score})"
+
+    class Meta:
+        managed=True
+        db_table="score_category_scores"
+        unique_together=[["team","category_instance"]]
 
 class DurabilityRun(models.Model):
     durability_run_id = models.AutoField(primary_key=True)
