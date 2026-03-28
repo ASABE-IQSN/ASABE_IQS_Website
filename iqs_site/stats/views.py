@@ -11,16 +11,19 @@ from django.contrib.admin.models import LogEntry
 from django.contrib.auth.decorators import user_passes_test
 from iqs_site.utilities import log_view
 from django.contrib.auth.models import User
-from django.db.models import Avg, Count, Max, Min, Sum
-from django.db.models.functions import TruncDate
+from django.db.models import Avg, Count, F, Max, Min, Sum
+from django.db.models.functions import ExtractYear, TruncDate
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
-from events.models import EditLog, EventTeamPhoto, PerformanceEventMedia, TractorMedia
-from stats.models import IPGeoCache, NginxLog, PageSession
+from events.models import (
+    DurabilityData, EditLog, EventTeam, EventTeamPhoto,
+    PerformanceEventMedia, Pull, PullData, ScoreCategoryScore, TractorMedia,
+)
+from stats.models import IPGeoCache, NginxLog, PageSession, SavedGraphConfig
 from users.models import GroupProfile, TeamEnrollmentRequest, View as PageView
 
 
@@ -1205,6 +1208,464 @@ def test_series_api(request):
             series[m] = {"timestamps": [], "values": [], "label": m}
     print(series)
     return JsonResponse({"series": series})
+
+
+# ---------------------------------------------------------------------------
+# Data Explorer
+# ---------------------------------------------------------------------------
+
+EXPLORE_SOURCES = {
+    "pull_telemetry": {
+        "label": "Pull Telemetry",
+        "fields": {
+            "distance":    {"label": "Distance (ft)",     "unit": "ft"},
+            "chain_force": {"label": "Chain Force (lbf)", "unit": "lbf"},
+            "speed":       {"label": "Speed (ft/s)",      "unit": "ft/s"},
+            "pull_time":   {"label": "Pull Time (s)",     "unit": "s"},
+            "event_year":  {"label": "Event Year",        "unit": "yr"},
+        },
+        "group_by_options": {
+            "none":       "None",
+            "pull":       "Pull",
+            "team":       "Team",
+            "event":      "Event",
+            "event_year": "Event Year",
+            "tractor":    "Tractor",
+            "hook":       "Hook",
+        },
+    },
+    "pull_aggregate": {
+        "label": "Pull Results",
+        "fields": {
+            "final_distance": {"label": "Final Distance (ft)", "unit": "ft"},
+            "event_year":     {"label": "Event Year",          "unit": "yr"},
+        },
+        "group_by_options": {
+            "none":       "None",
+            "team":       "Team",
+            "event":      "Event",
+            "event_year": "Event Year",
+            "tractor":    "Tractor",
+            "hook":       "Hook",
+        },
+    },
+    "scores": {
+        "label": "Scores",
+        "fields": {
+            "total_score":    {"label": "Total Score (pts)", "unit": "pts"},
+            "category_score": {"label": "Category Score",   "unit": "pts"},
+            "event_year":     {"label": "Event Year",       "unit": "yr"},
+        },
+        "group_by_options": {
+            "none":       "None",
+            "team":       "Team",
+            "event":      "Event",
+            "event_year": "Event Year",
+            "category":   "Score Category",
+        },
+    },
+    "durability": {
+        "label": "Durability",
+        "fields": {
+            "speed":      {"label": "Speed (ft/s)",   "unit": "ft/s"},
+            "pressure":   {"label": "Pressure (psi)", "unit": "psi"},
+            "power":      {"label": "Power (W)",      "unit": "W"},
+            "total_laps": {"label": "Total Laps",     "unit": "laps"},
+            "event_year": {"label": "Event Year",     "unit": "yr"},
+        },
+        "group_by_options": {
+            "none":       "None",
+            "team":       "Team",
+            "event":      "Event",
+            "event_year": "Event Year",
+            "tractor":    "Tractor",
+        },
+    },
+}
+
+_MAX_POINTS_PER_GROUP = 1000
+_MAX_GROUPS = 100
+_MAX_TOTAL_ROWS = 100_000
+
+
+def _sample(lst, max_n):
+    """Return at most max_n evenly-spaced elements."""
+    if len(lst) <= max_n:
+        return lst
+    step = len(lst) / max_n
+    return [lst[int(i * step)] for i in range(max_n)]
+
+
+def _fetch_explore_rows(source, x_field, y_field, group_by, filters):
+    """Return list of (x_val, y_val, group_label) tuples for the given config."""
+    year_min = filters.get("year_min") or None
+    year_max = filters.get("year_max") or None
+    event_ids = [int(i) for i in (filters.get("event_ids") or []) if i]
+    team_ids  = [int(i) for i in (filters.get("team_ids")  or []) if i]
+
+    if source == "pull_telemetry":
+        qs = PullData.objects.annotate(
+            _yr=ExtractYear("pull__event__event_datetime"),
+            _team=F("pull__team__team_name"),
+            _event=F("pull__event__event_name"),
+            _tractor=F("pull__tractor__tractor_name"),
+            _hook=F("pull__hook__hook_name"),
+            _pid=F("pull__pull_id"),
+        )
+        if year_min:
+            qs = qs.filter(pull__event__event_datetime__year__gte=year_min)
+        if year_max:
+            qs = qs.filter(pull__event__event_datetime__year__lte=year_max)
+        if event_ids:
+            qs = qs.filter(pull__event__event_id__in=event_ids)
+        if team_ids:
+            qs = qs.filter(pull__team__team_id__in=team_ids)
+
+        field_map = {
+            "distance": "distance", "chain_force": "chain_force",
+            "speed": "speed", "pull_time": "pull_time", "event_year": "_yr",
+        }
+        group_fns = {
+            "none":       lambda r: "All",
+            "pull":       lambda r: f"{r['_team'] or '?'} \u2013 Pull {r['_pid']}",
+            "team":       lambda r: r["_team"] or "Unknown",
+            "event":      lambda r: r["_event"] or "Unknown",
+            "event_year": lambda r: str(r["_yr"]) if r["_yr"] else "Unknown",
+            "tractor":    lambda r: r["_tractor"] or "Unknown",
+            "hook":       lambda r: r["_hook"] or "Unknown",
+        }
+        val_fields = (
+            "distance", "chain_force", "speed", "pull_time",
+            "_yr", "_team", "_event", "_tractor", "_hook", "_pid",
+        )
+
+    elif source == "pull_aggregate":
+        qs = Pull.objects.annotate(
+            _yr=ExtractYear("event__event_datetime"),
+            _team=F("team__team_name"),
+            _event=F("event__event_name"),
+            _tractor=F("tractor__tractor_name"),
+            _hook=F("hook__hook_name"),
+        )
+        if year_min:
+            qs = qs.filter(event__event_datetime__year__gte=year_min)
+        if year_max:
+            qs = qs.filter(event__event_datetime__year__lte=year_max)
+        if event_ids:
+            qs = qs.filter(event__event_id__in=event_ids)
+        if team_ids:
+            qs = qs.filter(team__team_id__in=team_ids)
+
+        field_map = {
+            "final_distance": "final_distance",
+            "event_year":     "_yr",
+        }
+        group_fns = {
+            "none":       lambda r: "All",
+            "team":       lambda r: r["_team"] or "Unknown",
+            "event":      lambda r: r["_event"] or "Unknown",
+            "event_year": lambda r: str(r["_yr"]) if r["_yr"] else "Unknown",
+            "tractor":    lambda r: r["_tractor"] or "Unknown",
+            "hook":       lambda r: r["_hook"] or "Unknown",
+        }
+        val_fields = ("final_distance", "_yr", "_team", "_event", "_tractor", "_hook")
+
+    elif source == "scores":
+        use_category = (x_field == "category_score" or y_field == "category_score")
+        if use_category:
+            qs = ScoreCategoryScore.objects.annotate(
+                _yr=ExtractYear("category_instance__event__event_datetime"),
+                _team=F("team__team_name"),
+                _event=F("category_instance__event__event_name"),
+                _cat=F("category_instance__score_category__category_name"),
+            )
+            if year_min:
+                qs = qs.filter(
+                    category_instance__event__event_datetime__year__gte=year_min)
+            if year_max:
+                qs = qs.filter(
+                    category_instance__event__event_datetime__year__lte=year_max)
+            if event_ids:
+                qs = qs.filter(category_instance__event__event_id__in=event_ids)
+            if team_ids:
+                qs = qs.filter(team__team_id__in=team_ids)
+
+            field_map = {
+                "category_score": "score",
+                "event_year":     "_yr",
+            }
+            group_fns = {
+                "none":       lambda r: "All",
+                "team":       lambda r: r["_team"] or "Unknown",
+                "event":      lambda r: r["_event"] or "Unknown",
+                "event_year": lambda r: str(r["_yr"]) if r["_yr"] else "Unknown",
+                "category":   lambda r: r["_cat"] or "Unknown",
+            }
+            val_fields = ("score", "_yr", "_team", "_event", "_cat")
+        else:
+            qs = EventTeam.objects.annotate(
+                _yr=ExtractYear("event__event_datetime"),
+                _team=F("team__team_name"),
+                _event=F("event__event_name"),
+            )
+            if year_min:
+                qs = qs.filter(event__event_datetime__year__gte=year_min)
+            if year_max:
+                qs = qs.filter(event__event_datetime__year__lte=year_max)
+            if event_ids:
+                qs = qs.filter(event__event_id__in=event_ids)
+            if team_ids:
+                qs = qs.filter(team__team_id__in=team_ids)
+
+            field_map = {
+                "total_score": "total_score",
+                "event_year":  "_yr",
+            }
+            group_fns = {
+                "none":       lambda r: "All",
+                "team":       lambda r: r["_team"] or "Unknown",
+                "event":      lambda r: r["_event"] or "Unknown",
+                "event_year": lambda r: str(r["_yr"]) if r["_yr"] else "Unknown",
+                "category":   lambda r: "All",
+            }
+            val_fields = ("total_score", "_yr", "_team", "_event")
+
+    elif source == "durability":
+        qs = DurabilityData.objects.annotate(
+            _yr=ExtractYear("durability_run__event__event_datetime"),
+            _team=F("durability_run__team__team_name"),
+            _event=F("durability_run__event__event_name"),
+            _tractor=F("durability_run__tractor__tractor_name"),
+            _laps=F("durability_run__total_laps"),
+        )
+        if year_min:
+            qs = qs.filter(durability_run__event__event_datetime__year__gte=year_min)
+        if year_max:
+            qs = qs.filter(durability_run__event__event_datetime__year__lte=year_max)
+        if event_ids:
+            qs = qs.filter(durability_run__event__event_id__in=event_ids)
+        if team_ids:
+            qs = qs.filter(durability_run__team__team_id__in=team_ids)
+
+        field_map = {
+            "speed": "speed", "pressure": "pressure", "power": "power",
+            "total_laps": "_laps", "event_year": "_yr",
+        }
+        group_fns = {
+            "none":       lambda r: "All",
+            "team":       lambda r: r["_team"] or "Unknown",
+            "event":      lambda r: r["_event"] or "Unknown",
+            "event_year": lambda r: str(r["_yr"]) if r["_yr"] else "Unknown",
+            "tractor":    lambda r: r["_tractor"] or "Unknown",
+        }
+        val_fields = ("speed", "pressure", "power", "_yr", "_team", "_event", "_tractor", "_laps")
+
+    else:
+        return []
+
+    x_key = field_map.get(x_field)
+    y_key = field_map.get(y_field)
+    if not x_key or not y_key:
+        return []
+
+    get_group = group_fns.get(group_by, lambda r: "All")
+
+    rows = []
+    for r in qs.values(*val_fields)[:_MAX_TOTAL_ROWS]:
+        xv = r.get(x_key)
+        yv = r.get(y_key)
+        if xv is not None and yv is not None:
+            rows.append((xv, yv, get_group(r)))
+    return rows
+
+
+def _build_explore_traces(source, x_field, y_field, group_by, chart_type, filters):
+    rows = _fetch_explore_rows(source, x_field, y_field, group_by, filters)
+
+    # Group into {label: ([x...], [y...])}
+    groups: dict[str, tuple[list, list]] = {}
+    for xv, yv, label in rows:
+        if label not in groups:
+            groups[label] = ([], [])
+        groups[label][0].append(xv)
+        groups[label][1].append(yv)
+
+    if len(groups) > _MAX_GROUPS:
+        groups = dict(list(groups.items())[:_MAX_GROUPS])
+
+    total_raw = sum(len(xs) for xs, _ in groups.values())
+    sampled = any(len(xs) > _MAX_POINTS_PER_GROUP for xs, _ in groups.values())
+
+    mode = "markers" if chart_type != "line" else "lines"
+    trace_type = "bar" if chart_type == "bar" else "scatter"
+
+    traces = []
+    for name, (xs, ys) in groups.items():
+        xs = _sample(xs, _MAX_POINTS_PER_GROUP)
+        ys = _sample(ys, _MAX_POINTS_PER_GROUP)
+        t = {"name": name, "x": xs, "y": ys, "type": trace_type}
+        if trace_type == "scatter":
+            t["mode"] = mode
+        traces.append(t)
+
+    return traces, {
+        "total_raw_points": total_raw,
+        "sampled": sampled,
+        "group_count": len(traces),
+    }
+
+
+@log_view
+def explore_page(request):
+    from events.models import Event
+    events = list(
+        Event.objects.filter(enabled=True)
+        .order_by("-event_datetime")
+        .values("event_id", "event_name", "event_datetime")
+    )
+    events_json = json.dumps([
+        {
+            "id": e["event_id"],
+            "name": e["event_name"] or f"Event {e['event_id']}",
+            "year": e["event_datetime"].year if e["event_datetime"] else None,
+        }
+        for e in events
+    ])
+    sources_json = json.dumps(EXPLORE_SOURCES)
+    return render(request, "stats/explore.html", {
+        "sources_json": sources_json,
+        "events_json": events_json,
+    })
+
+
+def explore_data_api(request):
+    source     = request.GET.get("source", "")
+    x_field    = request.GET.get("x_field", "")
+    y_field    = request.GET.get("y_field", "")
+    group_by   = request.GET.get("group_by", "none")
+    chart_type = request.GET.get("chart_type", "scatter")
+
+    if source not in EXPLORE_SOURCES:
+        return JsonResponse({"error": "Invalid source."}, status=400)
+    src_def = EXPLORE_SOURCES[source]
+    if x_field not in src_def["fields"] or y_field not in src_def["fields"]:
+        return JsonResponse({"error": "Invalid field(s) for source."}, status=400)
+    if group_by not in src_def["group_by_options"]:
+        return JsonResponse({"error": "Invalid group_by for source."}, status=400)
+    if chart_type not in ("scatter", "line", "bar"):
+        chart_type = "scatter"
+
+    filters = {
+        "year_min":  request.GET.get("year_min"),
+        "year_max":  request.GET.get("year_max"),
+        "event_ids": request.GET.getlist("event_ids"),
+        "team_ids":  request.GET.getlist("team_ids"),
+    }
+
+    try:
+        traces, meta = _build_explore_traces(
+            source, x_field, y_field, group_by, chart_type, filters
+        )
+    except Exception as exc:
+        return JsonResponse({"error": str(exc)}, status=500)
+
+    x_label = src_def["fields"][x_field]["label"]
+    y_label = src_def["fields"][y_field]["label"]
+
+    return JsonResponse({
+        "traces": traces,
+        "meta": meta,
+        "axis_labels": {"x": x_label, "y": y_label},
+        "bar_mode": "group" if chart_type == "bar" else None,
+    })
+
+
+def explore_configs_api(request):
+    if request.method == "GET":
+        configs = SavedGraphConfig.objects.filter(hidden=False).select_related("created_by")
+        data = [
+            {
+                "id": c.config_id,
+                "title": c.title,
+                "description": c.description,
+                "config": c.config,
+                "created_by": c.created_by.username if c.created_by else "Anonymous",
+                "created_at": c.created_at.isoformat(),
+                "use_count": c.use_count,
+            }
+            for c in configs
+        ]
+        return JsonResponse({"configs": data})
+
+    if request.method == "POST":
+        if not request.user.is_authenticated:
+            return JsonResponse({"error": "Login required."}, status=401)
+        try:
+            body = json.loads(request.body)
+        except (json.JSONDecodeError, ValueError):
+            return JsonResponse({"error": "Invalid JSON."}, status=400)
+
+        title = (body.get("title") or "").strip()
+        if not title:
+            return JsonResponse({"error": "Title is required."}, status=400)
+        if len(title) > 200:
+            return JsonResponse({"error": "Title too long (max 200 chars)."}, status=400)
+
+        description = (body.get("description") or "")[:500]
+        config = body.get("config")
+        if not isinstance(config, dict):
+            return JsonResponse({"error": "config must be an object."}, status=400)
+
+        source = config.get("source", "")
+        if source not in EXPLORE_SOURCES:
+            return JsonResponse({"error": "Invalid source in config."}, status=400)
+        src_def = EXPLORE_SOURCES[source]
+        if config.get("x_field") not in src_def["fields"]:
+            return JsonResponse({"error": "Invalid x_field in config."}, status=400)
+        if config.get("y_field") not in src_def["fields"]:
+            return JsonResponse({"error": "Invalid y_field in config."}, status=400)
+
+        obj = SavedGraphConfig.objects.create(
+            title=title,
+            description=description,
+            config=config,
+            created_by=request.user,
+        )
+        return JsonResponse({
+            "id": obj.config_id,
+            "title": obj.title,
+            "description": obj.description,
+            "config": obj.config,
+            "created_by": request.user.username,
+            "created_at": obj.created_at.isoformat(),
+            "use_count": 0,
+        }, status=201)
+
+    return JsonResponse({"error": "Method not allowed."}, status=405)
+
+
+@require_POST
+def explore_config_use_api(request, config_id):
+    try:
+        cfg = SavedGraphConfig.objects.get(config_id=config_id, hidden=False)
+    except SavedGraphConfig.DoesNotExist:
+        return JsonResponse({"error": "Not found."}, status=404)
+    cfg.use_count += 1
+    cfg.save(update_fields=["use_count"])
+    return JsonResponse({"use_count": cfg.use_count})
+
+
+@require_POST
+def explore_config_hide_api(request, config_id):
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Staff only."}, status=403)
+    try:
+        cfg = SavedGraphConfig.objects.get(config_id=config_id)
+    except SavedGraphConfig.DoesNotExist:
+        return JsonResponse({"error": "Not found."}, status=404)
+    cfg.hidden = True
+    cfg.save(update_fields=["hidden"])
+    return JsonResponse({"hidden": True})
 
 
 # ---------------------------------------------------------------------------

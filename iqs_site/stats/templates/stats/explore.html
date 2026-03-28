@@ -1,0 +1,529 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Data Explorer{% endblock %}
+
+{% block extra_head %}
+  <script src="{% static 'stats/plotly/plotly.min.js' %}"></script>
+  <style>
+    .wrap { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+    .page-title { margin: 0 0 0.2rem 0; font-size: 1.6rem; font-weight: 650; }
+    .page-sub   { margin: 0 0 1.25rem 0; color: #94a3b8; font-size: 0.95rem; }
+
+    /* --- Controls card --- */
+    .card {
+      border-radius: 12px;
+      background: rgba(15, 23, 42, 0.55);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+    }
+    .card-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin: 0 0 0.75rem 0;
+      font-weight: 600;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    .ctrl { display: flex; flex-direction: column; gap: 0.3rem; }
+    .ctrl label { font-size: 0.82rem; color: #cbd5e1; }
+
+    select, input[type=number], input[type=text], textarea {
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(2, 6, 23, 0.7);
+      color: #e2e8f0;
+      padding: 0.45rem 0.6rem;
+      outline: none;
+      font-size: 0.9rem;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    select:focus, input:focus, textarea:focus { border-color: rgba(56, 189, 248, 0.5); }
+    select[multiple] { height: 110px; }
+
+    .btn-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; margin-top: 0.75rem; }
+    .btn {
+      border: 0; border-radius: 8px; padding: 0.55rem 1rem;
+      cursor: pointer; font-weight: 600; font-size: 0.9rem;
+      background: #2563eb; color: white;
+      transition: opacity 0.15s ease;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn.secondary {
+      background: rgba(148, 163, 184, 0.15); color: #e2e8f0;
+      border: 1px solid rgba(148,163,184,0.25);
+    }
+    .btn.danger { background: #7f1d1d; color: #fca5a5; }
+
+    /* --- Plot area --- */
+    .status { font-size: 0.88rem; color: #94a3b8; min-height: 1.1rem; margin: 0.35rem 0; }
+    #plot { width: 100%; height: 580px; }
+
+    /* --- Saved configs grid --- */
+    .configs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 0.75rem;
+    }
+    .cfg-card {
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.45);
+      border: 1px solid rgba(148, 163, 184, 0.15);
+      padding: 0.85rem 1rem;
+      display: flex; flex-direction: column; gap: 0.4rem;
+    }
+    .cfg-title { font-weight: 600; font-size: 0.95rem; }
+    .cfg-desc  { font-size: 0.83rem; color: #94a3b8; flex: 1; }
+    .cfg-meta  { font-size: 0.75rem; color: #475569; }
+    .cfg-actions { display: flex; gap: 0.4rem; margin-top: 0.25rem; }
+
+    /* --- Save form --- */
+    .save-form { display: flex; flex-direction: column; gap: 0.6rem; }
+    .save-form textarea { min-height: 60px; resize: vertical; }
+    .save-msg { font-size: 0.88rem; min-height: 1.2rem; }
+    .save-msg.ok  { color: #4ade80; }
+    .save-msg.err { color: #f87171; }
+
+    /* configs loading state */
+    .configs-empty { color: #64748b; font-size: 0.9rem; padding: 0.5rem 0; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <h1 class="page-title">Data Explorer</h1>
+  <p class="page-sub">Build charts from historical event data. Share and reuse graph setups from the community.</p>
+
+  <!-- Controls -->
+  <div class="card">
+    <p class="card-title">Chart Controls</p>
+    <div class="controls-grid">
+      <div class="ctrl">
+        <label for="src-sel">Data Source</label>
+        <select id="src-sel"></select>
+      </div>
+      <div class="ctrl">
+        <label for="x-sel">X Axis</label>
+        <select id="x-sel"></select>
+      </div>
+      <div class="ctrl">
+        <label for="y-sel">Y Axis</label>
+        <select id="y-sel"></select>
+      </div>
+      <div class="ctrl">
+        <label for="grp-sel">Group / Color by</label>
+        <select id="grp-sel"></select>
+      </div>
+      <div class="ctrl">
+        <label for="type-sel">Chart Type</label>
+        <select id="type-sel">
+          <option value="scatter">Scatter</option>
+          <option value="line">Line</option>
+          <option value="bar">Bar</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="controls-grid" style="margin-bottom:0;">
+      <div class="ctrl">
+        <label for="yr-min">Year Min</label>
+        <input id="yr-min" type="number" placeholder="e.g. 2024" min="2000" max="2100">
+      </div>
+      <div class="ctrl">
+        <label for="yr-max">Year Max</label>
+        <input id="yr-max" type="number" placeholder="e.g. 2025" min="2000" max="2100">
+      </div>
+      <div class="ctrl">
+        <label for="ev-filter">Filter Events <small style="color:#64748b;">(Ctrl+click)</small></label>
+        <select id="ev-filter" multiple></select>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button id="plot-btn" class="btn">Plot</button>
+      <button id="share-btn" class="btn secondary">Share URL</button>
+      <button id="reset-btn" class="btn secondary">Reset View</button>
+    </div>
+  </div>
+
+  <div id="status" class="status"></div>
+
+  <div class="card" style="padding: 0.6rem;">
+    <div id="plot"></div>
+  </div>
+
+  <!-- Saved Configurations -->
+  <div class="card" style="margin-top: 1.5rem;">
+    <p class="card-title">Community Saved Graphs</p>
+    <div id="configs-list" class="configs-grid">
+      <p class="configs-empty">Loading…</p>
+    </div>
+  </div>
+
+  <!-- Save This Graph -->
+  <div class="card" style="margin-top: 0.75rem;">
+    <p class="card-title">Save This Graph</p>
+    {% if user.is_authenticated %}
+    <div class="save-form" id="save-form">
+      <div class="ctrl">
+        <label for="save-title">Title</label>
+        <input id="save-title" type="text" maxlength="200" placeholder="Give this graph a descriptive name">
+      </div>
+      <div class="ctrl">
+        <label for="save-desc">Description <small style="color:#64748b;">(optional)</small></label>
+        <textarea id="save-desc" maxlength="500" placeholder="What does this graph show?"></textarea>
+      </div>
+      <div class="btn-row" style="margin-top: 0;">
+        <button id="save-btn" class="btn">Save &amp; Share</button>
+      </div>
+      <div id="save-msg" class="save-msg"></div>
+    </div>
+    {% else %}
+    <p style="color:#94a3b8; font-size: 0.9rem;">
+      <a href="{% url 'login' %}?next={{ request.path }}" style="color:#6687fc;">Log in</a> to save and share graph configurations.
+    </p>
+    {% endif %}
+  </div>
+</div>
+
+<script>
+(function () {
+  /* ---- Data from Django ---- */
+  const SOURCES  = {{ sources_json|safe }};
+  const EVENTS   = {{ events_json|safe }};
+
+  /* ---- Element refs ---- */
+  const srcSel   = document.getElementById("src-sel");
+  const xSel     = document.getElementById("x-sel");
+  const ySel     = document.getElementById("y-sel");
+  const grpSel   = document.getElementById("grp-sel");
+  const typeSel  = document.getElementById("type-sel");
+  const yrMin    = document.getElementById("yr-min");
+  const yrMax    = document.getElementById("yr-max");
+  const evFilter = document.getElementById("ev-filter");
+  const plotBtn  = document.getElementById("plot-btn");
+  const shareBtn = document.getElementById("share-btn");
+  const resetBtn = document.getElementById("reset-btn");
+  const statusEl = document.getElementById("status");
+  const plotEl   = document.getElementById("plot");
+  const cfgList  = document.getElementById("configs-list");
+
+  const isAuth   = {% if user.is_authenticated %}true{% else %}false{% endif %};
+  const isStaff  = {% if user.is_staff %}true{% else %}false{% endif %};
+  const USE_URL_TPL  = "{% url 'stats:explore_config_use_api'  config_id=0 %}";
+  const HIDE_URL_TPL = "{% url 'stats:explore_config_hide_api' config_id=0 %}";
+
+  /* ---- Populate source dropdown ---- */
+  Object.entries(SOURCES).forEach(([key, src]) => {
+    const opt = document.createElement("option");
+    opt.value = key;
+    opt.textContent = src.label;
+    srcSel.appendChild(opt);
+  });
+
+  /* ---- Populate event filter ---- */
+  EVENTS.forEach(ev => {
+    const opt = document.createElement("option");
+    opt.value = ev.id;
+    opt.textContent = ev.name + (ev.year ? ` (${ev.year})` : "");
+    evFilter.appendChild(opt);
+  });
+
+  function populateAxisAndGroup(sourceKey) {
+    const src = SOURCES[sourceKey];
+    if (!src) return;
+
+    [xSel, ySel].forEach((sel, idx) => {
+      const prev = sel.value;
+      sel.innerHTML = "";
+      Object.entries(src.fields).forEach(([key, f]) => {
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = f.label;
+        if (key === prev) opt.selected = true;
+        sel.appendChild(opt);
+      });
+      // default y to second field if available
+      if (idx === 1 && sel.options.length > 1 && !sel.value) {
+        sel.selectedIndex = 1;
+      }
+    });
+
+    grpSel.innerHTML = "";
+    Object.entries(src.group_by_options).forEach(([key, label]) => {
+      const opt = document.createElement("option");
+      opt.value = key;
+      opt.textContent = label;
+      grpSel.appendChild(opt);
+    });
+  }
+
+  populateAxisAndGroup(srcSel.value);
+  srcSel.addEventListener("change", () => populateAxisAndGroup(srcSel.value));
+
+  /* ---- Build config from form ---- */
+  function getConfig() {
+    return {
+      source:     srcSel.value,
+      x_field:    xSel.value,
+      y_field:    ySel.value,
+      group_by:   grpSel.value,
+      chart_type: typeSel.value,
+      filters: {
+        year_min:  yrMin.value  || null,
+        year_max:  yrMax.value  || null,
+        event_ids: Array.from(evFilter.selectedOptions).map(o => o.value),
+        team_ids:  [],
+      },
+    };
+  }
+
+  function loadConfig(cfg) {
+    if (cfg.source && SOURCES[cfg.source]) {
+      srcSel.value = cfg.source;
+      populateAxisAndGroup(cfg.source);
+    }
+    if (cfg.x_field)    xSel.value   = cfg.x_field;
+    if (cfg.y_field)    ySel.value   = cfg.y_field;
+    if (cfg.group_by)   grpSel.value = cfg.group_by;
+    if (cfg.chart_type) typeSel.value = cfg.chart_type;
+    const f = cfg.filters || {};
+    if (f.year_min) yrMin.value = f.year_min;
+    if (f.year_max) yrMax.value = f.year_max;
+    if (f.event_ids && f.event_ids.length) {
+      const ids = new Set(f.event_ids.map(String));
+      Array.from(evFilter.options).forEach(o => { o.selected = ids.has(o.value); });
+    }
+  }
+
+  /* ---- Plot ---- */
+  function setStatus(msg) { statusEl.textContent = msg || ""; }
+
+  function emptyPlot(msg) {
+    Plotly.react(plotEl, [], {
+      title: { text: msg || "Select options and click Plot", font: { color: "#e2e8f0" } },
+      paper_bgcolor: "rgba(0,0,0,0)", plot_bgcolor: "rgba(0,0,0,0)",
+      font: { color: "#e2e8f0" },
+    }, { responsive: true, displaylogo: false });
+  }
+  emptyPlot("Select options and click Plot");
+
+  async function doPlot(cfg) {
+    setStatus("Loading…");
+    const p = new URLSearchParams({
+      source:     cfg.source,
+      x_field:    cfg.x_field,
+      y_field:    cfg.y_field,
+      group_by:   cfg.group_by,
+      chart_type: cfg.chart_type,
+    });
+    const f = cfg.filters || {};
+    if (f.year_min) p.set("year_min", f.year_min);
+    if (f.year_max) p.set("year_max", f.year_max);
+    (f.event_ids || []).forEach(id => p.append("event_ids", id));
+    (f.team_ids  || []).forEach(id => p.append("team_ids",  id));
+
+    const url = "{% url 'stats:explore_data_api' %}?" + p.toString();
+
+    try {
+      const resp = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        setStatus("Error: " + (err.error || resp.status));
+        emptyPlot("Error loading data");
+        return;
+      }
+      const data = await resp.json();
+      const { traces, meta, axis_labels, bar_mode } = data;
+
+      if (!traces || traces.length === 0) {
+        setStatus("No data returned for this configuration.");
+        emptyPlot("No data");
+        return;
+      }
+
+      const srcDef = SOURCES[cfg.source];
+      const layout = {
+        xaxis: { title: { text: axis_labels.x }, color: "#94a3b8",
+                 gridcolor: "rgba(148,163,184,0.1)", zerolinecolor: "rgba(148,163,184,0.2)" },
+        yaxis: { title: { text: axis_labels.y }, color: "#94a3b8",
+                 gridcolor: "rgba(148,163,184,0.1)", zerolinecolor: "rgba(148,163,184,0.2)" },
+        legend: { orientation: "v", font: { color: "#cbd5e1" }, bgcolor: "rgba(0,0,0,0)" },
+        margin: { t: 30, l: 60, r: 20, b: 55 },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor:  "rgba(0,0,0,0)",
+        font: { color: "#e2e8f0" },
+      };
+      if (bar_mode) layout.barmode = bar_mode;
+
+      Plotly.react(plotEl, traces, layout, {
+        responsive: true, displaylogo: false, scrollZoom: true,
+      });
+
+      const pts = meta.total_raw_points.toLocaleString();
+      const grps = meta.group_count;
+      const sampNote = meta.sampled ? " (sampled)" : "";
+      setStatus(`${pts} data points${sampNote} · ${grps} group${grps !== 1 ? "s" : ""}`);
+    } catch (e) {
+      console.error(e);
+      setStatus("Network error.");
+      emptyPlot("Network error");
+    }
+  }
+
+  plotBtn.addEventListener("click", () => doPlot(getConfig()));
+  resetBtn.addEventListener("click", () => {
+    Plotly.relayout(plotEl, { "xaxis.autorange": true, "yaxis.autorange": true });
+  });
+
+  /* ---- Share URL ---- */
+  shareBtn.addEventListener("click", () => {
+    const cfg = getConfig();
+    const hash = "#g=" + btoa(JSON.stringify(cfg));
+    history.replaceState(null, "", window.location.pathname + window.location.search + hash);
+    navigator.clipboard.writeText(window.location.href).then(
+      () => setStatus("URL copied to clipboard."),
+      () => setStatus("URL updated in address bar (copy it manually)."),
+    );
+  });
+
+  /* ---- Load from URL hash on page load ---- */
+  (function checkHash() {
+    const h = window.location.hash;
+    if (!h.startsWith("#g=")) return;
+    try {
+      const cfg = JSON.parse(atob(h.slice(3)));
+      loadConfig(cfg);
+      doPlot(cfg);
+    } catch (_) { /* ignore bad hash */ }
+  })();
+
+  /* ---- CSRF helper ---- */
+  function getCsrf() {
+    const m = document.cookie.match(/csrftoken=([^;]+)/);
+    return m ? m[1] : "";
+  }
+
+  /* ---- Saved configs ---- */
+  let savedConfigs = [];
+
+  function renderConfigCard(cfg) {
+    const card = document.createElement("div");
+    card.className = "cfg-card";
+    card.dataset.id = cfg.id;
+    card.innerHTML = `
+      <div class="cfg-title">${escHtml(cfg.title)}</div>
+      <div class="cfg-desc">${escHtml(cfg.description || "")}</div>
+      <div class="cfg-meta">by ${escHtml(cfg.created_by)} · used ${cfg.use_count}×</div>
+      <div class="cfg-actions">
+        <button class="btn" style="font-size:0.8rem;padding:0.35rem 0.7rem;" data-action="use">Use this</button>
+        ${isStaff ? `<button class="btn danger" style="font-size:0.8rem;padding:0.35rem 0.7rem;" data-action="hide">Hide</button>` : ""}
+      </div>
+    `;
+    card.querySelector("[data-action='use']").addEventListener("click", () => {
+      loadConfig(cfg.config);
+      doPlot(cfg.config);
+      fetch(USE_URL_TPL.replace("/0/", `/${cfg.id}/`), {
+        method: "POST", headers: { "X-CSRFToken": getCsrf() },
+      }).then(r => r.json()).then(d => {
+        const meta = card.querySelector(".cfg-meta");
+        if (meta) meta.textContent = `by ${escHtml(cfg.created_by)} · used ${d.use_count}×`;
+      }).catch(() => {});
+    });
+    if (isStaff) {
+      card.querySelector("[data-action='hide']").addEventListener("click", async () => {
+        if (!confirm("Hide this config?")) return;
+        const r = await fetch(HIDE_URL_TPL.replace("/0/", `/${cfg.id}/`), {
+          method: "POST", headers: { "X-CSRFToken": getCsrf() },
+        });
+        if (r.ok) card.remove();
+      });
+    }
+    return card;
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  async function loadConfigs() {
+    try {
+      const r = await fetch("{% url 'stats:explore_configs_api' %}", {
+        headers: { Accept: "application/json" },
+      });
+      const data = await r.json();
+      savedConfigs = data.configs || [];
+      cfgList.innerHTML = "";
+      if (savedConfigs.length === 0) {
+        cfgList.innerHTML = '<p class="configs-empty">No saved graphs yet. Be the first to share one!</p>';
+        return;
+      }
+      savedConfigs.forEach(cfg => cfgList.appendChild(renderConfigCard(cfg)));
+    } catch (_) {
+      cfgList.innerHTML = '<p class="configs-empty">Could not load saved graphs.</p>';
+    }
+  }
+  loadConfigs();
+
+  /* ---- Save form ---- */
+  {% if user.is_authenticated %}
+  const saveBtn = document.getElementById("save-btn");
+  const saveTitleInp = document.getElementById("save-title");
+  const saveDescInp  = document.getElementById("save-desc");
+  const saveMsg      = document.getElementById("save-msg");
+
+  function setSaveMsg(msg, ok) {
+    saveMsg.textContent = msg;
+    saveMsg.className = "save-msg " + (ok ? "ok" : "err");
+  }
+
+  saveBtn.addEventListener("click", async () => {
+    const title = saveTitleInp.value.trim();
+    if (!title) { setSaveMsg("Please enter a title.", false); return; }
+
+    const cfg = getConfig();
+    const body = { title, description: saveDescInp.value.trim(), config: cfg };
+
+    saveBtn.disabled = true;
+    setSaveMsg("Saving…", true);
+    try {
+      const r = await fetch("{% url 'stats:explore_configs_api' %}", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCsrf(),
+          Accept: "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const data = await r.json();
+      if (!r.ok) { setSaveMsg("Error: " + (data.error || r.status), false); return; }
+
+      setSaveMsg("Saved! Others can now find and use your graph.", true);
+      saveTitleInp.value = "";
+      saveDescInp.value  = "";
+
+      // Prepend card to list
+      if (cfgList.querySelector(".configs-empty")) cfgList.innerHTML = "";
+      cfgList.prepend(renderConfigCard(data));
+    } catch (e) {
+      setSaveMsg("Network error.", false);
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+  {% endif %}
+})();
+</script>
+{% endblock %}

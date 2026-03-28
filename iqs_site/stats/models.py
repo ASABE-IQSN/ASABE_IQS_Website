@@ -86,3 +86,25 @@ class PageSession(models.Model):
     def __str__(self):
         user_str = self.user.username if self.user_id else 'anon'
         return f"{user_str} — {self.path} ({self.active_seconds}s)"
+
+
+class SavedGraphConfig(models.Model):
+    """A named graph configuration submitted by a user, shareable with others."""
+    config_id = models.AutoField(primary_key=True)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default="")
+    config = models.JSONField()
+    created_by = models.ForeignKey(
+        get_user_model(), on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="saved_graph_configs",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    hidden = models.BooleanField(default=False)
+    use_count = models.IntegerField(default=0)
+
+    class Meta:
+        db_table = "saved_graph_config"
+        ordering = ["-use_count", "-created_at"]
+
+    def __str__(self):
+        return self.title

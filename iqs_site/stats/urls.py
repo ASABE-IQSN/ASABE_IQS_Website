@@ -5,7 +5,12 @@ app_name = "stats"
 
 urlpatterns = [
     path("plot/", views.plot_page, name="plot_page"),
+    path("explore/", views.explore_page, name="explore_page"),
     path("api/test-series/", views.test_series_api, name="test_series_api"),
+    path("api/explore/data/", views.explore_data_api, name="explore_data_api"),
+    path("api/explore/configs/", views.explore_configs_api, name="explore_configs_api"),
+    path("api/explore/configs/<int:config_id>/use/", views.explore_config_use_api, name="explore_config_use_api"),
+    path("api/explore/configs/<int:config_id>/hide/", views.explore_config_hide_api, name="explore_config_hide_api"),
     path("daily/", views.daily_activity, name="daily_activity"),
     path("pages/", views.page_overview, name="page_overview"),
     path("page/", views.page_drill, name="page_drill"),
