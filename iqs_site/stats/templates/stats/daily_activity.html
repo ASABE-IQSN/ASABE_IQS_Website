@@ -252,10 +252,12 @@ tr:hover td {
     <div class="label">500 Errors</div>
   </div>
   </a>
+  <a href="#csrf-failures" style="text-decoration:none;">
   <div class="stat-card" {% if csrf_failures %}style="border-color:#7f1d1d;"{% endif %}>
     <div class="num" style="{% if csrf_failures %}color:#f87171;{% endif %}">{{ csrf_failures|length }}</div>
     <div class="label">CSRF Failures</div>
   </div>
+  </a>
 </div>
 
 <!-- New Accounts & Logins -->
@@ -707,6 +709,48 @@ tr:hover td {
       </table>
       </div>
     </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- CSRF Failures -->
+{% if csrf_failures %}
+<div class="section" id="csrf-failures">
+  <div class="section-header">
+    <h2>CSRF Failures</h2>
+    <span class="badge" style="background:#450a0a;color:#f87171;">{{ csrf_failures|length }}</span>
+  </div>
+  <div class="overflow-x">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Path</th>
+        <th>Reason</th>
+        <th>User</th>
+        <th>IP</th>
+        <th>Referer</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in csrf_failures %}
+      <tr>
+        <td class="ts">{{ f.occurred_at|time:"H:i:s" }}</td>
+        <td class="mono">{{ f.path }}</td>
+        <td style="color:#f87171;font-size:0.8rem;">{{ f.reason|default:"—" }}</td>
+        <td class="ts">
+          {% if f.user__username %}
+            <a href="{% url 'stats:user_activity' %}?user_id={{ f.user_id }}">{{ f.user__username }}</a>
+          {% else %}—{% endif %}
+        </td>
+        <td class="mono">
+          <a href="{% url 'stats:ip_drill' %}?ip={{ f.ip|urlencode }}&date={{ selected_date|date:'Y-m-d' }}">{{ f.ip }}</a>
+        </td>
+        <td class="mono" style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ f.referer }}">{{ f.referer|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
   </div>
 </div>
 {% endif %}

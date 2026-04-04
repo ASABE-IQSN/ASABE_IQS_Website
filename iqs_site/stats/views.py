@@ -501,7 +501,7 @@ def daily_activity(request):
     csrf_failures = list(
         CsrfFailure.objects.filter(occurred_at__gte=day_start, occurred_at__lt=day_end)
         .order_by("-occurred_at")
-        .values("id", "occurred_at", "ip", "path", "reason", "referer", "user__username")
+        .values("id", "occurred_at", "ip", "path", "reason", "referer", "user_id", "user__username")
     )
 
     return render(request, "stats/daily_activity.html", {
