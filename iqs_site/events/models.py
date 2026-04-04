@@ -789,4 +789,20 @@ class Report(models.Model):
 
     class Meta:
         db_table = 'reports'
+
+
+class ScoreSheetSubmission(models.Model):
+    submission_id = models.AutoField(primary_key=True)
+    file_path = models.CharField(max_length=255)
+    original_filename = models.CharField(max_length=255)
+    submitted_from_ip = models.CharField(max_length=255, blank=True, null=True)
+    note = models.TextField(blank=True, null=True)
+    submitted_at = models.DateTimeField(default=datetime.utcnow)
+
+    class Meta:
+        managed = True
+        db_table = "score_sheet_submissions"
+
+    def __str__(self):
+        return f"ScoreSheet {self.submission_id} — {self.original_filename}"
         

@@ -15,6 +15,7 @@ from .models import (
     EventTeamPhoto,
     TractorMedia,
     Report,
+    ScoreSheetSubmission,
 )
 from .models import (
     ScoreCategory,
@@ -398,6 +399,24 @@ class ReportAdmin(admin.ModelAdmin):
     list_filter = ("report_type", "released", "event_team__event")
     search_fields = ("report_link", "event_team__team__team_name", "event_team__team__team_number")
     ordering = ("report_id",)
+
+
+@admin.register(ScoreSheetSubmission)
+class ScoreSheetSubmissionAdmin(admin.ModelAdmin):
+    list_display = ("submission_id", "original_filename", "submitted_from_ip", "submitted_at", "note_preview")
+    list_filter = ("submitted_at",)
+    search_fields = ("original_filename", "submitted_from_ip", "note")
+    readonly_fields = ("submission_id", "file_path", "original_filename", "submitted_from_ip", "submitted_at")
+    ordering = ("-submitted_at",)
+
+    def note_preview(self, obj):
+        if not obj.note:
+            return ""
+        return obj.note[:60] + ("..." if len(obj.note) > 60 else "")
+    note_preview.short_description = "Note"
+
+    def has_add_permission(self, request):
+        return False
 
 
 @admin.register(EditLog)

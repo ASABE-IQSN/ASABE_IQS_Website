@@ -113,6 +113,93 @@
 .contribute-note strong {
   color: #f3f6e7;
 }
+
+.score-sheet-section {
+  margin-top: 2.5rem;
+  padding: 1.5rem;
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 1rem;
+}
+
+.score-sheet-section h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f3f6e7;
+  margin-bottom: 0.4rem;
+}
+
+.score-sheet-section p {
+  font-size: 0.875rem;
+  color: #9ca3af;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.score-sheet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.score-sheet-form label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #9ca3af;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.score-sheet-form input[type="file"],
+.score-sheet-form textarea {
+  width: 100%;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  color: #f3f6e7;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  box-sizing: border-box;
+}
+
+.score-sheet-form textarea {
+  resize: vertical;
+  min-height: 4rem;
+}
+
+.score-sheet-form button {
+  align-self: flex-start;
+  padding: 0.4rem 1.25rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #6687FC, #0ea5e9);
+  color: #0b1120;
+  border: none;
+  cursor: pointer;
+}
+
+.score-sheet-form button:hover {
+  opacity: 0.9;
+}
+
+.score-sheet-success {
+  padding: 0.75rem 1rem;
+  background: #052e16;
+  border: 1px solid #166534;
+  border-radius: 0.5rem;
+  color: #86efac;
+  font-size: 0.875rem;
+}
+
+.score-sheet-error {
+  padding: 0.75rem 1rem;
+  background: #1c0a0a;
+  border: 1px solid #7f1d1d;
+  border-radius: 0.5rem;
+  color: #fca5a5;
+  font-size: 0.875rem;
+}
 {% endblock %}
 
 {% block content %}
@@ -191,6 +278,35 @@
       </div>
     </div>
 
+  </div>
+
+  <div class="score-sheet-section">
+    <h2>Upload a Score Sheet</h2>
+    <p>
+      Have a score sheet from a past event? Upload it here — no account required.
+      Accepted formats: PDF, JPG, PNG.
+    </p>
+
+    {% if score_sheet_uploaded %}
+    <div class="score-sheet-success">Score sheet submitted. Thank you!</div>
+    {% elif score_sheet_error == "bad_type" %}
+    <div class="score-sheet-error">Unsupported file type. Please upload a PDF, JPG, or PNG.</div>
+    {% elif score_sheet_error == "no_file" %}
+    <div class="score-sheet-error">No file was selected. Please choose a file before submitting.</div>
+    {% else %}
+    <form class="score-sheet-form" method="post" action="{% url 'events:upload_score_sheet' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div>
+        <label for="score_sheet">Score sheet file</label>
+        <input type="file" id="score_sheet" name="score_sheet" accept=".pdf,.jpg,.jpeg,.png" required>
+      </div>
+      <div>
+        <label for="note">Note (optional)</label>
+        <textarea id="note" name="note" placeholder="e.g. event year, team name, or any other context"></textarea>
+      </div>
+      <button type="submit">Upload</button>
+    </form>
+    {% endif %}
   </div>
 
   <div class="contribute-note">

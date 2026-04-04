@@ -34,7 +34,7 @@ from django.db.models import OuterRef, Subquery, Case, When, Value, IntegerField
 from django.urls import reverse
 
 
-from .models import DurabilityRun, DurabilityData, ManeuverabilityRun, PerformanceEventMedia
+from .models import DurabilityRun, DurabilityData, ManeuverabilityRun, PerformanceEventMedia, ScoreSheetSubmission
 from .models import ScoreCategoryInstance, ScoreCategoryScore, ScoreSubCategoryScore, ScoreSubCategoryInstance, ScoreCategory
 from .models import Tractor, TractorInfo
 from .forms import TractorProfileEditForm
@@ -43,6 +43,7 @@ from .tractorinfo_utils import TRACTOR_INFO_MAP
 from .tasks import generate_pull_export_zip
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+ALLOWED_SCORE_SHEET_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
 
 
 def _extract_pull_export_filters(data):
@@ -234,9 +235,54 @@ def tractor_list(request):
     return render(request, "events/tractor_list.html", context)
 
 def contribute(request):
+    uploaded = request.GET.get("uploaded") == "1"
+    error = request.GET.get("error")
     return render(request, "events/contribute.html", {
         "active_page": None,
+        "score_sheet_uploaded": uploaded,
+        "score_sheet_error": error,
     })
+
+
+@csrf_exempt
+@require_POST
+def upload_score_sheet(request):
+    file = request.FILES.get("score_sheet")
+    if not file or not file.name:
+        return redirect(reverse("events:contribute") + "?error=no_file")
+
+    ext = os.path.splitext(file.name)[1].lower().lstrip(".")
+    if ext not in ALLOWED_SCORE_SHEET_EXTENSIONS:
+        return redirect(reverse("events:contribute") + "?error=bad_type")
+
+    xff = request.META.get("HTTP_X_FORWARDED_FOR")
+    ip = xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")
+
+    note = (request.POST.get("note") or "").strip()[:500]
+
+    safe_name = "".join(c for c in os.path.splitext(file.name)[0] if c.isalnum() or c in ("-", "_"))
+    if not safe_name:
+        safe_name = "sheet"
+    import uuid
+    unique = uuid.uuid4().hex[:8]
+    filename = f"{unique}_{safe_name}.{ext}"
+
+    upload_dir = Path("/var/www/quarterscale/score_sheets")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    save_path = upload_dir / filename
+
+    with save_path.open("wb+") as dest:
+        for chunk in file.chunks():
+            dest.write(chunk)
+
+    ScoreSheetSubmission.objects.create(
+        file_path=str(save_path),
+        original_filename=file.name,
+        submitted_from_ip=ip,
+        note=note or None,
+    )
+
+    return redirect(reverse("events:contribute") + "?uploaded=1")
 
 @cache_page(300)
 def privacy(request):
