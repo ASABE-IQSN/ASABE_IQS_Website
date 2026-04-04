@@ -118,8 +118,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    
-    
+    "iqs_site.middleware.PageViewMiddleware",
 ]
 
 # CORS_ALLOWED_ORIGINS = [
@@ -151,6 +150,19 @@ CSRF_TRUSTED_ORIGINS = [
     "https://www.iqsconnect.org",
     "http://localhost:8080",
 ]
+
+# Tell Django it sits behind an HTTPS reverse proxy (nginx).
+# Without this, Django can't verify the request scheme and CSRF origin checks
+# may fail intermittently for legitimate users.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Only send CSRF and session cookies over HTTPS.
+CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = not DEBUG
+
+# Use a dedicated 403 page that explains the session-expired situation clearly
+# and logs details (path, referer, user, UA) for debugging.
+CSRF_FAILURE_VIEW = "iqs_site.views.csrf_failure"
 
 
 
@@ -300,6 +312,14 @@ LOGGING = {
         "django.server": {
             "handlers": [ "console"],
             "level": "ERROR",
+            "propagate": False,
+        },
+
+        # CSRF failures — logged at WARNING by Django; capture them explicitly
+        # so they appear in docker logs / any log aggregator even without DEBUG.
+        "django.security.csrf": {
+            "handlers": ["console"],
+            "level": "WARNING",
             "propagate": False,
         },
     },

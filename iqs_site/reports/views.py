@@ -10,7 +10,6 @@ from django.db.models import Avg, Count, Max, Min, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from iqs_site.utilities import log_view
 
 import requests as http_requests
 
@@ -37,7 +36,6 @@ def _require_staff(request):
 
 
 # ── Report download ───────────────────────────────────────────────────────────
-@log_view
 def report_download(request, report_id):
     report = get_object_or_404(Report, pk=report_id)
 
@@ -55,7 +53,6 @@ def report_download(request, report_id):
 
 
 # ── Reports overview ──────────────────────────────────────────────────────────
-@log_view
 def reports_overview(request):
     _require_staff(request)
 
@@ -105,7 +102,6 @@ def reports_overview(request):
 
 
 # ── Analysis dashboard ────────────────────────────────────────────────────────
-@log_view
 def analysis_dashboard(request):
     _require_staff(request)
 
@@ -197,7 +193,6 @@ def analysis_job_status(request, job_id):
 
 
 # ── Report overview ────────────────────────────────────────────────────────────
-@log_view
 def report_overview(request, report_id):
     _require_staff(request)
 
@@ -252,7 +247,6 @@ def report_overview(request, report_id):
 
 
 # ── Report match list ─────────────────────────────────────────────────────────
-@log_view
 def report_matches(request, report_id):
     _require_staff(request)
 
@@ -348,7 +342,6 @@ def report_matches(request, report_id):
 
 
 # ── Event analysis matrix ─────────────────────────────────────────────────────
-@log_view
 def event_analysis(request, event_id):
     _require_staff(request)
 
@@ -523,7 +516,6 @@ def event_analysis(request, event_id):
 
 
 # ── Report coverage matrix ────────────────────────────────────────────────────
-@log_view
 def report_coverage(request):
     _require_staff(request)
 
@@ -593,7 +585,6 @@ def report_coverage(request):
 
 
 # ── Image match list ──────────────────────────────────────────────────────────
-@log_view
 def report_image_matches(request, report_id):
     _require_staff(request)
 
@@ -666,7 +657,6 @@ def report_image_matches(request, report_id):
 _PDF_CACHE_TTL   = 3600   # seconds — how long to keep a raw PDF in Redis
 _JPEG_CACHE_TTL  = 3600   # seconds — how long to keep a rendered JPEG in Redis
 
-@log_view
 def image_serve(request, image_id):
     _require_staff(request)
 
@@ -712,7 +702,6 @@ def image_serve(request, image_id):
 
 
 # ── Image match detail ────────────────────────────────────────────────────────
-@log_view
 def image_match_detail(request, image_match_id):
     _require_staff(request)
 
@@ -762,7 +751,6 @@ def image_match_detail(request, image_match_id):
 
 
 # ── Report extracted content ──────────────────────────────────────────────────
-@log_view
 def report_extracted(request, report_id):
     _require_staff(request)
 
@@ -812,7 +800,6 @@ def report_extracted(request, report_id):
 
 
 # ── Page match detail ─────────────────────────────────────────────────────────
-@log_view
 def page_match_detail(request, page_match_id):
     _require_staff(request)
 
@@ -901,7 +888,6 @@ def page_match_detail(request, page_match_id):
 
 
 # ── Retrigger AI detection for a single report ────────────────────────────────
-@log_view
 def retrigger_ai_detection(request, report_id):
     _require_staff(request)
     if not request.user.has_perm("reports.can_run_ai_detection"):
@@ -930,7 +916,6 @@ def retrigger_ai_detection(request, report_id):
 
 
 # ── Methodology explanations ──────────────────────────────────────────────────
-@log_view
 def methodology_image(request, image_match_id=None):
     """Interactive walkthrough of the pHash image similarity algorithm.
 
@@ -1035,7 +1020,6 @@ def methodology_image(request, image_match_id=None):
         "similarity_pct": round((1 - im.hamming_distance / 64) * 100, 1),
     })
 
-@log_view
 def methodology_text(request):
     """Interactive walkthrough of the text shingling / Jaccard similarity algorithm."""
     _require_staff(request)
@@ -1154,7 +1138,6 @@ def methodology_text(request):
 
 
 # ── AI Detection report ───────────────────────────────────────────────────────
-@log_view
 def report_ai_detection(request, report_id):
     _require_staff(request)
 

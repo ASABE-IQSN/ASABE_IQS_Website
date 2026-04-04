@@ -7,7 +7,6 @@ from django.db import transaction
 from django.db.models import OuterRef, Subquery
 from django.db.models.functions import Coalesce
 from collections import defaultdict
-from iqs_site.utilities import log_view
 from events.models import Event, EventTeam, EventTeamPhoto
 from .models import AwardType, Award
 
@@ -29,7 +28,6 @@ def _team_photo_annotation():
     return Coalesce(Subquery(official), Subquery(any_approved))
 
 
-@log_view
 @cache_page(300)
 def award_history(request):
     """All awards across all events, grouped by event (most recent first)."""
@@ -59,7 +57,6 @@ def award_history(request):
     })
 
 
-@log_view
 @cache_page(300)
 def awards_by_event(request, event_id):
     """All awards for a specific event, grouped by category."""
@@ -90,7 +87,6 @@ def awards_by_event(request, event_id):
     })
 
 
-@log_view
 @cache_page(300)
 def award_type_history(request, award_type_id):
     """All recipients of one award type across all events."""
@@ -109,7 +105,6 @@ def award_type_history(request, award_type_id):
     })
 
 
-@log_view
 @login_required
 def manage_event_list(request):
     """Staff-only: pick an event to manage awards for."""
@@ -123,7 +118,6 @@ def manage_event_list(request):
     })
 
 
-@log_view
 @login_required
 def manage_event_awards(request, event_id):
     """Staff-only: assign awards for all award types at a given event."""

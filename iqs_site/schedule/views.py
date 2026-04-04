@@ -6,7 +6,6 @@ from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
 
 from events.models import Event, Team
-from iqs_site.utilities import log_view
 
 from .models import (
     Location,
@@ -46,7 +45,6 @@ def _locations_geojson(event):
 
 # ── Public views ──────────────────────────────────────────────────────────────
 
-@log_view
 def event_schedule(request, event_id):
     """Full event schedule — public, all teams."""
     event = get_object_or_404(Event, pk=event_id)
@@ -74,7 +72,6 @@ def locations_api(request, event_id):
 # ── Authenticated team view ───────────────────────────────────────────────────
 
 @login_required
-@log_view
 def team_schedule(request, event_id):
     """Show the logged-in user's team schedule for a specific event."""
     event = get_object_or_404(Event, pk=event_id)
@@ -141,7 +138,6 @@ def team_schedule(request, event_id):
 # ── Subscriptions ─────────────────────────────────────────────────────────────
 
 @login_required
-@log_view
 def manage_subscriptions(request):
     """Subscribe / unsubscribe from team+type combinations."""
     teams = list(_user_teams(request.user))

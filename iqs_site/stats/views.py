@@ -9,7 +9,6 @@ from typing import Dict, List
 
 from django.contrib.admin.models import LogEntry
 from django.contrib.auth.decorators import user_passes_test
-from iqs_site.utilities import log_view
 from django.contrib.auth.models import User
 from django.db.models import Avg, Count, F, Max, Min, Sum
 from django.db.models.functions import ExtractYear, TruncDate
@@ -23,7 +22,7 @@ from events.models import (
     DurabilityData, EditLog, EventTeam, EventTeamPhoto,
     PerformanceEventMedia, Pull, PullData, ScoreCategoryScore, TractorMedia,
 )
-from stats.models import IPGeoCache, NginxLog, PageSession, SavedGraphConfig
+from stats.models import CsrfFailure, FailedSignup, IPGeoCache, NginxLog, PageSession, SavedGraphConfig, ServerError
 from users.models import GroupProfile, TeamEnrollmentRequest, View as PageView
 
 
@@ -182,7 +181,6 @@ def _aggregate_team_page_stats(team_page_sessions, user_team_map):
     return result
 
 
-@log_view
 @user_passes_test(lambda u: u.is_staff)
 def daily_activity(request):
     date_str = request.GET.get("date")
@@ -437,7 +435,7 @@ def daily_activity(request):
         page_views.filter(response_code__gte=500)
         .select_related("user")
         .order_by("-time")
-        .values("time", "url", "ip", "response_code", "response_time_s", "user__username")[:200]
+        .values("view_id", "time", "url", "ip", "response_code", "response_time_s", "user__username")[:200]
     )
     server_error_urls = list(
         page_views.filter(response_code__gte=500)
@@ -459,6 +457,52 @@ def daily_activity(request):
             v["location"] = geo["country"]
         else:
             v["location"] = ""
+
+    # --- ServerError logs (tracebacks) — match to server_errors rows by URL+time ---
+    server_error_logs = list(
+        ServerError.objects.filter(occurred_at__gte=day_start, occurred_at__lt=day_end)
+        .order_by("-occurred_at")
+        .values("id", "occurred_at", "url", "method", "ip", "exception_type", "user__username")
+    )
+    _sel_by_url: dict = {}
+    for sel in server_error_logs:
+        _sel_by_url.setdefault(sel["url"], []).append(sel)
+    for v in server_errors:
+        v["error_log_id"] = None
+        for sel in _sel_by_url.get(v["url"], []):
+            if abs((sel["occurred_at"] - v["time"]).total_seconds()) <= 10:
+                v["error_log_id"] = sel["id"]
+                break
+
+    # --- Nginx 5xx entries ---
+    nginx_5xx = list(
+        NginxLog.objects.filter(time__gte=day_start, time__lt=day_end, status_code__gte=500)
+        .order_by("-time")
+        .values("id", "time", "ip", "url", "status_code", "bytes_sent", "referer")[:200]
+    )
+    _se_by_url: dict = {}
+    for se in server_errors:
+        _se_by_url.setdefault(se["url"], []).append(se)
+    for entry in nginx_5xx:
+        entry["django_error_id"] = None
+        for se in _se_by_url.get(entry["url"], []):
+            if abs((se["time"] - entry["time"]).total_seconds()) <= 10:
+                entry["django_error_id"] = se["view_id"]
+                break
+
+    # --- Failed signups ---
+    failed_signups = list(
+        FailedSignup.objects.filter(attempted_at__gte=day_start, attempted_at__lt=day_end)
+        .order_by("-attempted_at")
+        .values("id", "attempted_at", "ip", "form_data", "errors")
+    )
+
+    # --- CSRF failures ---
+    csrf_failures = list(
+        CsrfFailure.objects.filter(occurred_at__gte=day_start, occurred_at__lt=day_end)
+        .order_by("-occurred_at")
+        .values("id", "occurred_at", "ip", "path", "reason", "referer", "user__username")
+    )
 
     return render(request, "stats/daily_activity.html", {
         "selected_date": selected_date,
@@ -492,10 +536,13 @@ def daily_activity(request):
         "nginx_bytes": nginx_bytes,
         "nginx_status_dist": nginx_status_dist,
         "nginx_top_urls": nginx_top_urls,
+        "nginx_5xx": nginx_5xx,
+        "server_error_logs": server_error_logs,
+        "failed_signups": failed_signups,
+        "csrf_failures": csrf_failures,
     })
 
 
-@log_view
 @user_passes_test(lambda u: u.is_staff)
 def location_drill(request):
     city = request.GET.get("city", "").strip()
@@ -612,7 +659,6 @@ def location_drill(request):
     })
 
 
-@log_view
 @user_passes_test(lambda u: u.is_staff)
 def ip_list(request):
     city = request.GET.get("city", "").strip()
@@ -685,7 +731,6 @@ def ip_list(request):
     })
 
 
-@log_view
 @user_passes_test(lambda u: u.is_staff)
 def ip_drill(request):
     ip = request.GET.get("ip", "").strip()
@@ -770,7 +815,6 @@ def ip_drill(request):
     })
 
 
-@log_view
 @user_passes_test(lambda u: u.is_staff)
 def page_overview(request):
     days = int(request.GET.get("days", 7))
@@ -866,7 +910,6 @@ def page_overview(request):
     })
 
 
-@log_view
 @user_passes_test(lambda u: u.is_staff)
 def page_drill(request):
     url = request.GET.get("url", "").strip()
@@ -1025,7 +1068,6 @@ def page_drill(request):
     })
 
 
-@log_view
 @user_passes_test(lambda u: u.is_staff)
 def user_activity(request):
     user_id = request.GET.get("user_id")
@@ -1102,7 +1144,6 @@ def user_activity(request):
     })
 
 
-@log_view
 @user_passes_test(lambda u: u.is_staff)
 def team_page_activity(request):
     days = int(request.GET.get("days", 30))
@@ -1150,7 +1191,6 @@ def team_page_activity(request):
     })
 
 
-@log_view
 def plot_page(request):
     return render(
         request,
@@ -1515,7 +1555,6 @@ def _build_explore_traces(source, x_field, y_field, group_by, chart_type, filter
     }
 
 
-@log_view
 def explore_page(request):
     from events.models import Event
     events = list(
@@ -1722,3 +1761,10 @@ def _update_session(request, complete):
     if complete:
         session.is_complete = True
     session.save(update_fields=['last_seen_at', 'active_seconds', 'is_complete'])
+
+
+@user_passes_test(lambda u: u.is_staff)
+def server_error_detail(request, error_id):
+    from django.shortcuts import get_object_or_404
+    error = get_object_or_404(ServerError, pk=error_id)
+    return render(request, "stats/server_error_detail.html", {"error": error})

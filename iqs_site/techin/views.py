@@ -16,7 +16,6 @@ from django.views.decorators.http import require_POST
 from collections import OrderedDict
 
 from events.models import Event, Team, TractorEvent
-from iqs_site.utilities import log_view
 
 from .models import EventTractorRuleStatus, Rule, RuleCategory, RuleSubCategory, RuleTractorMedia
 from .permissions import judge_required, user_can_access_team
@@ -154,7 +153,6 @@ from .permissions import judge_required, user_can_access_team
 #     else:
 #         return render(request, "tech_in/permission_denied.html", status=403)
 
-@log_view
 def event_tech_in_overview(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
 
@@ -229,7 +227,6 @@ def event_tech_in_overview(request, event_id):
     }
     return render(request, "tech_in/overview.html", context)
 
-@log_view
 def subcategory_detail(request, event_id, subcategory_id):
     """
     Shows one subcategory (within an event context) and lists its rules.
@@ -254,7 +251,6 @@ def subcategory_detail(request, event_id, subcategory_id):
     }
     return render(request, "tech_in/subcategory_detail.html", context)
 
-@log_view
 def rule_detail(request, event_id, rule_id):
     """
     Shows a single rule, and for this event, all tractor/team status rows
@@ -307,7 +303,6 @@ def rule_detail(request, event_id, rule_id):
     }
     return render(request, "tech_in/rule_detail.html", context)
 
-@log_view
 def team_tech_overview(request, event_id, team_id):
     
     team = get_object_or_404(Team, pk=team_id)
@@ -402,7 +397,6 @@ def team_tech_overview(request, event_id, team_id):
     return ren
          #return render(request, "tech_in/team_tech_overview.html", context)
 
-@log_view
 def team_subcategory_detail(request, event_id, team_id, subcategory_id):
     team = get_object_or_404(Team,pk=team_id)
 
@@ -470,7 +464,6 @@ def team_subcategory_detail(request, event_id, team_id, subcategory_id):
         cache.add(key,ren)
     return ren
 
-@log_view
 def team_rule_detail(request, event_id, team_id, rule_id):
     team = get_object_or_404(Team,pk=team_id)
     if not user_can_access_team(request.user,team):
@@ -525,7 +518,6 @@ def team_rule_detail(request, event_id, team_id, rule_id):
     #print(rs.event_tractor_rule_status_id)
     return render(request, "tech_in/team_rule_detail.html", context)
 
-@log_view
 def category_view(request,event_id,category_id):
     category=get_object_or_404(RuleCategory,pk=category_id)
     event=get_object_or_404(Event,pk=event_id)
@@ -543,7 +535,6 @@ STATUS_CHOICES = [(3, "Pass"), (1, "Fail"), (2, "Corrected"), (0, "Not Started")
 
 
 @judge_required
-@log_view
 def judge_event_overview(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
     categories = list(RuleCategory.objects.order_by("rule_category_name"))
@@ -554,7 +545,6 @@ def judge_event_overview(request, event_id):
 
 
 @judge_required
-@log_view
 def judge_category_teams(request, event_id, category_id):
     event = get_object_or_404(Event, pk=event_id)
     category = get_object_or_404(RuleCategory, pk=category_id)
@@ -600,7 +590,6 @@ def judge_category_teams(request, event_id, category_id):
 
 
 @judge_required
-@log_view
 def judge_team_subcategories(request, event_id, category_id, team_id):
     event = get_object_or_404(Event, pk=event_id)
     category = get_object_or_404(RuleCategory, pk=category_id)
@@ -645,7 +634,6 @@ def judge_team_subcategories(request, event_id, category_id, team_id):
 
 
 @judge_required
-@log_view
 def judge_subcategory_rules(request, event_id, category_id, team_id, subcategory_id):
     event = get_object_or_404(Event, pk=event_id)
     category = get_object_or_404(RuleCategory, pk=category_id)
@@ -698,7 +686,6 @@ def judge_subcategory_rules(request, event_id, category_id, team_id, subcategory
 
 
 @judge_required
-@log_view
 def judge_rule_photos(request, event_id, category_id, team_id, rule_id):
     event = get_object_or_404(Event, pk=event_id)
     category = get_object_or_404(RuleCategory, pk=category_id)

@@ -1,0 +1,211 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Session Expired – IQS Connect</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #020617;
+      color: #f3f6e7;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    a { color: #6687fc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #111827;
+      display: flex;
+      align-items: center;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1.5rem;
+    }
+
+    .error-page {
+      max-width: 580px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .error-code {
+      font-size: 5rem;
+      font-weight: 700;
+      line-height: 1;
+      background: linear-gradient(135deg, #6687FC, #0ea5e9);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+
+    .error-title {
+      font-size: 1.6rem;
+      font-weight: 700;
+      color: #f3f6e7;
+      margin: 0 0 0.75rem;
+    }
+
+    .error-desc {
+      color: #9ca3af;
+      font-size: 0.95rem;
+      line-height: 1.65;
+      margin: 0 0 2rem;
+    }
+
+    .error-card {
+      background: #0f172a;
+      border: 1px solid #1f2937;
+      border-radius: 1rem;
+      padding: 1.5rem 1.75rem;
+      text-align: left;
+      margin-bottom: 2rem;
+    }
+
+    .error-card-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #6687fc;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+
+    .error-option {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid #1f2937;
+    }
+
+    .error-option:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .error-option-icon {
+      flex-shrink: 0;
+      margin-top: 0.1rem;
+    }
+
+    .error-option-text {
+      font-size: 0.9rem;
+      color: #d1d5db;
+      line-height: 1.5;
+    }
+
+    .error-option-text strong {
+      color: #f3f6e7;
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+
+    .error-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border-radius: 999px;
+      padding: 0.6rem 1.2rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border: 1px solid #1f2937;
+      background: #0f172a;
+      color: #f3f6e7;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #6687FC, #0ea5e9);
+      color: #0b1120;
+      border-color: transparent;
+    }
+
+    footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid #111827;
+      font-size: 0.8rem;
+      color: #6b7280;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/">
+      <img
+        src="{% static 'events/images/ASABE-IQS-logo-white.png' %}"
+        alt="International Quarter Scale"
+        style="max-height: 60px; width: auto;"
+      >
+    </a>
+  </header>
+
+  <main>
+    <div class="error-page">
+      <div class="error-code">403</div>
+      <h1 class="error-title">Form Session Expired</h1>
+      <p class="error-desc">
+        Your form submission could not be verified. This usually happens when a page
+        has been open for a long time or after logging in from another tab.
+        Go back and try submitting again — it should work right away.
+      </p>
+
+      <div class="error-card">
+        <div class="error-card-title">What to do</div>
+
+        <div class="error-option">
+          <div class="error-option-icon">&#8617;</div>
+          <div class="error-option-text">
+            <strong>Go back and resubmit</strong>
+            Press the back button, reload the page, and submit your form again.
+            The security token will be refreshed automatically.
+          </div>
+        </div>
+
+        <div class="error-option">
+          <div class="error-option-icon">&#128274;</div>
+          <div class="error-option-text">
+            <strong>Make sure you are logged in</strong>
+            If you were logged out in another tab, log back in first, then return to the form.
+          </div>
+        </div>
+
+        <div class="error-option">
+          <div class="error-option-icon">&#9993;</div>
+          <div class="error-option-text">
+            <strong>Still having trouble?</strong>
+            Email us at <a href="mailto:asabeiqswebsite@gmail.com">asabeiqswebsite@gmail.com</a>
+            and we will help you out.
+          </div>
+        </div>
+      </div>
+
+      <div class="error-actions">
+        <button class="btn btn-primary" onclick="history.back()">Go Back</button>
+        <a href="/" class="btn">Go to Home</a>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    &copy; 2026 International Quarter Scale Competition
+  </footer>
+</body>
+</html>

@@ -1,0 +1,143 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Server Error #{{ error.id }} – IQS Stats</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #020617;
+      color: #f3f6e7;
+      min-height: 100vh;
+    }
+    a { color: #6687fc; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid #111827;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    header a { font-size: 0.85rem; color: #6b7280; }
+
+    main { max-width: 1000px; margin: 2rem auto; padding: 0 1.5rem 4rem; }
+
+    h1 { font-size: 1.4rem; margin: 0 0 1.5rem; color: #f87171; }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    .meta-card {
+      background: #0f172a;
+      border: 1px solid #1f2937;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+    }
+    .meta-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+      margin-bottom: 0.25rem;
+    }
+    .meta-value {
+      font-size: 0.9rem;
+      color: #e5e7eb;
+      word-break: break-all;
+    }
+    .pill {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .pill-red { background: #450a0a; color: #f87171; }
+
+    .traceback-section { margin-top: 1rem; }
+    .traceback-section h2 {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+      margin-bottom: 0.5rem;
+    }
+    pre {
+      background: #0a0f1e;
+      border: 1px solid #1f2937;
+      border-radius: 0.5rem;
+      padding: 1.25rem;
+      overflow-x: auto;
+      font-size: 0.8rem;
+      line-height: 1.6;
+      color: #e5e7eb;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .exc-line { color: #f87171; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="{% static 'events/images/ASABE-IQS-logo-white.png' %}" alt="IQS" style="max-height:40px;">
+    <a href="{% url 'stats:daily_activity' %}?date={{ error.occurred_at|date:'Y-m-d' }}#server-errors">← Back to daily activity</a>
+  </header>
+
+  <main>
+    <h1>
+      <span class="pill pill-red">500</span>
+      {{ error.exception_type|default:"Server Error" }} — #{{ error.id }}
+    </h1>
+
+    <div class="meta-grid">
+      <div class="meta-card">
+        <div class="meta-label">Time</div>
+        <div class="meta-value">{{ error.occurred_at|date:"Y-m-d H:i:s" }} UTC</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-label">URL</div>
+        <div class="meta-value">{{ error.url|default:"—" }}</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-label">Method</div>
+        <div class="meta-value">{{ error.method|default:"—" }}</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-label">IP</div>
+        <div class="meta-value">
+          {% if error.ip %}
+            <a href="{% url 'stats:ip_drill' %}?ip={{ error.ip }}&date={{ error.occurred_at|date:'Y-m-d' }}">{{ error.ip }}</a>
+          {% else %}—{% endif %}
+        </div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-label">User</div>
+        <div class="meta-value">
+          {% if error.user %}
+            <a href="{% url 'stats:user_activity' %}?user_id={{ error.user.id }}">{{ error.user.username }}</a>
+          {% else %}anonymous{% endif %}
+        </div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-label">Exception</div>
+        <div class="meta-value" style="color:#f87171;">{{ error.exception_type|default:"—" }}</div>
+      </div>
+    </div>
+
+    <div class="traceback-section">
+      <h2>Traceback</h2>
+      <pre>{% if error.traceback %}{% for line in error.traceback.splitlines %}{% if "Error" in line or "Exception" in line %}<span class="exc-line">{{ line }}</span>
+{% else %}{{ line }}
+{% endif %}{% endfor %}{% else %}No traceback captured.{% endif %}</pre>
+    </div>
+  </main>
+</body>
+</html>

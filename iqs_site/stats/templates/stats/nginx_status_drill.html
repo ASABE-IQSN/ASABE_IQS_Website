@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Nginx {{ status_code }} – {{ selected_date }}{% endblock %}
+
+{% block extra_styles %}
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f3f6e7;
+  font-family: monospace;
+}
+.back-link { font-size: 0.85rem; color: #6b7280; }
+.back-link:hover { color: #9ca3af; }
+
+.date-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+.date-nav a, .date-nav button {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #9ca3af;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.date-nav a:hover { background: #1f2937; color: #f3f6e7; text-decoration: none; }
+.date-nav input[type="date"] {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #f3f6e7;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.stat-card {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+.stat-card .num { font-size: 2rem; font-weight: 700; color: #6687fc; line-height: 1; }
+.stat-card .label { font-size: 0.75rem; color: #9ca3af; margin-top: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.section { margin-bottom: 2.5rem; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 0.5rem;
+}
+.section-header h2 { margin: 0; font-size: 1rem; font-weight: 600; color: #e5e7eb; }
+.badge { background: #1f2937; color: #9ca3af; border-radius: 9999px; padding: 0.1rem 0.55rem; font-size: 0.75rem; font-weight: 600; }
+.badge.highlight { background: #1e3a5f; color: #6687fc; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th { text-align: left; color: #6b7280; font-weight: 600; padding: 0.4rem 0.6rem; border-bottom: 1px solid #1f2937; white-space: nowrap; }
+td { padding: 0.35rem 0.6rem; border-bottom: 1px solid #111827; color: #d1d5db; vertical-align: top; }
+tr:hover td { background: #0f172a; }
+.mono { font-family: monospace; font-size: 0.78rem; }
+.ts { color: #6b7280; white-space: nowrap; }
+.pill { display: inline-block; padding: 0.1rem 0.45rem; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
+.pill-green  { background: #052e16; color: #4ade80; }
+.pill-red    { background: #450a0a; color: #f87171; }
+.pill-yellow { background: #422006; color: #fbbf24; }
+.pill-blue   { background: #0c1a2e; color: #60a5fa; }
+.empty-note { color: #4b5563; font-size: 0.85rem; padding: 0.5rem 0; }
+.overflow-x { overflow-x: auto; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 700px) { .two-col { grid-template-columns: 1fr; } }
+.truncate { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+{% endblock %}
+
+{% block extra_head %}
+<script>
+(function () {
+  function localDateStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+  window._localDate = localDateStr();
+  document.cookie = 'tz_offset=' + new Date().getTimezoneOffset() + '; path=/; SameSite=Lax';
+  var p = new URLSearchParams(window.location.search);
+  if (!p.has('date')) {
+    p.set('date', window._localDate);
+    window.location.replace(window.location.pathname + '?' + p.toString());
+  }
+})();
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div>
+    <a class="back-link" href="{% url 'stats:daily_activity' %}?date={{ selected_date|date:'Y-m-d' }}">← Daily Activity</a>
+    <h1>
+      Nginx
+      {% if status_code >= 500 %}<span class="pill pill-red">{{ status_code }}</span>
+      {% elif status_code >= 400 %}<span class="pill pill-yellow">{{ status_code }}</span>
+      {% elif status_code >= 300 %}<span class="pill pill-blue">{{ status_code }}</span>
+      {% else %}<span class="pill pill-green">{{ status_code }}</span>{% endif %}
+      Requests
+    </h1>
+  </div>
+  <form class="date-nav" method="get" action="">
+    <input type="hidden" name="status_code" value="{{ status_code }}">
+    <a href="?status_code={{ status_code }}&date={{ prev_date|date:'Y-m-d' }}">&#8592;</a>
+    <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" onchange="this.form.submit()">
+    {% if not is_today %}
+    <a href="?status_code={{ status_code }}&date={{ next_date|date:'Y-m-d' }}">&#8594;</a>
+    {% endif %}
+    <a href="?status_code={{ status_code }}">Today</a>
+  </form>
+</div>
+
+<div class="summary-grid">
+  <div class="stat-card">
+    <div class="num">{{ total }}</div>
+    <div class="label">Total Requests</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ top_urls|length }}</div>
+    <div class="label">Distinct URLs</div>
+  </div>
+</div>
+
+<div class="two-col">
+  <!-- Top URLs -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Top URLs</h2>
+      <span class="badge highlight">{{ top_urls|length }}</span>
+    </div>
+    {% if top_urls %}
+    <div class="overflow-x">
+    <table>
+      <thead><tr><th>#</th><th>URL</th><th>Hits</th></tr></thead>
+      <tbody>
+        {% for row in top_urls %}
+        <tr>
+          <td class="ts">{{ forloop.counter }}</td>
+          <td class="mono truncate" title="{{ row.url }}">{{ row.url }}</td>
+          <td><span class="badge highlight">{{ row.count }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <p class="empty-note">No requests.</p>
+    {% endif %}
+  </div>
+
+  <!-- Placeholder for balance -->
+  <div></div>
+</div>
+
+<!-- All Requests -->
+<div class="section">
+  <div class="section-header">
+    <h2>All Requests</h2>
+    <span class="badge highlight">{{ rows|length }}{% if rows|length == 500 %}+{% endif %}</span>
+    {% if rows|length == 500 %}<span style="font-size:0.75rem;color:#4b5563;margin-left:auto;">showing first 500</span>{% endif %}
+  </div>
+  {% if rows %}
+  <div class="overflow-x">
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Method</th>
+        <th>URL</th>
+        <th>IP</th>
+        <th>Bytes</th>
+        <th>Referer</th>
+        <th>User Agent</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td class="ts"><time data-utc="{{ r.time|date:'c' }}">{{ r.time|time:"H:i:s" }}</time></td>
+        <td><span class="pill {% if r.method == 'GET' %}pill-green{% elif r.method == 'POST' %}pill-blue{% else %}pill-yellow{% endif %}">{{ r.method }}</span></td>
+        <td class="mono truncate" title="{% if r.query_string %}{{ r.url }}?{{ r.query_string }}{% else %}{{ r.url }}{% endif %}">
+          {{ r.url }}{% if r.query_string %}?{{ r.query_string }}{% endif %}
+        </td>
+        <td class="mono">
+          <a href="{% url 'stats:ip_drill' %}?ip={{ r.ip|urlencode }}&date={{ selected_date|date:'Y-m-d' }}">{{ r.ip }}</a>
+        </td>
+        <td class="ts">{{ r.bytes_sent|filesizeformat }}</td>
+        <td class="mono truncate" title="{{ r.referer }}">{{ r.referer|default:"—" }}</td>
+        <td class="mono truncate" style="max-width:200px;" title="{{ r.user_agent }}">{{ r.user_agent|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <p class="empty-note">No requests for this status code on this date.</p>
+  {% endif %}
+</div>
+
+<script>
+document.querySelectorAll('time[data-utc]').forEach(function(el) {
+  var d = new Date(el.getAttribute('data-utc'));
+  el.textContent = d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+});
+</script>
+{% endblock %}

@@ -18,7 +18,6 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib import messages
 from functools import wraps
 from django.http import HttpRequest, HttpResponse, JsonResponse
-from iqs_site.utilities import log_view
 from django.core.cache import cache
 from django.views.decorators.cache import cache_page
 from django.db.models import Q
@@ -99,7 +98,6 @@ def _build_pull_export_redirect(filters, job_id=None):
 
     return f"{reverse('events:pull_export')}?{urlencode(params)}"
 
-@log_view
 #@cache_page(300)  # 300 seconds = 5 minutes
 @cache_page(300)  # 300 seconds = 5 minutes
 def landing(request):
@@ -145,7 +143,6 @@ def landing(request):
     })
 
 
-@log_view
 @cache_page(300)
 def event_list(request):
     events = (
@@ -186,7 +183,6 @@ def event_list(request):
     }
     return render(request, "events/event_list.html", context)
 
-@log_view
 @cache_page(300)
 def team_list(request):
     # Prefetch teams per class, sorted by name
@@ -217,7 +213,6 @@ def team_list(request):
 def health(request):
     return HttpResponse("ok")
 
-@log_view
 @cache_page(300)
 def tractor_list(request):
     
@@ -238,13 +233,11 @@ def tractor_list(request):
     }
     return render(request, "events/tractor_list.html", context)
 
-@log_view
 def contribute(request):
     return render(request, "events/contribute.html", {
         "active_page": None,
     })
 
-@log_view
 @cache_page(300)
 def privacy(request):
     return render(request, "events/privacy.html", {
@@ -252,7 +245,6 @@ def privacy(request):
         "contact_email":"asabeiqswebsite@gmail.com"
     })
 
-@log_view
 @cache_page(300)
 def team_detail_page(request, team_id):
     team = get_object_or_404(Team, pk=team_id)
@@ -345,7 +337,6 @@ def team_name_redirect(request, team_name):
         raise Http404
     return redirect("events:team_detail", team_id=team.team_id)
 
-@log_view
 @cache_page(300)
 def team_event_detail(request, event_id, team_id):
     team = get_object_or_404(Team, pk=team_id)
@@ -507,7 +498,6 @@ def allowed_file(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-@log_view
 @cache_page(300)
 def event_scores(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
@@ -563,7 +553,6 @@ def event_scores(request, event_id):
     return render(request, "events/event_scores.html", context)
 
 
-@log_view
 @cache_page(300)
 def event_category_breakdown(request, event_id, category_id):
     event = get_object_or_404(Event, pk=event_id)
@@ -638,7 +627,6 @@ def event_category_breakdown(request, event_id, category_id):
     return render(request, "events/event_category_breakdown.html", context)
 
 
-@log_view
 @cache_page(300)
 def team_score_history(request, team_id):
     team = get_object_or_404(Team, pk=team_id)
@@ -710,7 +698,6 @@ def team_score_history(request, team_id):
     return render(request, "events/team_score_history.html", context)
 
 
-@log_view
 @cache_page(300)
 def category_leaderboard(request, category_id):
     category = get_object_or_404(ScoreCategory, pk=category_id)
@@ -862,7 +849,6 @@ def upload_team_photo(request, event_id, team_id):
 
     return redirect("events:team_event_detail", event_id=event_id, team_id=team_id)
 
-@log_view
 @cache_page(300)
 def event_detail(request, event_id):
     event = get_object_or_404(
@@ -932,7 +918,6 @@ def event_detail(request, event_id):
     }
     return render(request, "events/event_detail.html", context)
 
-@log_view
 @cache_page(300)
 def pull_detail(request, pull_id):
     pull = (
@@ -997,7 +982,6 @@ def pull_detail(request, pull_id):
 
     return render(request, "events/pull_detail.html", context)
 
-@log_view
 @cache_page(300)
 def durability_run_detail(request, run_id: int):
     durability_run = (
@@ -1078,7 +1062,6 @@ def durability_run_detail(request, run_id: int):
 
     return render(request, "events/durability_run_detail.html", context)
 
-@log_view
 @cache_page(300)
 def maneuverability_run_detail(request, run_id: int):
     maneuverability_run = (
@@ -1112,7 +1095,6 @@ def maneuverability_run_detail(request, run_id: int):
 
     return render(request, "events/maneuverability_run_detail.html", context)
 
-@log_view
 @login_required
 def pull_export(request):
     if request.method == "POST":
@@ -1240,7 +1222,6 @@ def pull_export_job_status(request, job_id: int):
     }
     return JsonResponse(payload)
 
-@log_view
 @cache_page(300)
 def tractor_detail(request, tractor_id):
     # Grab the tractor, along with its original_team and all TractorEvent rows
@@ -1356,7 +1337,6 @@ def tractor_detail(request, tractor_id):
     }
     return render(request, "events/tractor_detail.html", context)
 
-@log_view
 def durability_event_results(request, event_id: int):
     event = get_object_or_404(Event, event_id=event_id)
 
@@ -1463,7 +1443,6 @@ def _upsert_teaminfo(team, info_type, value: str, user=None):
         new_value=value or None,
     )
 
-@log_view
 @login_required
 def team_profile_edit(request, team_id: int):
     team = get_object_or_404(Team, team_id=team_id)
@@ -1524,7 +1503,6 @@ def _tractor_upsert(tractor, info_type, value: str, user=None):
         new_value=value or None,
     )
 
-@log_view
 @login_required
 def tractor_profile_edit(request, tractor_id: int):
     tractor = get_object_or_404(Tractor, tractor_id=tractor_id)
@@ -1748,7 +1726,6 @@ def upload_maneuverability_photo(request, run_id):
     )
 
 
-@log_view
 def all_photos(request):
     """
     Compile all photos from event teams, tractors, and performance events into a single gallery.
@@ -1830,7 +1807,6 @@ def _allowed_report(filename: str) -> bool:
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_REPORT_EXTENSIONS
 
 
-@log_view
 @login_required
 def team_event_edit(request, event_id: int, team_id: int):
     event = get_object_or_404(Event, pk=event_id)

@@ -108,3 +108,63 @@ class SavedGraphConfig(models.Model):
 
     def __str__(self):
         return self.title
+
+
+class FailedSignup(models.Model):
+    """Records a failed signup attempt with sanitized form data (no passwords)."""
+    attempted_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    ip = models.CharField(max_length=45, blank=True, default="")
+    form_data = models.JSONField(help_text="Submitted form fields, passwords excluded.")
+    errors = models.JSONField(help_text="Form validation errors.")
+
+    class Meta:
+        db_table = "failed_signup"
+        ordering = ["-attempted_at"]
+
+    def __str__(self):
+        return f"{self.attempted_at} — {self.form_data.get('username', '?')}"
+
+
+class ServerError(models.Model):
+    """Full traceback captured by PageViewMiddleware on unhandled exceptions."""
+    occurred_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    url = models.CharField(max_length=500, blank=True, default="")
+    method = models.CharField(max_length=16, blank=True, default="")
+    ip = models.CharField(max_length=45, blank=True, default="")
+    user = models.ForeignKey(
+        get_user_model(), on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="server_errors",
+    )
+    exception_type = models.CharField(max_length=255, blank=True, default="")
+    traceback = models.TextField(blank=True, default="")
+
+    class Meta:
+        db_table = "server_error_log"
+        ordering = ["-occurred_at"]
+
+    def __str__(self):
+        return f"{self.occurred_at} — {self.exception_type} at {self.url}"
+
+
+class CsrfFailure(models.Model):
+    """Records a CSRF verification failure."""
+    occurred_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    ip = models.CharField(max_length=45, blank=True, default="")
+    path = models.CharField(max_length=500, blank=True, default="")
+    reason = models.CharField(max_length=255, blank=True, default="")
+    referer = models.CharField(max_length=2048, blank=True, default="")
+    user = models.ForeignKey(
+        get_user_model(), on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="csrf_failures",
+    )
+    user_agent = models.TextField(blank=True, default="")
+
+    class Meta:
+        db_table = "csrf_failure"
+        ordering = ["-occurred_at"]
+        indexes = [
+            models.Index(fields=["occurred_at", "ip"]),
+        ]
+
+    def __str__(self):
+        return f"{self.occurred_at} — {self.path} ({self.reason})"
