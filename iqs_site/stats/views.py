@@ -1711,6 +1711,7 @@ def explore_config_hide_api(request, config_id):
 # Page-time tracking endpoints (called by JS in base.html)
 # ---------------------------------------------------------------------------
 
+@csrf_exempt
 @require_POST
 def pv_start(request):
     """Create a new PageSession on page load. Returns session_id + token."""
@@ -1724,6 +1725,7 @@ def pv_start(request):
     return JsonResponse({'session_id': session.session_id, 'token': str(session.token)})
 
 
+@csrf_exempt
 @require_POST
 def pv_ping(request):
     """Heartbeat — bump last_seen_at and update active_seconds."""
