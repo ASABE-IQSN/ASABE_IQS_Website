@@ -20,6 +20,7 @@ urlpatterns = [
     path("team-pages/", views.team_page_activity, name="team_page_activity"),
     path("user/", views.user_activity, name="user_activity"),
     path("server-error/<int:error_id>/", views.server_error_detail, name="server_error_detail"),
+    path("nginx/status/", views.nginx_status_drill, name="nginx_status_drill"),
     # Page-time tracking
     path("pv/start/", views.pv_start, name="pv_start"),
     path("pv/ping/", views.pv_ping, name="pv_ping"),

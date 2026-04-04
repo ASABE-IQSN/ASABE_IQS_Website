@@ -1768,3 +1768,72 @@ def server_error_detail(request, error_id):
     from django.shortcuts import get_object_or_404
     error = get_object_or_404(ServerError, pk=error_id)
     return render(request, "stats/server_error_detail.html", {"error": error})
+
+
+@user_passes_test(lambda u: u.is_staff)
+def nginx_status_drill(request):
+    status_code = request.GET.get("status_code")
+    date_str = request.GET.get("date")
+
+    try:
+        status_code = int(status_code)
+    except (TypeError, ValueError):
+        return redirect("stats:daily_activity")
+
+    if date_str:
+        try:
+            selected_date = dt_datetime.strptime(date_str, "%Y-%m-%d").date()
+        except ValueError:
+            selected_date = timezone.now().date()
+    else:
+        selected_date = timezone.now().date()
+
+    today = timezone.now().date()
+    prev_date = selected_date - timedelta(days=1)
+    next_date = selected_date + timedelta(days=1)
+    is_today = selected_date == today
+
+    day_start = timezone.make_aware(dt_datetime.combine(selected_date, dt_datetime.min.time()))
+    day_end = day_start + timedelta(days=1)
+
+    rows = list(
+        NginxLog.objects
+        .filter(status_code=status_code, time__gte=day_start, time__lt=day_end)
+        .order_by("-time")
+        .values("id", "time", "method", "url", "query_string", "status_code",
+                "bytes_sent", "ip", "referer", "user_agent")[:500]
+    )
+
+    # Try to correlate each nginx entry with a Django PageView (IP + time within 5s)
+    pv_qs = list(
+        PageView.objects
+        .filter(time__gte=day_start, time__lt=day_end)
+        .values("ip", "time", "user__username")
+    )
+
+    for row in rows:
+        row["matched_user"] = None
+        for pv in pv_qs:
+            if pv["ip"] == row["ip"] and abs((pv["time"] - row["time"]).total_seconds()) <= 5:
+                row["matched_user"] = pv.get("user__username")
+                break
+
+    # Top URLs summary
+    url_counts: dict = {}
+    for row in rows:
+        url_counts[row["url"]] = url_counts.get(row["url"], 0) + 1
+    top_urls = sorted(
+        [{"url": u, "count": c} for u, c in url_counts.items()],
+        key=lambda x: -x["count"]
+    )
+
+    return render(request, "stats/nginx_status_drill.html", {
+        "status_code": status_code,
+        "selected_date": selected_date,
+        "prev_date": prev_date,
+        "next_date": next_date,
+        "is_today": is_today,
+        "total": len(rows),
+        "top_urls": top_urls,
+        "rows": rows,
+    })

@@ -195,6 +195,7 @@ tr:hover td { background: #0f172a; }
         <th>Method</th>
         <th>URL</th>
         <th>IP</th>
+        <th>User</th>
         <th>Bytes</th>
         <th>Referer</th>
         <th>User Agent</th>
@@ -211,6 +212,7 @@ tr:hover td { background: #0f172a; }
         <td class="mono">
           <a href="{% url 'stats:ip_drill' %}?ip={{ r.ip|urlencode }}&date={{ selected_date|date:'Y-m-d' }}">{{ r.ip }}</a>
         </td>
+        <td class="ts">{{ r.matched_user|default:"—" }}</td>
         <td class="ts">{{ r.bytes_sent|filesizeformat }}</td>
         <td class="mono truncate" title="{{ r.referer }}">{{ r.referer|default:"—" }}</td>
         <td class="mono truncate" style="max-width:200px;" title="{{ r.user_agent }}">{{ r.user_agent|default:"—" }}</td>

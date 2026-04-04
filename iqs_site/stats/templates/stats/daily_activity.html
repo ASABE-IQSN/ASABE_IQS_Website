@@ -617,10 +617,12 @@ tr:hover td {
           {% for row in nginx_status_dist %}
           <tr>
             <td>
+              <a href="{% url 'stats:nginx_status_drill' %}?status_code={{ row.status_code }}&date={{ selected_date|date:'Y-m-d' }}" style="text-decoration:none;">
               {% if row.status_code >= 500 %}<span class="pill pill-red">{{ row.status_code }}</span>
               {% elif row.status_code >= 400 %}<span class="pill pill-yellow">{{ row.status_code }}</span>
               {% elif row.status_code >= 300 %}<span class="pill pill-blue">{{ row.status_code }}</span>
               {% else %}<span class="pill pill-green">{{ row.status_code }}</span>{% endif %}
+              </a>
             </td>
             <td><span class="badge highlight">{{ row.count }}</span></td>
             <td>
