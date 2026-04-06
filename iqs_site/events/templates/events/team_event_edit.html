@@ -32,8 +32,9 @@
 
       <div style="display:grid; gap:0.9rem;">
 
-        <!-- Report Upload Section -->
-        <!-- <div>
+        <!-- Report Upload Section (staff only) -->
+        {% if user.is_staff %}
+        <div>
           <label><strong>Upload Report (PDF)</strong></label><br>
           <select name="report_type" required
                   style="padding: 0.4rem 0.75rem; border: 1px solid #1f2937; border-radius: 0.5rem; background: #020617; color: #F3F6E7; font-size: 0.9rem; width: 100%; margin-bottom: 0.5rem;">
@@ -65,7 +66,8 @@
               {% endfor %}
             </div>
           </div>
-        {% endif %} -->
+        {% endif %}
+        {% endif %}
 
         <hr style="border:0; border-top:1px solid #1f2937; margin:0.25rem 0;">
 
