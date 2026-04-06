@@ -8,6 +8,43 @@
     font-size: 1.8rem;
   }
 
+  /* Stats strip */
+  .stats-strip {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 0.6rem 1.1rem;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.75rem;
+    margin-bottom: 1.25rem;
+    width: fit-content;
+  }
+
+  .stat-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+  }
+
+  .stat-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #F3F6E7;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 0.8rem;
+    color: #6b7280;
+  }
+
+  .stat-divider {
+    width: 1px;
+    height: 1.4rem;
+    background: #1f2937;
+  }
+
   /* Search bar */
   .team-search-wrapper {
     margin-bottom: 1rem;
@@ -15,17 +52,17 @@
     flex-wrap: wrap;
     gap: 0.5rem;
     align-items: center;
-    justify-content: space-between;
   }
 
   .team-search-input {
     flex: 1;
     min-width: 220px;
+    max-width: 400px;
     padding: 0.45rem 0.75rem;
     border-radius: 999px;
     border: 1px solid #1f2937;
     background: #020617;
-    color: #020617;
+    color: #F3F6E7;
     font-size: 0.9rem;
   }
 
@@ -33,9 +70,9 @@
     color: #6b7280;
   }
 
-  .team-search-hint {
-    font-size: 0.8rem;
-    color: #9ca3af;
+  .team-search-input:focus {
+    outline: none;
+    border-color: #374151;
   }
 
   /* Top anchor nav */
@@ -45,19 +82,24 @@
     gap: 0.5rem;
     margin-bottom: 1.5rem;
   }
+
   .class-nav a {
-    font-size: 0.85rem;
-    padding: 0.25rem 0.6rem;
+    font-size: 0.8rem;
+    padding: 0.25rem 0.65rem;
     border-radius: 999px;
     border: 1px solid #1f2937;
     background: #020617;
-    color: #F3F6E7;
+    color: #9ca3af;
     text-decoration: none;
-  }
-  .class-nav a:hover {
-    background: #0f172a;
+    transition: color 0.12s, border-color 0.12s;
   }
 
+  .class-nav a:hover {
+    color: #F3F6E7;
+    border-color: #374151;
+  }
+
+  /* Grid */
   .class-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -70,11 +112,13 @@
     }
   }
 
+  /* Class cards with per-class accent color via CSS variable */
   .class-card {
     padding: 1rem 1.25rem;
     border-radius: 0.9rem;
     background: #0b1120;
     border: 1px solid #1f2937;
+    border-top: 3px solid var(--accent, #1f2937);
   }
 
   .class-header {
@@ -82,75 +126,94 @@
     justify-content: space-between;
     align-items: baseline;
     gap: 0.75rem;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.75rem;
   }
 
   .class-card h2 {
     margin: 0;
-    font-size: 1.25rem;
+    font-size: 1.15rem;
   }
 
-  .class-badge {
+  .class-count {
     font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    padding: 0.15rem 0.6rem;
+    color: var(--accent, #9ca3af);
+    white-space: nowrap;
+    opacity: 0.85;
+  }
+
+  /* Team chips */
+  .team-chips {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .team-chip {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.28rem 0.55rem 0.28rem 0.28rem;
     border-radius: 999px;
     border: 1px solid #1f2937;
     background: #020617;
-    color: #9ca3af;
-    white-space: nowrap;
+    text-decoration: none;
+    color: #d1d5db;
+    font-size: 0.83rem;
+    width: 100%;
+    transition: background 0.12s, border-color 0.12s, transform 0.1s;
   }
 
-  /* You can tweak these color hints per class later if you want */
-  .class-badge.primary {
-    border-color: #38bdf8;
-    color: #bae6fd;
-  }
-  .class-badge.secondary {
-    border-color: #a855f7;
-    color: #e9d5ff;
+  .team-chip:hover {
+    background: #0f172a;
+    border-color: var(--accent, #374151);
+    color: #F3F6E7;
+    transform: translateY(-1px);
   }
 
-  .class-meta {
-    font-size: 0.85rem;
-    color: #9ca3af;
-    margin-bottom: 0.6rem;
-  }
-
-  ul.team-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  ul.team-list li {
-    padding: 0.4rem 0;
-    border-bottom: 1px solid #1f2937;
-    font-size: 0.9rem;
+  .chip-avatar {
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    flex-shrink: 0;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--accent, #374151) 18%, #020617);
     display: flex;
-    justify-content: space-between;
-    gap: 0.5rem;
-    align-items: baseline;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid color-mix(in srgb, var(--accent, #374151) 35%, transparent);
   }
 
-  ul.team-list li:last-child {
-    border-bottom: none;
+  .chip-logo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
-  .team-name {
+  .chip-initials {
+    font-size: 0.6rem;
+    font-weight: 800;
+    color: var(--accent, #9ca3af);
+    letter-spacing: 0.02em;
+    line-height: 1;
+  }
+
+  .chip-name {
     flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
-  .team-number {
-    font-size: 0.85rem;
-    color: #9ca3af;
+  .chip-number {
+    font-size: 0.72rem;
+    color: #6b7280;
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .empty {
     font-size: 0.9rem;
-    color: #9ca3af;
+    color: #6b7280;
   }
 
   .no-search-results {
@@ -163,6 +226,19 @@
 {% block content %}
   <h1>Teams</h1>
 
+  <!-- Stats strip -->
+  <div class="stats-strip">
+    <div class="stat-item">
+      <span class="stat-value">{{ total_teams }}</span>
+      <span class="stat-label">teams</span>
+    </div>
+    <div class="stat-divider"></div>
+    <div class="stat-item">
+      <span class="stat-value">{{ team_classes|length }}</span>
+      <span class="stat-label">classes</span>
+    </div>
+  </div>
+
   <div class="team-search-wrapper">
     <input
       id="teamSearchInput"
@@ -171,70 +247,59 @@
       placeholder="Search teams by name or number..."
       autocomplete="off"
     >
-    <div class="team-search-hint">
-      <!--Type to filter teams across all classes.-->
-    </div>
   </div>
 
   <!-- Anchor nav -->
   <div class="class-nav">
     {% for tc in team_classes %}
       <a href="#class-{{ tc.team_class_id }}">
-        {{ tc.name }}
+        {{ tc.name }} ({{ tc.teams.count }})
       </a>
     {% endfor %}
     {% if unclassified_teams %}
-      <a href="#class-unclassified">Unclassified</a>
+      <a href="#class-unclassified">Unclassified ({{ unclassified_teams|length }})</a>
     {% endif %}
   </div>
 
   <div class="class-grid" id="classGrid">
     {% for tc in team_classes %}
-      <section class="class-card" id="class-{{ tc.team_class_id }}">
+      {# Cycle through accent colors per class card #}
+      {% if forloop.counter0|divisibleby:6 and not forloop.first %}
+        {# reset not needed; cycle handles wrap-around #}
+      {% endif %}
+      <section
+        class="class-card"
+        id="class-{{ tc.team_class_id }}"
+        style="--accent: {% cycle '#38bdf8' '#a78bfa' '#34d399' '#fb923c' '#f472b6' '#facc15' %};"
+      >
         <div class="class-header">
           <h2>{{ tc.name }}</h2>
-          {# Simple heuristic to vary badge style by position #}
-          {% if forloop.first %}
-            {% with badge_class="primary" %}
-              <span class="class-badge {{ badge_class }}">
-                {{ tc.name }}
-              </span>
-            {% endwith %}
-          {% else %}
-            {% with badge_class="secondary" %}
-              <span class="class-badge {{ badge_class }}">
-                {{ tc.name }}
-              </span>
-            {% endwith %}
-          {% endif %}
-        </div>
-
-        <div class="class-meta">
-          {% with num_teams=tc.teams.count %}
-            {{ num_teams }} team{{ num_teams|pluralize }}
-            <!-- you can add more stats later if you want -->
-          {% endwith %}
+          <span class="class-count">
+            {% with n=tc.teams.count %}{{ n }} team{{ n|pluralize }}{% endwith %}
+          </span>
         </div>
 
         {% if tc.teams.all %}
-          <ul class="team-list">
+          <div class="team-chips">
             {% for team in tc.teams.all %}
-              <li
-                class="team-row"
+              <a
+                href="{% url 'events:team_detail' team.team_id %}"
+                class="team-chip"
                 data-team-name="{{ team.team_name|lower }}"
                 data-team-number="{{ team.team_number }}"
               >
-                <div class="team-name">
-                  <a href="{% url 'events:team_detail' team.team_id %}">
-                    {{ team.team_name }}
-                  </a>
+                <div class="chip-avatar">
+                  {% if team.logo_url %}
+                    <img class="chip-logo" src="{{ team.logo_url }}" alt="{{ team.team_abbreviation }}">
+                  {% else %}
+                    <span class="chip-initials">{{ team.team_abbreviation|slice:":2"|upper }}</span>
+                  {% endif %}
                 </div>
-                <div class="team-number">
-                  #{{ team.team_number }}
-                </div>
-              </li>
+                <span class="chip-name">{{ team.team_name }}</span>
+                <span class="chip-number">#{{ team.team_number }}</span>
+              </a>
             {% endfor %}
-          </ul>
+          </div>
         {% else %}
           <p class="empty">No teams in this class yet.</p>
         {% endif %}
@@ -242,32 +307,32 @@
     {% endfor %}
 
     {% if unclassified_teams %}
-      <section class="class-card" id="class-unclassified">
+      <section class="class-card" id="class-unclassified" style="--accent: #6b7280;">
         <div class="class-header">
-          <h2>Unclassified Teams</h2>
-          <span class="class-badge">
-            Unclassified
-          </span>
+          <h2>Unclassified</h2>
+          <span class="class-count">{{ unclassified_teams|length }} team{{ unclassified_teams|length|pluralize }}</span>
         </div>
 
-        <ul class="team-list">
+        <div class="team-chips">
           {% for team in unclassified_teams %}
-            <li
-              class="team-row"
+            <a
+              href="{% url 'events:team_detail' team.team_id %}"
+              class="team-chip"
               data-team-name="{{ team.team_name|lower }}"
               data-team-number="{{ team.team_number }}"
             >
-              <div class="team-name">
-                <a href="{% url 'events:team_detail' team.team_id %}">
-                  {{ team.team_name }}
-                </a>
+              <div class="chip-avatar">
+                {% if team.logo_url %}
+                  <img class="chip-logo" src="{{ team.logo_url }}" alt="{{ team.team_abbreviation }}">
+                {% else %}
+                  <span class="chip-initials">{{ team.team_abbreviation|slice:":2"|upper }}</span>
+                {% endif %}
               </div>
-              <div class="team-number">
-                #{{ team.team_number }}
-              </div>
-            </li>
+              <span class="chip-name">{{ team.team_name }}</span>
+              <span class="chip-number">#{{ team.team_number }}</span>
+            </a>
           {% endfor %}
-        </ul>
+        </div>
       </section>
     {% endif %}
   </div>
@@ -291,27 +356,16 @@
         let anyVisibleTeam = false;
 
         classCards.forEach(card => {
-          const rows = Array.from(card.querySelectorAll('.team-row'));
-          if (!rows.length) {
-            // If class has no teams at all, leave it as-is
-            return;
-          }
+          const chips = Array.from(card.querySelectorAll('.team-chip'));
+          if (!chips.length) return;
 
           let cardHasVisible = false;
-          rows.forEach(row => {
-            const name = row.getAttribute('data-team-name') || '';
-            const number = (row.getAttribute('data-team-number') || '').toString().toLowerCase();
-
-            const match =
-              !query ||
-              name.includes(query) ||
-              number.includes(query);
-
-            row.style.display = match ? '' : 'none';
-            if (match) {
-              cardHasVisible = true;
-              anyVisibleTeam = true;
-            }
+          chips.forEach(chip => {
+            const name = chip.getAttribute('data-team-name') || '';
+            const number = (chip.getAttribute('data-team-number') || '').toLowerCase();
+            const match = !query || name.includes(query) || number.includes(query);
+            chip.style.display = match ? '' : 'none';
+            if (match) { cardHasVisible = true; anyVisibleTeam = true; }
           });
 
           card.style.display = cardHasVisible || !query ? '' : 'none';

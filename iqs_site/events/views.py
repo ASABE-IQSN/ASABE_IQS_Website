@@ -186,8 +186,14 @@ def event_list(request):
 
 @cache_page(300)
 def team_list(request):
-    # Prefetch teams per class, sorted by name
-    team_qs = Team.objects.order_by("team_number","team_name")
+    logo_subq = TeamInfo.objects.filter(
+        team_id=OuterRef("team_id"),
+        info_type=TeamInfo.InfoTypes.LOGO,
+    ).values("info")[:1]
+
+    team_qs = Team.objects.annotate(
+        logo_url=Subquery(logo_subq)
+    ).order_by("team_number", "team_name")
 
     team_classes = (
         TeamClass.objects
@@ -200,13 +206,17 @@ def team_list(request):
     unclassified_teams = (
         Team.objects
         .filter(team_class__isnull=True)
+        .annotate(logo_url=Subquery(logo_subq))
         .order_by("team_name")
     )
+
+    total_teams = Team.objects.count()
 
     context = {
         "team_classes": team_classes,
         "unclassified_teams": unclassified_teams,
-        "active_page": "teams",  # for nav highlighting in base.html
+        "total_teams": total_teams,
+        "active_page": "teams",
     }
     return render(request, "events/teams.html", context)
 

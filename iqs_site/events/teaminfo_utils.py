@@ -8,4 +8,5 @@ INFO_MAP = {
     "nickname":  TeamInfo.InfoTypes.NICKNAME,
     "youtube":   TeamInfo.InfoTypes.YOUTUBE,
     "linkedin":  TeamInfo.InfoTypes.LINKEDIN,
+    "logo_url":  TeamInfo.InfoTypes.LOGO,
 }

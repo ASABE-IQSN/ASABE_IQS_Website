@@ -712,6 +712,7 @@ class TeamInfo(models.Model):
         NICKNAME=5
         YOUTUBE=6
         LINKEDIN=7
+        LOGO=8
     team_info_id=models.AutoField(primary_key=True)
 
     info_type=models.IntegerField(choices=InfoTypes.choices)

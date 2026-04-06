@@ -4,6 +4,7 @@ class TeamProfileEditForm(forms.Form):
     nickname = forms.CharField(required=False, max_length=255)
     bio = forms.CharField(required=False, widget=forms.Textarea(attrs={"rows": 5}), max_length=255)
     website = forms.CharField(required=False, max_length=255)
+    logo_url = forms.CharField(required=False, max_length=500, help_text="Full URL to your team logo image (PNG or JPG, square recommended)")
 
     instagram = forms.CharField(required=False, max_length=255, help_text="Handle only (no @)")
     facebook = forms.CharField(required=False, max_length=255)
