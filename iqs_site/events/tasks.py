@@ -1,6 +1,5 @@
 import csv
 import logging
-import shutil
 import tempfile
 import uuid
 from datetime import timedelta
@@ -9,6 +8,7 @@ from zipfile import ZIP_DEFLATED, ZipFile
 
 from celery import shared_task
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils import timezone
@@ -17,14 +17,9 @@ from .models import PullData, PullExportJob
 
 logger = logging.getLogger(__name__)
 
-STATIC_ROOT_PATH = Path(getattr(settings, "STATIC_ROOT", "/var/www/quarterscale/static/"))
-EXPORT_STATIC_DIR = STATIC_ROOT_PATH / "exports" / "pull_exports"
-PUBLIC_BASE_URL = "https://iqsconnect.org"
-
-
 def _build_download_url(zip_rel_path: str) -> str:
     rel = zip_rel_path.lstrip("/")
-    return f"{PUBLIC_BASE_URL}/static/{rel}"
+    return f"/static/{rel}"
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=3)
@@ -77,7 +72,6 @@ def generate_pull_export_zip(self, job_id: int) -> dict:
                     job.processed_pulls = idx
                     job.save(update_fields=["processed_pulls"])
 
-            EXPORT_STATIC_DIR.mkdir(parents=True, exist_ok=True)
             zip_filename = f"{uuid.uuid4().hex}.zip"
             zip_temp_path = tmp_dir_path / zip_filename
 
@@ -85,10 +79,11 @@ def generate_pull_export_zip(self, job_id: int) -> dict:
                 for csv_path in csv_paths:
                     zip_file.write(csv_path, arcname=csv_path.name)
 
-            final_zip_path = EXPORT_STATIC_DIR / zip_filename
-            # Use move instead of replace to handle cross-device moves (/tmp -> mounted static dir).
-            shutil.move(str(zip_temp_path), str(final_zip_path))
-            logger.info("Pull export job %s wrote zip to %s", job.pull_export_job_id, final_zip_path)
+            from iqs_site.storage import StaticStorage
+            storage = StaticStorage()
+            with open(zip_temp_path, "rb") as f:
+                storage.save(f"exports/pull_exports/{zip_filename}", f)
+            logger.info("Pull export job %s uploaded zip to SeaweedFS", job.pull_export_job_id)
 
         finished_at = timezone.now()
         zip_rel_path = f"exports/pull_exports/{zip_filename}"
@@ -179,14 +174,15 @@ def cleanup_expired_pull_export_zips(self) -> dict:
     deleted_files = 0
     updated_jobs = 0
 
+    from iqs_site.storage import StaticStorage
+    storage = StaticStorage()
+
     for job in stale_jobs:
-        file_path = STATIC_ROOT_PATH / job.zip_rel_path.lstrip("/")
-        if file_path.exists():
-            try:
-                file_path.unlink()
-                deleted_files += 1
-            except OSError:
-                logger.warning("Failed deleting stale export file for job %s", job.pull_export_job_id)
+        try:
+            storage.delete(job.zip_rel_path.lstrip("/"))
+            deleted_files += 1
+        except Exception:
+            logger.warning("Failed deleting stale export file for job %s", job.pull_export_job_id)
 
         job.status = PullExportJob.Statuses.EXPIRED
         job.zip_rel_path = None

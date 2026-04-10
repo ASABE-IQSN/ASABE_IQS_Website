@@ -12,7 +12,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 from .models import Event
 from django.conf import settings
-from iqs_site.storage import get_report_storage
+from iqs_site.storage import get_report_storage, MediaStorage
 from .models import TeamClass, Team, Report, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, PullExportJob, PullExportJobItem, Tractor, TractorEvent, TractorMedia, EditLog
 from schedule.models import ScheduleItem
 from django.views.decorators.http import require_POST, require_GET
@@ -278,16 +278,13 @@ def upload_score_sheet(request):
     unique = uuid.uuid4().hex[:8]
     filename = f"{unique}_{safe_name}.{ext}"
 
-    upload_dir = Path("/var/www/quarterscale/score_sheets")
-    upload_dir.mkdir(parents=True, exist_ok=True)
-    save_path = upload_dir / filename
-
-    with save_path.open("wb+") as dest:
-        for chunk in file.chunks():
-            dest.write(chunk)
+    rel_path = f"score_sheets/{filename}"
+    from iqs_site.storage import ReportStorage
+    storage = ReportStorage()
+    storage.save(rel_path, file)
 
     ScoreSheetSubmission.objects.create(
-        file_path=str(save_path),
+        file_path=rel_path,
         original_filename=file.name,
         submitted_from_ip=ip,
         note=note or None,
@@ -872,27 +869,8 @@ def upload_team_photo(request, event_id, team_id):
     # We'll mirror your Flask behavior:
     # Store under <project_root>/static/photos/<filename>
     # and save "photos/<filename>" in photo_path so {% static photo.photo_path %} works.
-    static_root = None
-
-    # For dev, STATICFILES_DIRS often has [ BASE_DIR / "static" ]
-    static_dirs = getattr(settings, "STATICFILES_DIRS", [])
-    if static_dirs:
-        static_root = Path(static_dirs[0])
-    else:
-        # Fallback to BASE_DIR / "static"
-        static_root = Path(settings.BASE_DIR) / "static"
-    #static_root="/var/www/quarterscale/static"
-    upload_dir = static_root / "photos"
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    save_path = upload_dir / filename
-    save_path=Path(f"/var/www/quarterscale/static/photos/{filename}")
-    print(f"uploading to {save_path}")
-    # Save the file to disk
-    with save_path.open("wb+") as dest:
-        for chunk in file.chunks():
-            dest.write(chunk)
-    print(f"Saved photo to {filename}")
+    storage = MediaStorage()
+    storage.save(f"photos/{filename}", file)
     # Path relative to /static
     rel_path = f"photos/{filename}"
 
@@ -1648,12 +1626,8 @@ def tractor_profile_edit(request, tractor_id: int):
                         safe_root = "photo"
 
                     filename = f"tractor{tractor_id}_{safe_root}{ext}"
-                    save_path = Path(f"/var/www/quarterscale/static/photos/{filename}")
-                    save_path.parent.mkdir(parents=True, exist_ok=True)
-
-                    with save_path.open("wb+") as dest:
-                        for chunk in photo_file.chunks():
-                            dest.write(chunk)
+                    storage = MediaStorage()
+                    storage.save(f"photos/{filename}", photo_file)
 
                     # Create database record using PerformanceEventMedia pattern
                     rel_path = f"photos/{filename}"
@@ -1719,12 +1693,8 @@ def _upload_performance_photo(request, team, event_type, event_id, redirect_view
 
     type_prefix = PerformanceEventMedia.EventTypes(event_type).label.lower()
     filename = f"{type_prefix}{event_id}_{safe_root}{ext}"
-    save_path = Path(f"/var/www/quarterscale/static/photos/{filename}")
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-
-    with save_path.open("wb+") as dest:
-        for chunk in photo_file.chunks():
-            dest.write(chunk)
+    storage = MediaStorage()
+    storage.save(f"photos/{filename}", photo_file)
 
     PerformanceEventMedia.objects.create(
         performance_event_type=event_type,
@@ -1911,11 +1881,8 @@ def team_event_edit(request, event_id: int, team_id: int):
                 if not safe_root:
                     safe_root = "photo"
                 filename = f"event{event_id}_team{team_id}_{safe_root}{ext}"
-                save_path = Path(f"/var/www/quarterscale/static/photos/{filename}")
-                save_path.parent.mkdir(parents=True, exist_ok=True)
-                with save_path.open("wb+") as dest:
-                    for chunk in photo_file.chunks():
-                        dest.write(chunk)
+                storage = MediaStorage()
+                storage.save(f"photos/{filename}", photo_file)
                 EventTeamPhoto.objects.create(
                     event_team=event_team,
                     photo_path=f"photos/{filename}",

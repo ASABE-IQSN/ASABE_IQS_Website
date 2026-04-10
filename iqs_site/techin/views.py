@@ -806,15 +806,10 @@ def judge_upload_photo(request):
         f"_rule{rs.rule_id}"
         f"_{safe_root}.{ext}"
     )
-    save_dir = Path(settings.MEDIA_ROOT) / "techin" / "photos"
-    save_dir.mkdir(parents=True, exist_ok=True)
-    dest = save_dir / filename
-
-    with open(dest, "wb+") as fh:
-        for chunk in photo.chunks():
-            fh.write(chunk)
-
     rel_path = f"techin/photos/{filename}"
+    from iqs_site.storage import MediaStorage
+    storage = MediaStorage()
+    storage.save(rel_path, photo)
     obj = RuleTractorMedia.objects.create(
         event_tractor_rule_status=rs,
         media_type=RuleTractorMedia.types.IMAGE,
