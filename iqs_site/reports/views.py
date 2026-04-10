@@ -46,6 +46,15 @@ def report_download(request, report_id):
     elif not request.user.is_authenticated or not request.user.is_staff:
         raise Http404()
 
+    if settings.DEBUG:
+        from iqs_site.storage import ReportStorage
+        storage = ReportStorage()
+        with storage.open(report.report_link, "rb") as f:
+            pdf_bytes = f.read()
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        response["Content-Disposition"] = f'inline; filename="{report.report_link}"'
+        return response
+
     response = HttpResponse(content_type="application/pdf")
     response["X-Accel-Redirect"] = f"/_reports/{report.report_link}"
     response["Content-Disposition"] = f'inline; filename="{report.report_link}"'

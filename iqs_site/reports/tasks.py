@@ -14,6 +14,7 @@ from django.db.models import F
 from django.utils import timezone
 
 from events.models import Report
+from iqs_site.storage import ReportStorage
 from .models import (
     AIDetectedSentence, AIDetectionResult,
     AnalysisJob, ChunkMatch, ImageMatch, PageMatch,
@@ -34,7 +35,6 @@ MIN_COLOR_STDDEV = 8               # per-channel stddev threshold; below this = 
 IMAGE_HAMMING_THRESHOLD = 10       # max pHash Hamming distance to record as a match
 IMAGE_COMPARE_CHUNK_SIZE = 500     # image IDs per parallel comparison sub-task
 IMAGE_LOG_INTERVAL = 500_000       # log a progress line every N pair comparisons
-PUBLIC_BASE_URL = "https://iqsconnect.org"
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -365,12 +365,10 @@ def extract_single_report(job_id: int, report_id: int) -> None:
         if ext != ".pdf":
             logger.info("Skipping report %s (extension %r)", report_id, ext)
         else:
-            token = getattr(settings, "INTERNAL_REPORT_TOKEN", "")
-            headers = {"X-Internal-Token": token} if token else {}
-            url = f"{PUBLIC_BASE_URL}/reports/{report_id}"
-            resp = requests.get(url, headers=headers, timeout=60)
-            resp.raise_for_status()
-            n_pages, n_images = _process_single_report(report, resp.content)
+            storage = ReportStorage()
+            with storage.open(report.report_link, "rb") as f:
+                pdf_bytes = f.read()
+            n_pages, n_images = _process_single_report(report, pdf_bytes)
     except Exception:
         logger.warning("extract_single_report failed for report %s", report_id, exc_info=True)
 
@@ -711,8 +709,7 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
     job.error_message = None
     job.save(update_fields=["status", "started_at", "error_message"])
 
-    token = getattr(settings, "INTERNAL_REPORT_TOKEN", "")
-    headers = {"X-Internal-Token": token} if token else {}
+    storage = ReportStorage()
 
     try:
         # ── Phase 1: extract pages, chunks, and images ───────────────────────
@@ -733,15 +730,14 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
                 logger.info("Skipping report %s (extension %r)", report.report_id, ext)
                 continue
 
-            url = f"{PUBLIC_BASE_URL}/reports/{report.report_id}"
             try:
-                resp = requests.get(url, headers=headers, timeout=60)
-                resp.raise_for_status()
+                with storage.open(report.report_link, "rb") as f:
+                    pdf_bytes = f.read()
             except Exception:
-                logger.warning("Failed to download report %s from %s", report.report_id, url, exc_info=True)
+                logger.warning("Failed to read report %s from storage", report.report_id, exc_info=True)
                 continue
 
-            n_pages, n_images = _process_single_report(report, resp.content)
+            n_pages, n_images = _process_single_report(report, pdf_bytes)
             if n_pages == 0:
                 continue
 

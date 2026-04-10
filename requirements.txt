@@ -20,3 +20,5 @@ pdf2image==1.*
 pytesseract==0.3.*
 Pillow==11.*
 imagehash==4.*
+django-storages[s3]==1.14.*
+boto3==1.35.*

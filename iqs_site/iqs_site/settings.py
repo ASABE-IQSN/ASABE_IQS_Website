@@ -107,6 +107,7 @@ INSTALLED_APPS = [
     "awards",
     "compforms",
     "engagement",
+    "storages",
 ]
 
 MIDDLEWARE = [
@@ -385,6 +386,26 @@ CELERY_BEAT_SCHEDULE = {
 }
 
 APIURL=os.environ["APIURL"]
+
+# ── SeaweedFS / S3-compatible storage ────────────────────────────────
+SEAWEEDFS_S3_ENDPOINT = os.environ.get("SEAWEEDFS_S3_ENDPOINT", "http://seaweedfs-filer:8333")
+AWS_ACCESS_KEY_ID = os.environ.get("SEAWEEDFS_ACCESS_KEY", "iqs_access_key")
+AWS_SECRET_ACCESS_KEY = os.environ.get("SEAWEEDFS_SECRET_KEY", "iqs_secret_key")
+AWS_S3_ENDPOINT_URL = SEAWEEDFS_S3_ENDPOINT
+AWS_S3_REGION_NAME = "us-east-1"          # SeaweedFS ignores this but boto3 requires it
+AWS_S3_SIGNATURE_VERSION = "s3v4"
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_FILE_OVERWRITE = True
+
+STORAGES = {
+    "default": {
+        "BACKEND": "iqs_site.storage.MediaStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "iqs_site.storage.StaticStorage",
+    },
+}
 
 INTERNAL_REPORT_TOKEN = os.environ.get("INTERNAL_REPORT_TOKEN", "")
 ZEROGPT_API_KEY = os.environ.get("ZEROGPT_API_KEY", "")

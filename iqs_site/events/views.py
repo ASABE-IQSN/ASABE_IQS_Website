@@ -12,6 +12,7 @@ from pathlib import Path
 from urllib.parse import urlencode
 from .models import Event
 from django.conf import settings
+from iqs_site.storage import get_report_storage
 from .models import TeamClass, Team, Report, PullMedia, TeamInfo, TractorInfo, EventTeamPhoto, EventTeam, Pull, Event, Hook, PullData, PullExportJob, PullExportJobItem, Tractor, TractorEvent, TractorMedia, EditLog
 from schedule.models import ScheduleItem
 from django.views.decorators.http import require_POST, require_GET
@@ -1935,11 +1936,8 @@ def team_event_edit(request, event_id: int, team_id: int):
                 if not safe_root:
                     safe_root = "report"
                 filename = f"event{event_id}_team{team_id}_{safe_root}{ext}"
-                save_path = Path(f"/var/www/quarterscale/reports/{filename}")
-                save_path.parent.mkdir(parents=True, exist_ok=True)
-                with save_path.open("wb+") as dest:
-                    for chunk in report_file.chunks():
-                        dest.write(chunk)
+                storage = get_report_storage()
+                storage.save(filename, report_file)
                 report_type = int(request.POST.get("report_type", 1))
                 if report_type not in (1, 2, 3):
                     report_type = 1
@@ -2014,11 +2012,8 @@ def upload_report(request, event_id: int, team_id: int):
     safe_root = "".join(c for c in name_root if c.isalnum() or c in ("-", "_")) or "report"
     filename = f"event{event_id}_team{team_id}_{safe_root}{ext}"
 
-    save_path = Path(f"/var/www/quarterscale/reports/{filename}")
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    with save_path.open("wb+") as dest:
-        for chunk in report_file.chunks():
-            dest.write(chunk)
+    storage = get_report_storage()
+    storage.save(filename, report_file)
 
     report = Report.objects.create(
         event_team=event_team,
