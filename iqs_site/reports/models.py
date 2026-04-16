@@ -160,6 +160,7 @@ class AnalysisJob(models.Model):
         SIMILARITY = "SIMILARITY", "Similarity Analysis"
         FULL = "FULL", "Full Analysis"
         AI_DETECTION = "AI_DETECTION", "AI Detection"
+        BULK_PDF_EXPORT = "BULK_PDF_EXPORT", "Bulk PDF Export"
 
     job_id = models.AutoField(primary_key=True)
     job_type = models.CharField(
@@ -191,6 +192,10 @@ class AnalysisJob(models.Model):
     pages_processed = models.IntegerField(default=0)
     images_processed = models.IntegerField(default=0)
     error_message = models.TextField(null=True, blank=True)
+    export_file = models.CharField(
+        max_length=255, blank=True,
+        help_text="S3 key of the generated export file (ZIP).",
+    )
 
     class Meta:
         ordering = ["-created_at"]

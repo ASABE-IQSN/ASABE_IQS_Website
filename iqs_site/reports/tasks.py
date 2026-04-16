@@ -1040,3 +1040,94 @@ def run_ai_detection(job_id: int):
         job.error_message = str(exc)[:4000]
         job.save(update_fields=["status", "completed_at", "error_message"])
         raise
+
+
+# ── Bulk PDF export ──────────────────────────────────────────────────────────
+
+@shared_task
+def run_bulk_pdf_export(job_id: int) -> None:
+    """Generate plagiarism PDF for every report in scope, bundle into a ZIP,
+    and upload to S3.  Updates AnalysisJob progress as it goes."""
+    import zipfile
+    from django.core.files.base import ContentFile
+    from reports.views import _generate_plagiarism_pdf
+
+    job = AnalysisJob.objects.get(pk=job_id)
+    job.status = AnalysisJob.Statuses.RUNNING
+    job.started_at = timezone.now()
+    job.error_message = None
+    job.save(update_fields=["status", "started_at", "error_message"])
+
+    storage = ReportStorage()
+
+    try:
+        qs = Report.objects.select_related("event_team__team", "event_team__event")
+        if job.event_id:
+            qs = qs.filter(event_team__event_id=job.event_id)
+        if job.report_type is not None:
+            qs = qs.filter(report_type=job.report_type)
+
+        # Only include reports that have been extracted (have pages).
+        report_ids_with_pages = set(
+            ReportPage.objects.values_list("report_id", flat=True).distinct()
+        )
+        reports = [r for r in qs if r.report_id in report_ids_with_pages]
+
+        job.reports_found = len(reports)
+        job.save(update_fields=["reports_found"])
+        logger.info("Bulk PDF export job %s: found %d reports", job_id, len(reports))
+
+        if not reports:
+            job.status = AnalysisJob.Statuses.SUCCEEDED
+            job.completed_at = timezone.now()
+            job.save(update_fields=["status", "completed_at"])
+            return
+
+        # Build the ZIP in memory.
+        zip_buf = io.BytesIO()
+        with zipfile.ZipFile(zip_buf, "w", zipfile.ZIP_DEFLATED) as zf:
+            for report in reports:
+                try:
+                    pdf_bytes, filename = _generate_plagiarism_pdf(report)
+                    zf.writestr(filename, pdf_bytes)
+                except Exception:
+                    logger.warning(
+                        "Bulk PDF export: failed to generate PDF for report %s",
+                        report.report_id, exc_info=True,
+                    )
+
+                AnalysisJob.objects.filter(pk=job_id).update(
+                    reports_processed=F("reports_processed") + 1,
+                )
+
+        # Upload ZIP to S3.
+        event_label = ""
+        if job.event_id:
+            from events.models import Event
+            try:
+                event_label = Event.objects.get(pk=job.event_id).event_name
+            except Event.DoesNotExist:
+                event_label = str(job.event_id)
+        else:
+            event_label = "all_events"
+
+        safe_label = re.sub(r"[^\w\-]", "_", event_label)
+        type_suffix = f"_type{job.report_type}" if job.report_type is not None else ""
+        zip_key = f"exports/plagiarism_{safe_label}{type_suffix}_job{job_id}.zip"
+
+        zip_buf.seek(0)
+        storage.save(zip_key, ContentFile(zip_buf.getvalue()))
+
+        job.export_file = zip_key
+        job.status = AnalysisJob.Statuses.SUCCEEDED
+        job.completed_at = timezone.now()
+        job.save(update_fields=["status", "completed_at", "export_file"])
+        logger.info("Bulk PDF export job %s completed: %s", job_id, zip_key)
+
+    except Exception as exc:
+        logger.exception("Bulk PDF export job %s failed", job_id)
+        job.status = AnalysisJob.Statuses.FAILED
+        job.completed_at = timezone.now()
+        job.error_message = str(exc)[:4000]
+        job.save(update_fields=["status", "completed_at", "error_message"])
+        raise

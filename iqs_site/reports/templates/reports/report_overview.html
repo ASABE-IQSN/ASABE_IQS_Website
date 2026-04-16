@@ -163,7 +163,10 @@
 
   <div class="page-header">
     <h1>Report Overview</h1>
-    <a class="btn-sm" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
+    <div style="display:flex;gap:0.5rem;">
+      <a class="btn-sm" href="{% url 'reports:report_export_pdf' report.report_id %}" style="background:#1e293b;color:#6687fc;border-color:#334155;">Export PDF &darr;</a>
+      <a class="btn-sm" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
+    </div>
   </div>
 
   <p style="color:#9ca3af;margin:0 0 1rem;font-size:0.9rem;">

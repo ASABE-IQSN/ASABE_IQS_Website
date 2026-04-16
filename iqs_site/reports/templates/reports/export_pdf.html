@@ -1,0 +1,324 @@
+{% load tz %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Plagiarism Report — {{ team_name }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 1.5cm;
+      @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 8pt; color: #888; }
+    }
+
+    body {
+      font-family: sans-serif;
+      font-size: 9.5pt;
+      color: #1a1a1a;
+      line-height: 1.45;
+      margin: 0;
+    }
+
+    h1 { font-size: 18pt; margin: 0 0 4pt; }
+    h2 { font-size: 13pt; border-bottom: 1.5px solid #ccc; padding-bottom: 4pt; margin: 20pt 0 8pt; }
+    h3 { font-size: 11pt; margin: 14pt 0 6pt; color: #333; }
+
+    .subtitle { font-size: 10pt; color: #555; margin: 0 0 12pt; }
+
+    /* ── Summary table ────────────────────────────── */
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 16pt;
+    }
+    .summary-table th {
+      text-align: left;
+      background: #f3f4f6;
+      padding: 5pt 8pt;
+      border: 1px solid #d1d5db;
+      font-size: 8.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #555;
+      width: 35%;
+    }
+    .summary-table td {
+      padding: 5pt 8pt;
+      border: 1px solid #d1d5db;
+    }
+
+    .pct-low  { color: #16a34a; font-weight: 700; }
+    .pct-mid  { color: #d97706; font-weight: 700; }
+    .pct-high { color: #dc2626; font-weight: 700; }
+
+    /* ── Chunk match table ────────────────────────── */
+    .chunk-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10pt;
+    }
+    .chunk-table th {
+      background: #f3f4f6;
+      padding: 4pt 6pt;
+      border: 1px solid #d1d5db;
+      font-size: 8pt;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #555;
+    }
+    .chunk-table td {
+      padding: 5pt 6pt;
+      border: 1px solid #d1d5db;
+      vertical-align: top;
+      font-size: 9pt;
+    }
+    .chunk-table .col-sim { width: 50pt; text-align: center; }
+    .chunk-table .col-text { width: 45%; }
+
+    .sim-badge {
+      display: inline-block;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 4pt;
+      padding: 1pt 5pt;
+      font-size: 8.5pt;
+      font-weight: 700;
+      color: #2563eb;
+    }
+
+    /* ── Image pairs ──────────────────────────────── */
+    .image-pair {
+      page-break-inside: avoid;
+      margin-bottom: 14pt;
+      border: 1px solid #e5e7eb;
+      border-radius: 4pt;
+      padding: 8pt;
+    }
+    .image-pair-inner {
+      display: flex;
+      gap: 12pt;
+      align-items: flex-start;
+    }
+    .image-pair-inner .img-col {
+      flex: 1;
+      text-align: center;
+    }
+    .image-pair-inner img {
+      max-width: 100%;
+      height: auto;
+      border: 1px solid #d1d5db;
+    }
+    .img-label {
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #888;
+      margin-bottom: 4pt;
+    }
+    .img-meta {
+      font-size: 8.5pt;
+      color: #555;
+      margin-top: 6pt;
+      text-align: center;
+    }
+
+    .page-break { page-break-before: always; }
+
+    .no-data { color: #888; font-style: italic; margin: 8pt 0; }
+
+    .section-note {
+      font-size: 8.5pt;
+      color: #888;
+      margin-bottom: 8pt;
+    }
+
+    /* ── PDF page preview side-by-side ────────────── */
+    .page-preview {
+      display: flex;
+      gap: 10pt;
+      margin-bottom: 10pt;
+      page-break-inside: avoid;
+    }
+    .page-preview .preview-col {
+      flex: 1;
+      text-align: center;
+    }
+    .page-preview .preview-col img {
+      max-width: 100%;
+      max-height: 700pt;
+      object-fit: contain;
+      border: 1px solid #d1d5db;
+    }
+    .preview-label {
+      font-size: 7.5pt;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #888;
+      margin-bottom: 3pt;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       Section 1: Header & Summary
+       ══════════════════════════════════════════════════════════════════ -->
+
+  <h1>Plagiarism Analysis Report</h1>
+  <p class="subtitle">
+    <strong>{{ team_name }}</strong> &mdash; {{ report_type_label }}
+    ({{ event_name }})<br>
+    Exported {{ export_date|date:"F j, Y g:i A" }}
+  </p>
+
+  <table class="summary-table">
+    <tr><th>Pages Extracted</th><td>{{ page_count }}</td></tr>
+    <tr><th>Text Chunks</th><td>{{ chunk_count }}</td></tr>
+    <tr><th>Embedded Images</th><td>{{ image_count }}</td></tr>
+    <tr><th>Word Count</th><td>{{ total_text_words|floatformat:"0" }}</td></tr>
+    <tr>
+      <th>Best Text Similarity</th>
+      <td>
+        {% if best_text_sim is not None %}
+          <span class="{% if best_text_sim < 40 %}pct-low{% elif best_text_sim < 70 %}pct-mid{% else %}pct-high{% endif %}">
+            {{ best_text_sim }}%
+          </span>
+          ({{ text_match_count }} page match{{ text_match_count|pluralize }})
+        {% else %}
+          <span class="no-data">No text matches</span>
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <th>Best Image Similarity</th>
+      <td>
+        {% if best_image_sim is not None %}
+          <span class="{% if best_image_sim < 40 %}pct-low{% elif best_image_sim < 70 %}pct-mid{% else %}pct-high{% endif %}">
+            {{ best_image_sim }}%
+          </span>
+          ({{ image_match_count }} image match{{ image_match_count|pluralize }})
+        {% else %}
+          <span class="no-data">No image matches</span>
+        {% endif %}
+      </td>
+    </tr>
+  </table>
+
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       Section 2: Text Matches (Top Report Only)
+       ══════════════════════════════════════════════════════════════════ -->
+
+  <h2>Text Similarity — Top Match</h2>
+
+  {% if top_text_group %}
+    <p class="section-note">
+      Highest-scoring text match: <strong>{{ top_text_group.team_name }}</strong>
+      ({{ top_text_group.event_name }}, {{ top_text_group.report_type_label }})
+    </p>
+
+    {% for pair in text_pair_details %}
+      <div class="page-break"></div>
+
+      <h3>
+        Page {{ pair.this_page_num }} vs Page {{ pair.other_page_num }}
+        &mdash; <span class="sim-badge">{{ pair.similarity }}%</span>
+      </h3>
+
+      {% if pair.this_page_b64 or pair.other_page_b64 %}
+        <div class="page-preview">
+          <div class="preview-col">
+            <p class="preview-label">{{ team_name }} &mdash; Page {{ pair.this_page_num }}</p>
+            {% if pair.this_page_b64 %}
+              <img src="data:image/jpeg;base64,{{ pair.this_page_b64 }}" alt="Page {{ pair.this_page_num }}">
+            {% else %}
+              <p class="no-data">Could not render page</p>
+            {% endif %}
+          </div>
+          <div class="preview-col">
+            <p class="preview-label">{{ top_text_group.team_name }} &mdash; Page {{ pair.other_page_num }}</p>
+            {% if pair.other_page_b64 %}
+              <img src="data:image/jpeg;base64,{{ pair.other_page_b64 }}" alt="Page {{ pair.other_page_num }}">
+            {% else %}
+              <p class="no-data">Could not render page</p>
+            {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if pair.chunk_matches %}
+        <table class="chunk-table">
+          <thead>
+            <tr>
+              <th class="col-sim">Sim.</th>
+              <th class="col-text">{{ team_name }}</th>
+              <th class="col-text">{{ top_text_group.team_name }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for cm in pair.chunk_matches %}
+              <tr>
+                <td class="col-sim"><span class="sim-badge">{{ cm.similarity }}%</span></td>
+                <td class="col-text">{{ cm.text_a }}</td>
+                <td class="col-text">{{ cm.text_b }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="no-data">Page-level similarity detected but no individual chunk matches above threshold.</p>
+      {% endif %}
+    {% endfor %}
+
+  {% else %}
+    <p class="no-data">No text similarity matches found for this report.</p>
+  {% endif %}
+
+
+  <!-- ══════════════════════════════════════════════════════════════════
+       Section 3: Image Matches (All)
+       ══════════════════════════════════════════════════════════════════ -->
+
+  <div class="page-break"></div>
+  <h2>Image Matches</h2>
+
+  {% if img_match_groups %}
+    {% for group in img_match_groups %}
+      <h3>
+        {{ group.team_name }}
+        <span style="font-weight:normal;color:#888;">({{ group.event_name }}, {{ group.report_type_label }})</span>
+      </h3>
+
+      {% for pair in group.image_pairs %}
+        <div class="image-pair">
+          <div class="image-pair-inner">
+            <div class="img-col">
+              <p class="img-label">{{ team_name }} &mdash; pg. {{ pair.this_img.page_number }}</p>
+              {% if pair.this_img_b64 %}
+                <img src="data:image/jpeg;base64,{{ pair.this_img_b64 }}" alt="Source image">
+              {% else %}
+                <p class="no-data">Could not extract image</p>
+              {% endif %}
+            </div>
+            <div class="img-col">
+              <p class="img-label">{{ group.team_name }} &mdash; pg. {{ pair.other_img.page_number }}</p>
+              {% if pair.other_img_b64 %}
+                <img src="data:image/jpeg;base64,{{ pair.other_img_b64 }}" alt="Matched image">
+              {% else %}
+                <p class="no-data">Could not extract image</p>
+              {% endif %}
+            </div>
+          </div>
+          <p class="img-meta">
+            Hamming distance: {{ pair.hamming_distance }} / 64
+            &mdash; Similarity: <strong>{{ pair.similarity_pct }}%</strong>
+          </p>
+        </div>
+      {% endfor %}
+    {% endfor %}
+  {% else %}
+    <p class="no-data">No image similarity matches found for this report.</p>
+  {% endif %}
+
+</body>
+</html>

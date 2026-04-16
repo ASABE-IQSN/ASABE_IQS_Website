@@ -1,3 +1,4 @@
+import base64
 import io
 import json
 import random
@@ -9,7 +10,9 @@ from django.contrib import messages
 from django.db.models import Avg, Count, Max, Min, Q, Sum
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
 
 import requests as http_requests
 
@@ -151,6 +154,20 @@ def analysis_dashboard(request):
             from .tasks import run_ai_detection
             run_ai_detection.delay(job.pk)
             messages.success(request, f"AI detection job #{job.pk} queued.")
+        elif job_type == "bulk_pdf_export":
+            raw_event = request.POST.get("event_id", "").strip()
+            event_id = int(raw_event) if raw_event.isdigit() else None
+            if not event_id:
+                messages.error(request, "Bulk PDF export requires an event to be selected.")
+                return redirect("reports:analysis_dashboard")
+            job = AnalysisJob.objects.create(
+                report_type=report_type,
+                job_type=AnalysisJob.JobTypes.BULK_PDF_EXPORT,
+                event_id=event_id,
+            )
+            from .tasks import run_bulk_pdf_export
+            run_bulk_pdf_export.delay(job.pk)
+            messages.success(request, f"Bulk PDF export job #{job.pk} queued.")
         else:
             job = AnalysisJob.objects.create(
                 report_type=report_type,
@@ -190,7 +207,7 @@ def analysis_dashboard(request):
 def analysis_job_status(request, job_id):
     _require_staff(request)
     job = get_object_or_404(AnalysisJob, pk=job_id)
-    return JsonResponse({
+    data = {
         "job_id": job.job_id,
         "job_type": job.job_type,
         "status": job.status,
@@ -198,7 +215,31 @@ def analysis_job_status(request, job_id):
         "reports_processed": job.reports_processed,
         "pages_processed": job.pages_processed,
         "error_message": job.error_message or "",
-    })
+    }
+    if job.export_file:
+        data["export_url"] = reverse("reports:export_download", args=[job.job_id])
+    return JsonResponse(data)
+
+
+def export_download(request, job_id):
+    """Serve the ZIP file from a completed BULK_PDF_EXPORT job."""
+    _require_staff(request)
+    job = get_object_or_404(AnalysisJob, pk=job_id)
+    if not job.export_file:
+        raise Http404("No export file for this job.")
+
+    from iqs_site.storage import ReportStorage
+    storage = ReportStorage()
+    try:
+        with storage.open(job.export_file, "rb") as f:
+            zip_bytes = f.read()
+    except Exception:
+        raise Http404("Export file not found in storage.")
+
+    response = HttpResponse(zip_bytes, content_type="application/zip")
+    filename = job.export_file.split("/")[-1]
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 # ── Report overview ────────────────────────────────────────────────────────────
@@ -255,24 +296,19 @@ def report_overview(request, report_id):
     })
 
 
-# ── Report match list ─────────────────────────────────────────────────────────
-def report_matches(request, report_id):
-    _require_staff(request)
+# ── Text match grouping helper ────────────────────────────────────────────────
 
-    report = get_object_or_404(
-        Report.objects.select_related("event_team__team", "event_team__event"),
-        pk=report_id,
-    )
+def _get_text_match_groups(report):
+    """Return (match_groups, no_pages) for a report's text similarity matches.
 
+    match_groups is a list of dicts sorted by max_sort_score descending.
+    Each dict has: other_report, team_name, event_name, report_type_label,
+    page_pairs (list), max_sim, max_sort_score.
+    """
     page_ids = list(ReportPage.objects.filter(report=report).values_list("page_id", flat=True))
 
     if not page_ids:
-        return render(request, "reports/report_matches.html", {
-            "report": report,
-            "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
-            "match_groups": [],
-            "no_pages": True,
-        })
+        return [], True
 
     matches = (
         PageMatch.objects
@@ -284,7 +320,6 @@ def report_matches(request, report_id):
         )
         .order_by("-similarity")
     )
-    # Also check the other direction.
     matches_b = (
         PageMatch.objects
         .filter(page_b_id__in=page_ids)
@@ -341,12 +376,25 @@ def report_matches(request, report_id):
         g["max_sort_score"] = g["page_pairs"][0]["sort_score"] if g["page_pairs"] else 0
 
     match_groups = sorted(groups.values(), key=lambda g: g["max_sort_score"], reverse=True)
+    return match_groups, False
+
+
+# ── Report match list ─────────────────────────────────────────────────────────
+def report_matches(request, report_id):
+    _require_staff(request)
+
+    report = get_object_or_404(
+        Report.objects.select_related("event_team__team", "event_team__event"),
+        pk=report_id,
+    )
+
+    match_groups, no_pages = _get_text_match_groups(report)
 
     return render(request, "reports/report_matches.html", {
         "report": report,
         "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
         "match_groups": match_groups,
-        "no_pages": False,
+        "no_pages": no_pages,
     })
 
 
@@ -593,24 +641,19 @@ def report_coverage(request):
     })
 
 
-# ── Image match list ──────────────────────────────────────────────────────────
-def report_image_matches(request, report_id):
-    _require_staff(request)
+# ── Image match grouping helper ───────────────────────────────────────────────
 
-    report = get_object_or_404(
-        Report.objects.select_related("event_team__team", "event_team__event"),
-        pk=report_id,
-    )
+def _get_image_match_groups(report):
+    """Return (match_groups, no_images) for a report's image similarity matches.
 
+    match_groups is a list of dicts sorted by min_hamming ascending.
+    Each dict has: other_report, team_name, event_name, report_type_label,
+    image_pairs (list), min_hamming.
+    """
     image_ids = list(ReportImage.objects.filter(report=report).values_list("image_id", flat=True))
 
     if not image_ids:
-        return render(request, "reports/report_image_matches.html", {
-            "report": report,
-            "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
-            "match_groups": [],
-            "no_images": True,
-        })
+        return [], True
 
     matches_a = (
         ImageMatch.objects
@@ -652,19 +695,75 @@ def report_image_matches(request, report_id):
         _add(m.image_b, m.image_a, m.image_a.report, m.hamming_distance, m.image_match_id)
 
     match_groups = sorted(groups.values(), key=lambda g: g["min_hamming"])
+    return match_groups, False
+
+
+# ── Image match list ──────────────────────────────────────────────────────────
+def report_image_matches(request, report_id):
+    _require_staff(request)
+
+    report = get_object_or_404(
+        Report.objects.select_related("event_team__team", "event_team__event"),
+        pk=report_id,
+    )
+
+    match_groups, no_images = _get_image_match_groups(report)
 
     return render(request, "reports/report_image_matches.html", {
         "report": report,
         "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
         "match_groups": match_groups,
-        "no_images": False,
+        "no_images": no_images,
     })
 
 
-# ── Image serve ───────────────────────────────────────────────────────────────
+# ── Image helpers ─────────────────────────────────────────────────────────────
 
 _PDF_CACHE_TTL   = 3600   # seconds — how long to keep a raw PDF in Redis
 _JPEG_CACHE_TTL  = 3600   # seconds — how long to keep a rendered JPEG in Redis
+
+
+def _get_pdf_bytes(report_id):
+    """Fetch raw PDF bytes for a report, using Redis cache."""
+    pdf_key = f"report_pdf:{report_id}"
+    pdf_bytes = cache.get(pdf_key)
+    if pdf_bytes is None:
+        token = getattr(settings, "INTERNAL_REPORT_TOKEN", "")
+        headers = {"X-Internal-Token": token} if token else {}
+        url = f"https://iqsconnect.org/reports/{report_id}"
+        resp = http_requests.get(url, headers=headers, timeout=30)
+        resp.raise_for_status()
+        pdf_bytes = resp.content
+        cache.set(pdf_key, pdf_bytes, timeout=_PDF_CACHE_TTL)
+    return pdf_bytes
+
+
+def _extract_image_jpeg(report_image):
+    """Extract a ReportImage as JPEG bytes.  Returns bytes or None."""
+    jpeg_key = f"img_jpeg:{report_image.image_id}"
+    jpeg_bytes = cache.get(jpeg_key)
+    if jpeg_bytes is not None:
+        return jpeg_bytes
+    try:
+        pdf_bytes = _get_pdf_bytes(report_image.report_id)
+        from pypdf import PdfReader
+        from PIL import Image
+
+        reader = PdfReader(io.BytesIO(pdf_bytes))
+        page = reader.pages[report_image.page_number - 1]
+        img_obj = list(page.images)[report_image.image_index]
+        pil_img = Image.open(io.BytesIO(img_obj.data)).convert("RGB")
+
+        buf = io.BytesIO()
+        pil_img.save(buf, format="JPEG", quality=85)
+        jpeg_bytes = buf.getvalue()
+        cache.set(jpeg_key, jpeg_bytes, timeout=_JPEG_CACHE_TTL)
+        return jpeg_bytes
+    except Exception:
+        return None
+
+
+# ── Image serve ───────────────────────────────────────────────────────────────
 
 def image_serve(request, image_id):
     _require_staff(request)
@@ -677,37 +776,10 @@ def image_serve(request, image_id):
     if jpeg_bytes is not None:
         return HttpResponse(jpeg_bytes, content_type="image/jpeg")
 
-    # Level 2: get the raw PDF bytes from cache, or fetch and cache them.
-    pdf_key = f"report_pdf:{rim.report_id}"
-    pdf_bytes = cache.get(pdf_key)
-    if pdf_bytes is None:
-        token = getattr(settings, "INTERNAL_REPORT_TOKEN", "")
-        headers = {"X-Internal-Token": token} if token else {}
-        url = f"https://iqsconnect.org/reports/{rim.report_id}"
-        try:
-            resp = http_requests.get(url, headers=headers, timeout=30)
-            resp.raise_for_status()
-        except Exception:
-            raise Http404("Could not fetch source PDF")
-        pdf_bytes = resp.content
-        cache.set(pdf_key, pdf_bytes, timeout=_PDF_CACHE_TTL)
-
-    try:
-        from pypdf import PdfReader
-        from PIL import Image
-
-        reader = PdfReader(io.BytesIO(pdf_bytes))
-        page = reader.pages[rim.page_number - 1]
-        img_obj = list(page.images)[rim.image_index]
-        pil_img = Image.open(io.BytesIO(img_obj.data)).convert("RGB")
-
-        buf = io.BytesIO()
-        pil_img.save(buf, format="JPEG", quality=85)
-        jpeg_bytes = buf.getvalue()
-        cache.set(jpeg_key, jpeg_bytes, timeout=_JPEG_CACHE_TTL)
-        return HttpResponse(jpeg_bytes, content_type="image/jpeg")
-    except Exception:
+    jpeg_bytes = _extract_image_jpeg(rim)
+    if jpeg_bytes is None:
         raise Http404("Could not extract image from PDF")
+    return HttpResponse(jpeg_bytes, content_type="image/jpeg")
 
 
 # ── Image match detail ────────────────────────────────────────────────────────
@@ -1230,3 +1302,177 @@ def report_ai_detection(request, report_id):
         "chunk_data_json": json.dumps(chunk_data),
         "can_run_ai_detection": request.user.has_perm("reports.can_run_ai_detection"),
     })
+
+
+# ── PDF export ───────────────────────────────────────────────────────────────
+
+def _generate_plagiarism_pdf(report):
+    """Generate plagiarism PDF bytes for a single Report.
+
+    Returns (pdf_bytes, filename).  Usable from both the view and Celery tasks.
+    """
+    from pdf2image import convert_from_bytes
+    from PIL import Image
+    import weasyprint
+
+    team_name = getattr(report.event_team.team, "team_name", "?")
+    event_name = getattr(report.event_team.event, "event_name", "?")
+    report_type_label = REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}")
+
+    # ── Summary stats ────────────────────────────────────────────────────
+    page_count = ReportPage.objects.filter(report=report).count()
+    chunk_count = ReportChunk.objects.filter(page__report=report).count()
+    image_count = ReportImage.objects.filter(report=report).count()
+
+    chunk_texts = ReportChunk.objects.filter(page__report=report).values_list("text", flat=True)
+    total_text_words = sum(len(t.split()) for t in chunk_texts)
+
+    text_matches_qs = PageMatch.objects.filter(Q(page_a__report=report) | Q(page_b__report=report))
+    text_match_count = text_matches_qs.count()
+    best_text_sim_raw = text_matches_qs.order_by("-similarity").values_list("similarity", flat=True).first()
+    best_text_sim = round(best_text_sim_raw * 100, 1) if best_text_sim_raw is not None else None
+
+    image_matches_qs = ImageMatch.objects.filter(Q(image_a__report=report) | Q(image_b__report=report))
+    image_match_count = image_matches_qs.count()
+    best_hamming = image_matches_qs.order_by("hamming_distance").values_list("hamming_distance", flat=True).first()
+    best_image_sim = round((1 - best_hamming / 64) * 100, 1) if best_hamming is not None else None
+
+    # ── Top text match group ─────────────────────────────────────────────
+    text_match_groups, _ = _get_text_match_groups(report)
+    top_text_group = text_match_groups[0] if text_match_groups else None
+
+    text_pair_details = []
+    if top_text_group:
+        sorted_pairs = sorted(top_text_group["page_pairs"], key=lambda p: p["this_page"].page_number)
+
+        # Collect all unique (report_id, page_number) pairs we need to render.
+        pages_to_render = {}
+        for pair in sorted_pairs:
+            pages_to_render[(pair["this_page"].report_id, pair["this_page"].page_number)] = None
+            pages_to_render[(pair["other_page"].report_id, pair["other_page"].page_number)] = None
+
+        # Render PDF pages to JPEG using pdf2image (poppler).
+        report_ids_needed = {rid for rid, _ in pages_to_render}
+        for rid in report_ids_needed:
+            try:
+                raw_pdf = _get_pdf_bytes(rid)
+            except Exception:
+                continue
+            needed_pages = sorted({pn for r, pn in pages_to_render if r == rid})
+            try:
+                pil_pages = convert_from_bytes(
+                    raw_pdf,
+                    first_page=min(needed_pages),
+                    last_page=max(needed_pages),
+                    dpi=150,
+                )
+                base = min(needed_pages)
+                rendered = {base + i: img for i, img in enumerate(pil_pages)}
+                for pn in needed_pages:
+                    pil_img = rendered.get(pn)
+                    if pil_img is None:
+                        continue
+                    if pil_img.width > 500:
+                        ratio = 500 / pil_img.width
+                        pil_img = pil_img.resize(
+                            (500, int(pil_img.height * ratio)), Image.LANCZOS
+                        )
+                    buf = io.BytesIO()
+                    pil_img.save(buf, format="JPEG", quality=80)
+                    pages_to_render[(rid, pn)] = base64.b64encode(buf.getvalue()).decode()
+            except Exception:
+                pass
+
+        for pair in sorted_pairs:
+            pm = PageMatch.objects.get(pk=pair["page_match_id"])
+            chunk_matches = list(
+                ChunkMatch.objects
+                .filter(page_match=pm)
+                .select_related("chunk_a", "chunk_b")
+                .order_by("-similarity")
+            )
+            text_pair_details.append({
+                "this_page_num": pair["this_page"].page_number,
+                "other_page_num": pair["other_page"].page_number,
+                "similarity": round(pair["similarity"] * 100, 1),
+                "this_page_b64": pages_to_render.get(
+                    (pair["this_page"].report_id, pair["this_page"].page_number)
+                ),
+                "other_page_b64": pages_to_render.get(
+                    (pair["other_page"].report_id, pair["other_page"].page_number)
+                ),
+                "chunk_matches": [
+                    {
+                        "similarity": round(cm.similarity * 100, 1),
+                        "text_a": cm.chunk_a.text,
+                        "text_b": cm.chunk_b.text,
+                    }
+                    for cm in chunk_matches
+                ],
+            })
+
+    # ── All image matches ────────────────────────────────────────────────
+    img_match_groups, _ = _get_image_match_groups(report)
+
+    for group in img_match_groups:
+        for pair in group["image_pairs"]:
+            pair["similarity_pct"] = round((1 - pair["hamming_distance"] / 64) * 100, 1)
+
+            for key in ("this_img", "other_img"):
+                rim = pair[key]
+                jpeg_bytes = _extract_image_jpeg(rim)
+                if jpeg_bytes:
+                    pil_img = Image.open(io.BytesIO(jpeg_bytes))
+                    if pil_img.width > 400:
+                        ratio = 400 / pil_img.width
+                        new_size = (400, int(pil_img.height * ratio))
+                        pil_img = pil_img.resize(new_size, Image.LANCZOS)
+                    buf = io.BytesIO()
+                    pil_img.save(buf, format="JPEG", quality=85)
+                    pair[f"{key}_b64"] = base64.b64encode(buf.getvalue()).decode()
+                else:
+                    pair[f"{key}_b64"] = None
+
+    # ── Render HTML and convert to PDF ───────────────────────────────────
+    context = {
+        "report": report,
+        "team_name": team_name,
+        "event_name": event_name,
+        "report_type_label": report_type_label,
+        "export_date": timezone.now(),
+        "page_count": page_count,
+        "chunk_count": chunk_count,
+        "image_count": image_count,
+        "total_text_words": total_text_words,
+        "text_match_count": text_match_count,
+        "best_text_sim": best_text_sim,
+        "image_match_count": image_match_count,
+        "best_image_sim": best_image_sim,
+        "top_text_group": top_text_group,
+        "text_pair_details": text_pair_details,
+        "img_match_groups": img_match_groups,
+    }
+
+    html_string = render_to_string("reports/export_pdf.html", context)
+    pdf_bytes = weasyprint.HTML(string=html_string).write_pdf()
+
+    safe_team = re.sub(r"[^\w\-]", "_", team_name)
+    filename = f"plagiarism_report_{safe_team}_{report.report_id}.pdf"
+
+    return pdf_bytes, filename
+
+
+def report_export_pdf(request, report_id):
+    """Generate a downloadable PDF plagiarism report for a single report."""
+    _require_staff(request)
+
+    report = get_object_or_404(
+        Report.objects.select_related("event_team__team", "event_team__event"),
+        pk=report_id,
+    )
+
+    pdf_bytes, filename = _generate_plagiarism_pdf(report)
+
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
