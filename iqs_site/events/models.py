@@ -24,10 +24,10 @@ class Event(models.Model):
     event_id = models.AutoField(primary_key=True)
     event_name = models.CharField(max_length=255, blank=True, null=True)
     event_datetime = models.DateTimeField(blank=True, null=True)
-    event_active = models.BooleanField(blank=False,null=False)
-    techin_released = models.BooleanField(blank=False,null=False)
+    event_active = models.BooleanField(blank=True, null=True)
+    techin_released = models.BooleanField(blank=True, null=True)
     scores_released = models.BooleanField(default=False)
-    enabled=models.BooleanField()
+    enabled = models.BooleanField(blank=True, null=True)
     # Convenience many-to-many – all tractors in this event
     tractors = models.ManyToManyField(
         "Tractor",

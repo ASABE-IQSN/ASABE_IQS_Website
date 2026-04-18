@@ -195,6 +195,7 @@ class AnalysisJob(models.Model):
     export_file = models.CharField(
         max_length=255, blank=True,
         help_text="S3 key of the generated export file (ZIP).",
+        default=""
     )
 
     class Meta:
