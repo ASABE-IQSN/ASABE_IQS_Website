@@ -307,11 +307,24 @@
       <a class="btn-sm-ghost" href="{% url 'reports:report_image_matches' report.report_id %}">Image Matches &rarr;</a>
       <a class="btn-sm" href="{% url 'reports:report_download' report.report_id %}" target="_blank">View Report &rarr;</a>
       {% if can_run_ai_detection %}
-      <form method="post" action="{% url 'reports:retrigger_ai_detection' report.report_id %}" style="display:inline;">
+      <form method="post" action="{% url 'reports:retrigger_ai_detection' report.report_id %}" style="display:inline-flex;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
         {% csrf_token %}
-        <button type="submit" class="btn-sm-ghost" style="border-color:#f59e0b;color:#f59e0b;cursor:pointer;">
-          Re-run AI Detection
-        </button>
+        <div style="display:flex;flex-direction:column;gap:0.25rem;align-items:flex-start;">
+          <button type="submit" class="btn-sm-ghost" style="border-color:#f59e0b;color:#f59e0b;cursor:pointer;">
+            Re-run AI Detection
+          </button>
+          <div style="display:flex;gap:0.6rem;font-size:0.75rem;color:#9ca3af;flex-wrap:wrap;padding:0 0.1rem;">
+            {% for det_value, det_label, det_configured in detector_info %}
+              <label style="display:flex;align-items:center;gap:0.25rem;cursor:{% if det_configured %}pointer{% else %}not-allowed{% endif %};opacity:{% if det_configured %}1{% else %}0.4{% endif %};"
+                     title="{% if not det_configured %}{{ det_label }} API key not configured{% endif %}">
+                <input type="checkbox" name="detectors" value="{{ det_value }}"
+                       {% if det_configured %}checked{% else %}disabled{% endif %}
+                       style="accent-color:#f59e0b;">
+                {{ det_label }}
+              </label>
+            {% endfor %}
+          </div>
+        </div>
       </form>
       {% endif %}
     </div>
@@ -332,8 +345,8 @@
     <span style="font-size:1rem;flex-shrink:0;margin-top:0.05rem;">&#9888;</span>
     <span>
       <strong>Experimental feature.</strong>
-      AI detection is powered by <strong>ZeroGPT</strong> — report text is sent to their API for analysis.
-      This tool is an <em>indicator only</em>: the model cannot determine with certainty that a team used AI to write their report.
+      AI detection uses up to three independent models (ZeroGPT, GPTZero, Copyleaks).
+      This tool is an <em>indicator only</em>: no model can determine with certainty that a team used AI to write their report.
       A high score should prompt closer review, not be treated as conclusive evidence.
     </span>
   </div>
@@ -345,11 +358,39 @@
       {% endfor %}
     </div>
   {% endif %}
-  <p style="color:#9ca3af;margin:0 0 1rem;font-size:0.9rem;">
+  <p style="color:#9ca3af;margin:0 0 0.75rem;font-size:0.9rem;">
     <strong style="color:#f3f6e7;">{{ report.event_team.team.team_name }}</strong>
     &mdash; {{ report_type_label }}
     ({{ report.event_team.event.event_name }})
   </p>
+
+  {# ── Job selector + Detector tabs ─────────────────────────────── #}
+  <div style="display:flex;flex-wrap:wrap;align-items:center;gap:1rem;margin-bottom:1rem;">
+    {% include "reports/_job_selector.html" %}
+
+    {# Detector tab strip — detector_info is list of (value, label, is_configured) #}
+    <div style="display:flex;gap:0.35rem;flex-wrap:wrap;">
+      {% for det_value, det_label, det_configured in detector_info %}
+        {% if det_configured %}
+          <a href="?{% if selected_job %}job={{ selected_job }}&{% endif %}detector={{ det_value }}"
+            style="display:inline-block;padding:0.25rem 0.75rem;border-radius:999px;font-size:0.8rem;font-weight:600;text-decoration:none;
+            {% if selected_detector == det_value %}
+              background:#6687fc;color:#020617;border:1px solid #6687fc;
+            {% else %}
+              background:transparent;color:#9ca3af;border:1px solid #334155;
+            {% endif %}">
+            {{ det_label }}
+          </a>
+        {% else %}
+          <span title="{{ det_label }} API key not configured"
+            style="display:inline-block;padding:0.25rem 0.75rem;border-radius:999px;font-size:0.8rem;font-weight:600;
+              background:transparent;color:#4b5563;border:1px solid #1f2937;cursor:not-allowed;opacity:0.5;">
+            {{ det_label }}
+          </span>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
 
   {% if analyzed_count %}
     <div class="stats-bar">

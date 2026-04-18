@@ -409,6 +409,8 @@ STORAGES = {
 
 INTERNAL_REPORT_TOKEN = os.environ.get("INTERNAL_REPORT_TOKEN", "")
 ZEROGPT_API_KEY = os.environ.get("ZEROGPT_API_KEY", "")
+GPTZERO_API_KEY = os.environ.get("GPTZERO_API_KEY", "")
+COPYLEAKS_API_KEY = os.environ.get("COPYLEAKS_API_KEY", "")
 
 # ── Django REST Framework ─────────────────────────────────────────────
 REST_FRAMEWORK = {

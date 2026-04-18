@@ -277,13 +277,30 @@ def _extract_images(pdf_bytes: bytes) -> list[dict]:
 
 # ── Per-report extraction helper ──────────────────────────────────────────────
 
-def _process_single_report(report, pdf_bytes) -> tuple[int, int]:
+def _latest_pages_for_report(report_id):
+    """Return the ReportPage queryset for the most recent extraction of a report.
+
+    Falls back to all pages for the report when no job-linked pages exist
+    (i.e. records created before the job-FK migration).
+    """
+    from django.db.models import Max
+    latest_job = (
+        ReportPage.objects
+        .filter(report_id=report_id, job__isnull=False)
+        .aggregate(max_job=Max("job_id"))["max_job"]
+    )
+    if latest_job:
+        return ReportPage.objects.filter(report_id=report_id, job_id=latest_job)
+    return ReportPage.objects.filter(report_id=report_id)
+
+
+def _process_single_report(report, pdf_bytes, job_id=None) -> tuple[int, int]:
     """
     Extract and persist pages/chunks/images for one already-downloaded report.
 
-    Deletes any stale ReportPage / ReportImage rows for this report, then
-    writes fresh data.  Extraction errors are logged and cause (0, 0) to be
-    returned so callers can skip adding the report to processed_report_ids.
+    Creates new ReportPage / ReportImage rows linked to the given job, leaving
+    older rows from previous jobs intact.  Extraction errors are logged and
+    cause (0, 0) to be returned so callers can skip the report.
 
     Returns (n_pages, n_images).
     """
@@ -303,13 +320,10 @@ def _process_single_report(report, pdf_bytes) -> tuple[int, int]:
         logger.warning("Failed to extract images from report %s", report.report_id, exc_info=True)
         image_data = []
 
-    # Atomically replace stale extraction data.
-    ReportPage.objects.filter(report=report).delete()   # cascades to ReportChunk
-    ReportImage.objects.filter(report=report).delete()
-
     for pdata in page_data:
         rpage = ReportPage.objects.create(
             report=report,
+            job_id=job_id,
             page_number=pdata["page_number"],
         )
         ReportChunk.objects.bulk_create([
@@ -329,6 +343,7 @@ def _process_single_report(report, pdf_bytes) -> tuple[int, int]:
         ReportImage.objects.bulk_create([
             ReportImage(
                 report=report,
+                job_id=job_id,
                 page_number=img["page_number"],
                 image_index=img["image_index"],
                 phash=img["phash"],
@@ -368,7 +383,7 @@ def extract_single_report(job_id: int, report_id: int) -> None:
             storage = ReportStorage()
             with storage.open(report.report_link, "rb") as f:
                 pdf_bytes = f.read()
-            n_pages, n_images = _process_single_report(report, pdf_bytes)
+            n_pages, n_images = _process_single_report(report, pdf_bytes, job_id=job_id)
     except Exception:
         logger.warning("extract_single_report failed for report %s", report_id, exc_info=True)
 
@@ -447,6 +462,7 @@ def compare_images_chunk(
     total_chunks: int,
     image_a_ids: list,
     report_type,
+    similarity_job_id: int | None = None,
 ) -> None:
     """
     Compare one partition of images (image_a_ids) against every image with a
@@ -515,6 +531,7 @@ def compare_images_chunk(
 
             if distance <= IMAGE_HAMMING_THRESHOLD:
                 new_matches.append(ImageMatch(
+                    job_id=similarity_job_id,
                     image_a_id=a_id,
                     image_b_id=b_id,
                     hamming_distance=distance,
@@ -571,12 +588,20 @@ def run_similarity_analysis(job_id: int) -> None:
         rt_filter = {"report__report_type": job.report_type} if job.report_type is not None else {}
 
         # ── Phase 2: MinHash page comparison ─────────────────────────────────
-        all_pages = list(
+        # Collect the latest extraction pages per report in scope.
+        report_ids_in_scope = list(
             ReportPage.objects
             .filter(**rt_filter)
-            .prefetch_related("chunks")
-            .order_by("page_id")
+            .values_list("report_id", flat=True)
+            .distinct()
         )
+        all_pages = []
+        for rid in report_ids_in_scope:
+            all_pages.extend(
+                _latest_pages_for_report(rid)
+                .prefetch_related("chunks")
+                .order_by("page_id")
+            )
         logger.info("Similarity job %s: %d pages to compare via MinHash", job_id, len(all_pages))
 
         page_hashes = []
@@ -586,12 +611,6 @@ def run_similarity_analysis(job_id: int) -> None:
             shs = _shingles(words, SHINGLE_SIZE_WORDS)
             if shs:
                 page_hashes.append((rpage, _minhash(shs)))
-
-        # Clear stale PageMatch (and cascaded ChunkMatch) for this scope.
-        if job.report_type is not None:
-            PageMatch.objects.filter(page_a__report__report_type=job.report_type).delete()
-        else:
-            PageMatch.objects.all().delete()
 
         new_page_matches = []
         pairs_checked = 0
@@ -607,7 +626,7 @@ def run_similarity_analysis(job_id: int) -> None:
             sim = mh_a.jaccard(mh_b)
             if sim >= PAGE_SIMILARITY_THRESHOLD:
                 a, b = (pa, pb) if pa.page_id < pb.page_id else (pb, pa)
-                new_page_matches.append(PageMatch(page_a=a, page_b=b, similarity=sim))
+                new_page_matches.append(PageMatch(job_id=job_id, page_a=a, page_b=b, similarity=sim))
 
         PageMatch.objects.bulk_create(new_page_matches, ignore_conflicts=True)
         logger.info(
@@ -618,7 +637,7 @@ def run_similarity_analysis(job_id: int) -> None:
         # ── Phase 3: chunk-level matching ─────────────────────────────────────
         page_ids = [p.page_id for p, _ in page_hashes]
         created_chunk_matches = 0
-        for pm in PageMatch.objects.filter(page_a_id__in=page_ids).prefetch_related(
+        for pm in PageMatch.objects.filter(job_id=job_id, page_a_id__in=page_ids).prefetch_related(
             "page_a__chunks", "page_b__chunks"
         ):
             batch = [
@@ -640,19 +659,31 @@ def run_similarity_analysis(job_id: int) -> None:
         job.save(update_fields=["pages_processed"])
 
         # ── Phase 4: parallel image comparison ───────────────────────────────
-        all_image_ids = list(
-            ReportImage.objects
-            .filter(**rt_filter)
-            .order_by("image_id")
-            .values_list("image_id", flat=True)
-        )
-        logger.info("Similarity job %s: %d images — building comparison chunks", job_id, len(all_image_ids))
+        # Use only images from the latest extraction per report.
+        from django.db.models import Max
+        latest_image_jobs = {}
+        for rid in report_ids_in_scope:
+            latest = (
+                ReportImage.objects
+                .filter(report_id=rid, job__isnull=False)
+                .aggregate(max_job=Max("job_id"))["max_job"]
+            )
+            if latest:
+                latest_image_jobs[rid] = latest
 
-        # Clear stale ImageMatch for this scope.
-        if job.report_type is not None:
-            ImageMatch.objects.filter(image_a__report__report_type=job.report_type).delete()
-        else:
-            ImageMatch.objects.all().delete()
+        image_qs = ReportImage.objects.filter(**rt_filter).order_by("image_id")
+        if latest_image_jobs:
+            from django.db.models import Q
+            job_filter = Q()
+            for rid, jid in latest_image_jobs.items():
+                job_filter |= Q(report_id=rid, job_id=jid)
+            no_job_rids = [rid for rid in report_ids_in_scope if rid not in latest_image_jobs]
+            if no_job_rids:
+                job_filter |= Q(report_id__in=no_job_rids)
+            image_qs = image_qs.filter(job_filter)
+
+        all_image_ids = list(image_qs.values_list("image_id", flat=True))
+        logger.info("Similarity job %s: %d images — building comparison chunks", job_id, len(all_image_ids))
 
         if not all_image_ids:
             job.status = AnalysisJob.Statuses.SUCCEEDED
@@ -678,7 +709,7 @@ def run_similarity_analysis(job_id: int) -> None:
 
         chord(
             group(
-                compare_images_chunk.s(job_id, idx, total_chunks, chunk_ids, job.report_type)
+                compare_images_chunk.s(job_id, idx, total_chunks, chunk_ids, job.report_type, job_id)
                 for idx, chunk_ids in enumerate(chunks)
             ),
             finalize_similarity.si(job_id),
@@ -737,7 +768,7 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
                 logger.warning("Failed to read report %s from storage", report.report_id, exc_info=True)
                 continue
 
-            n_pages, n_images = _process_single_report(report, pdf_bytes)
+            n_pages, n_images = _process_single_report(report, pdf_bytes, job_id=job_id)
             if n_pages == 0:
                 continue
 
@@ -748,15 +779,14 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
             job.save(update_fields=["reports_processed", "pages_processed", "images_processed"])
 
         # ── Phase 2: page-level MinHash comparison ────────────────────────────
-        # Load all pages for the processed reports.
+        # Use only the freshly-extracted pages from this job.
         all_pages = list(
             ReportPage.objects
-            .filter(report_id__in=processed_report_ids)
+            .filter(job_id=job_id, report_id__in=processed_report_ids)
             .prefetch_related("chunks")
         )
         logger.info("AnalysisJob %s: comparing %d pages", job_id, len(all_pages))
 
-        # Build (page, minhash) list. Pages with no text are skipped.
         page_hashes = []
         for rpage in all_pages:
             full_text = " ".join(c.text for c in rpage.chunks.all())
@@ -765,28 +795,21 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
             if shs:
                 page_hashes.append((rpage, _minhash(shs)))
 
-        # Clear old match data before writing new results.
-        PageMatch.objects.filter(
-            page_a__report_id__in=processed_report_ids
-        ).delete()
-
         new_page_matches = []
         for (pa, mh_a), (pb, mh_b) in itertools.combinations(page_hashes, 2):
-            # Only compare pages from different reports.
             if pa.report_id == pb.report_id:
                 continue
             sim = mh_a.jaccard(mh_b)
             if sim >= PAGE_SIMILARITY_THRESHOLD:
-                # Enforce page_a_id < page_b_id to avoid duplicate pairs.
                 a, b = (pa, pb) if pa.page_id < pb.page_id else (pb, pa)
-                new_page_matches.append(PageMatch(page_a=a, page_b=b, similarity=sim))
+                new_page_matches.append(PageMatch(job_id=job_id, page_a=a, page_b=b, similarity=sim))
 
         PageMatch.objects.bulk_create(new_page_matches, ignore_conflicts=True)
         logger.info("AnalysisJob %s: created %d PageMatch records", job_id, len(new_page_matches))
 
         # ── Phase 3: chunk-level matching ──────────────────────────────────────
         created_chunk_matches = 0
-        for pm in PageMatch.objects.filter(page_a__report_id__in=processed_report_ids).prefetch_related(
+        for pm in PageMatch.objects.filter(job_id=job_id, page_a__report_id__in=processed_report_ids).prefetch_related(
             "page_a__chunks", "page_b__chunks"
         ):
             chunks_a = list(pm.page_a.chunks.all())
@@ -809,14 +832,9 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
 
         # ── Phase 4: pHash image comparison ───────────────────────────────────
         all_images = list(
-            ReportImage.objects.filter(report_id__in=processed_report_ids)
+            ReportImage.objects.filter(job_id=job_id, report_id__in=processed_report_ids)
         )
         logger.info("AnalysisJob %s: comparing %d images", job_id, len(all_images))
-
-        # Clear old image match data for processed reports.
-        ImageMatch.objects.filter(
-            image_a__report_id__in=processed_report_ids
-        ).delete()
 
         try:
             import imagehash
@@ -827,7 +845,7 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
                 distance = imagehash.hex_to_hash(img_a.phash) - imagehash.hex_to_hash(img_b.phash)
                 if distance <= IMAGE_HAMMING_THRESHOLD:
                     a, b = (img_a, img_b) if img_a.image_id < img_b.image_id else (img_b, img_a)
-                    new_image_matches.append(ImageMatch(image_a=a, image_b=b, hamming_distance=distance))
+                    new_image_matches.append(ImageMatch(job_id=job_id, image_a=a, image_b=b, hamming_distance=distance))
             ImageMatch.objects.bulk_create(new_image_matches, ignore_conflicts=True)
             logger.info("AnalysisJob %s: created %d ImageMatch records", job_id, len(new_image_matches))
         except ImportError:
@@ -861,17 +879,46 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
 # ── AI Detection ──────────────────────────────────────────────────────────────
 
 ZEROGPT_API_URL = "https://api.zerogpt.com/api/detect/detectText"
-ZEROGPT_INTER_REQUEST_DELAY = 0.5  # seconds between API calls
+GPTZERO_API_URL = "https://api.gptzero.me/v2/predict/text"
+COPYLEAKS_API_URL = "https://api.copyleaks.com/v2/writer-detector/{scan_id}/check"
+
+AI_INTER_REQUEST_DELAY = 0.5  # seconds between API calls per detector
 
 
-def _zerogpt_process_page(page, api_key: str) -> bool:
-    """
-    Send one ReportPage to ZeroGPT and persist the result.
+def _ai_float(val, default=0.0):
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return default
 
-    Returns True if the page was submitted and a result saved, False if
-    skipped (no text).  Raises on API errors so callers can decide whether
-    to continue or abort.
-    """
+
+def _ai_int(val, default=0):
+    try:
+        return int(val)
+    except (TypeError, ValueError):
+        return default
+
+
+def _save_ai_sentences(result, sentence_dicts):
+    """Bulk-create AIDetectedSentence records for a result."""
+    result.sentences.all().delete()
+    objs = []
+    for idx, item in enumerate(sentence_dicts):
+        text = item.get("text", "").strip()
+        prob = item.get("prob")
+        if text:
+            objs.append(AIDetectedSentence(
+                result=result,
+                sentence_index=idx,
+                text=text,
+                generated_probability=prob,
+            ))
+    if objs:
+        AIDetectedSentence.objects.bulk_create(objs)
+
+
+def _zerogpt_process_page(page, api_key: str, job) -> bool:
+    """Send one ReportPage to ZeroGPT and persist the result linked to job."""
     chunks = list(page.chunks.order_by("chunk_index"))
     text = "\n\n".join(c.text for c in chunks).strip()
     if not text:
@@ -887,63 +934,178 @@ def _zerogpt_process_page(page, api_key: str) -> bool:
     resp.raise_for_status()
     data = resp.json().get("data", {})
 
-    def _float(val, default=0.0):
-        try:
-            return float(val)
-        except (TypeError, ValueError):
-            return default
-
-    def _int(val, default=0):
-        try:
-            return int(val)
-        except (TypeError, ValueError):
-            return default
-
-    result, _ = AIDetectionResult.objects.update_or_create(
+    result, _ = AIDetectionResult.objects.get_or_create(
         page=page,
+        job=job,
+        detector=AIDetectionResult.Detectors.ZEROGPT,
         defaults={
-            "fake_percentage": _float(data.get("fakePercentage")),
-            "ai_words": _int(data.get("aiWords")),
-            "text_words": _int(data.get("textWords")),
-            "h_score": None,
+            "fake_percentage": _ai_float(data.get("fakePercentage")),
+            "ai_words": _ai_int(data.get("aiWords")),
+            "text_words": _ai_int(data.get("textWords")),
             "collection_id": str(data.get("collection_id") or ""),
-            "zerogpt_id": str(data.get("id") or ""),
+            "source_id": str(data.get("id") or ""),
             "feedback": str(data.get("feedback") or ""),
         },
     )
 
-    result.sentences.all().delete()
-    raw_sentences = list(data.get("h") or []) + list(data.get("hi") or [])
-    if raw_sentences:
-        sentence_objs = []
-        for idx, item in enumerate(raw_sentences):
-            if isinstance(item, dict):
-                sentence_text = str(item.get("sentence") or item.get("text") or "")
-                prob = _float(item.get("generated_probability") or item.get("probability"), default=None)
-                prob = prob if prob is not None else None
-            else:
-                sentence_text = str(item)
-                prob = None
-            if sentence_text:
-                sentence_objs.append(AIDetectedSentence(
-                    result=result,
-                    sentence_index=idx,
-                    text=sentence_text,
-                    generated_probability=prob,
-                ))
-        if sentence_objs:
-            AIDetectedSentence.objects.bulk_create(sentence_objs)
-
+    raw_sentences = []
+    for item in list(data.get("h") or []) + list(data.get("hi") or []):
+        if isinstance(item, dict):
+            raw_sentences.append({
+                "text": str(item.get("sentence") or item.get("text") or ""),
+                "prob": _ai_float(item.get("generated_probability") or item.get("probability"), default=None),
+            })
+        elif str(item).strip():
+            raw_sentences.append({"text": str(item), "prob": None})
+    _save_ai_sentences(result, raw_sentences)
     return True
 
 
+def _gptzero_process_page(page, api_key: str, job) -> bool:
+    """Send one ReportPage to GPTZero and persist the result linked to job."""
+    chunks = list(page.chunks.order_by("chunk_index"))
+    text = "\n\n".join(c.text for c in chunks).strip()
+    if not text:
+        return False
+
+    headers = {"x-api-key": api_key, "Content-Type": "application/json"}
+    resp = requests.post(
+        GPTZERO_API_URL,
+        headers=headers,
+        json={"document": text, "multilingual": False},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    documents = resp.json().get("documents", [])
+    doc = documents[0] if documents else {}
+
+    fake_pct = _ai_float(doc.get("completely_generated_prob"), 0.0) * 100
+    word_count = len(text.split())
+
+    result, _ = AIDetectionResult.objects.get_or_create(
+        page=page,
+        job=job,
+        detector=AIDetectionResult.Detectors.GPTZERO,
+        defaults={
+            "fake_percentage": fake_pct,
+            "ai_words": round(fake_pct / 100 * word_count),
+            "text_words": word_count,
+            "source_id": str(doc.get("id") or ""),
+            "feedback": "",
+        },
+    )
+
+    sentences = doc.get("sentences") or []
+    _save_ai_sentences(result, [
+        {"text": s.get("sentence", ""), "prob": _ai_float(s.get("generated_prob"), default=None)}
+        for s in sentences
+        if s.get("sentence", "").strip()
+    ])
+    return True
+
+
+def _copyleaks_process_page(page, api_key: str, job) -> bool:
+    """Send one ReportPage to Copyleaks AI detector and persist the result linked to job."""
+    import uuid
+    chunks = list(page.chunks.order_by("chunk_index"))
+    text = "\n\n".join(c.text for c in chunks).strip()
+    if not text:
+        return False
+
+    scan_id = str(uuid.uuid4())
+    url = COPYLEAKS_API_URL.format(scan_id=scan_id)
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    resp = requests.post(
+        url,
+        headers=headers,
+        json={"text": text},
+        timeout=30,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+
+    # Copyleaks returns a top-level "ai" score (0–1) and optional passage list.
+    top_ai = _ai_float(data.get("ai"), 0.0)
+    fake_pct = top_ai * 100
+    word_count = len(text.split())
+
+    result, _ = AIDetectionResult.objects.get_or_create(
+        page=page,
+        job=job,
+        detector=AIDetectionResult.Detectors.COPYLEAKS,
+        defaults={
+            "fake_percentage": fake_pct,
+            "ai_words": round(fake_pct / 100 * word_count),
+            "text_words": word_count,
+            "source_id": scan_id,
+            "feedback": "",
+        },
+    )
+
+    passages = data.get("passages") or []
+    _save_ai_sentences(result, [
+        {"text": p.get("text", ""), "prob": _ai_float(p.get("ai"), default=None)}
+        for p in passages
+        if p.get("text", "").strip()
+    ])
+    return True
+
+
+ALL_DETECTOR_KEYS = [
+    AIDetectionResult.Detectors.ZEROGPT,
+    AIDetectionResult.Detectors.GPTZERO,
+    AIDetectionResult.Detectors.COPYLEAKS,
+]
+
+
+def _parse_detectors(detectors_str: str) -> list[str]:
+    """Parse a job's detectors field into a list of valid detector keys.
+
+    Empty string or None means all detectors; invalid keys are silently ignored.
+    """
+    if not detectors_str:
+        return list(ALL_DETECTOR_KEYS)
+    valid = set(ALL_DETECTOR_KEYS)
+    return [d.strip() for d in detectors_str.split(",") if d.strip() in valid]
+
+
+def _run_all_detectors_for_page(page, job, zerogpt_key, gptzero_key, copyleaks_key, detectors=None):
+    """Call each selected detector for a page. Returns count of successful submissions.
+
+    `detectors` is a list of detector keys to run; None means run all configured.
+    """
+    if detectors is None:
+        detectors = list(ALL_DETECTOR_KEYS)
+
+    key_map = {
+        AIDetectionResult.Detectors.ZEROGPT: (zerogpt_key, _zerogpt_process_page, "ZeroGPT"),
+        AIDetectionResult.Detectors.GPTZERO: (gptzero_key, _gptzero_process_page, "GPTZero"),
+        AIDetectionResult.Detectors.COPYLEAKS: (copyleaks_key, _copyleaks_process_page, "Copyleaks"),
+    }
+    submitted = 0
+    for det_key in detectors:
+        if det_key not in key_map:
+            continue
+        api_key, fn, name = key_map[det_key]
+        if not api_key:
+            logger.warning("Detector %s selected but API key not configured — skipping page %s", name, page.page_id)
+            continue
+        try:
+            if fn(page, api_key, job):
+                submitted += 1
+        except Exception as exc:
+            logger.warning("%s API error on page %s: %s", name, page.page_id, exc)
+        time.sleep(AI_INTER_REQUEST_DELAY)
+    return submitted
+
+
 @shared_task
-def run_ai_detection_report(report_id: int):
-    """Run ZeroGPT AI detection for every page of a single report."""
+def run_ai_detection_report(report_id: int, job_id: int | None = None):
+    """Run all configured AI detectors for every page of a single report."""
     from events.models import Report as ReportModel
-    api_key = getattr(settings, "ZEROGPT_API_KEY", "")
-    if not api_key:
-        raise ValueError("ZEROGPT_API_KEY is not configured in settings.")
+    zerogpt_key = getattr(settings, "ZEROGPT_API_KEY", "")
+    gptzero_key = getattr(settings, "GPTZERO_API_KEY", "")
+    copyleaks_key = getattr(settings, "COPYLEAKS_API_KEY", "")
 
     try:
         report = ReportModel.objects.get(pk=report_id)
@@ -951,47 +1113,52 @@ def run_ai_detection_report(report_id: int):
         logger.error("run_ai_detection_report: report %s not found", report_id)
         return
 
+    if job_id:
+        try:
+            job = AnalysisJob.objects.get(pk=job_id)
+        except AnalysisJob.DoesNotExist:
+            job = None
+    else:
+        job = None
+
     pages = list(
-        ReportPage.objects
-        .filter(report=report)
+        _latest_pages_for_report(report_id)
         .prefetch_related("chunks")
         .order_by("page_number")
     )
 
-    logger.info("AI detection (single report %s): %d pages", report_id, len(pages))
+    detectors = _parse_detectors(job.detectors if job else "")
+    logger.info(
+        "AI detection (single report %s): %d pages, detectors=%s",
+        report_id, len(pages), detectors,
+    )
     processed = 0
     for page in pages:
-        try:
-            submitted = _zerogpt_process_page(page, api_key)
-            if submitted:
-                processed += 1
-        except Exception as exc:
-            logger.warning(
-                "AI detection (single report %s): API error on page %s: %s",
-                report_id, page.page_id, exc,
-            )
-        time.sleep(ZEROGPT_INTER_REQUEST_DELAY)
+        count = _run_all_detectors_for_page(page, job, zerogpt_key, gptzero_key, copyleaks_key, detectors=detectors)
+        processed += min(count, 1)
 
     logger.info("AI detection (single report %s): done, %d pages processed", report_id, processed)
 
 
 @shared_task
 def run_ai_detection(job_id: int):
-    """Call ZeroGPT for each ReportPage in the job's event and store results."""
+    """Call all configured AI detectors for each ReportPage in the job's event."""
     job = AnalysisJob.objects.get(pk=job_id)
     job.status = AnalysisJob.Statuses.RUNNING
     job.started_at = timezone.now()
     job.save(update_fields=["status", "started_at"])
 
     try:
-        api_key = getattr(settings, "ZEROGPT_API_KEY", "")
-        if not api_key:
-            raise ValueError("ZEROGPT_API_KEY is not configured in settings.")
+        zerogpt_key = getattr(settings, "ZEROGPT_API_KEY", "")
+        gptzero_key = getattr(settings, "GPTZERO_API_KEY", "")
+        copyleaks_key = getattr(settings, "COPYLEAKS_API_KEY", "")
+
+        if not any([zerogpt_key, gptzero_key, copyleaks_key]):
+            raise ValueError("No AI detection API keys are configured in settings.")
 
         if not job.event_id:
             raise ValueError("AI detection job requires an event_id.")
 
-        # Build page queryset filtered by event (and optionally report_type).
         pages_qs = (
             ReportPage.objects
             .filter(report__event_team__event_id=job.event_id)
@@ -1002,31 +1169,34 @@ def run_ai_detection(job_id: int):
         if job.report_type is not None:
             pages_qs = pages_qs.filter(report__report_type=job.report_type)
 
-        pages = list(pages_qs)
+        # Use only the latest extraction per report.
+        report_ids = list(pages_qs.values_list("report_id", flat=True).distinct())
+        pages = []
+        for rid in report_ids:
+            pages.extend(
+                _latest_pages_for_report(rid)
+                .prefetch_related("chunks")
+                .select_related("report")
+                .filter(report__event_team__event_id=job.event_id)
+                .order_by("page_number")
+            )
 
         distinct_reports = len({p.report_id for p in pages})
         job.reports_found = distinct_reports
         job.save(update_fields=["reports_found"])
 
+        detectors = _parse_detectors(job.detectors)
         logger.info(
-            "AI detection job %s: %d pages across %d reports (event %s, report_type %s)",
-            job_id, len(pages), distinct_reports, job.event_id, job.report_type,
+            "AI detection job %s: %d pages across %d reports (event %s, report_type %s, detectors=%s)",
+            job_id, len(pages), distinct_reports, job.event_id, job.report_type, detectors,
         )
 
         for page in pages:
-            try:
-                submitted = _zerogpt_process_page(page, api_key)
-                if submitted:
-                    job.pages_processed += 1
-                    if job.pages_processed % 10 == 0:
-                        job.save(update_fields=["pages_processed"])
-            except Exception as exc:
-                logger.warning(
-                    "AI detection job %s: API error on page %s: %s", job_id, page.page_id, exc
-                )
-            time.sleep(ZEROGPT_INTER_REQUEST_DELAY)
+            _run_all_detectors_for_page(page, job, zerogpt_key, gptzero_key, copyleaks_key, detectors=detectors)
+            job.pages_processed += 1
+            if job.pages_processed % 10 == 0:
+                job.save(update_fields=["pages_processed"])
 
-        job.pages_processed = job.pages_processed  # ensure final count saved
         job.status = AnalysisJob.Statuses.SUCCEEDED
         job.completed_at = timezone.now()
         job.save(update_fields=["status", "completed_at", "pages_processed"])

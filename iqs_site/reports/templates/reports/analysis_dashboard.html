@@ -177,9 +177,22 @@
         Queue full analysis
       </button>
       {% if can_run_ai_detection %}
-      <button type="submit" name="job_type" value="ai_detection" class="btn-secondary" style="border-color:#f59e0b;color:#f59e0b;">
-        Queue AI detection
-      </button>
+      <div style="display:flex;flex-direction:column;gap:0.3rem;align-items:flex-start;">
+        <button type="submit" name="job_type" value="ai_detection" class="btn-secondary" style="border-color:#f59e0b;color:#f59e0b;">
+          Queue AI detection
+        </button>
+        <div style="display:flex;gap:0.75rem;padding:0.2rem 0.25rem;font-size:0.78rem;color:#9ca3af;flex-wrap:wrap;">
+          {% for det_value, det_label, det_configured in detector_info %}
+            <label style="display:flex;align-items:center;gap:0.3rem;cursor:{% if det_configured %}pointer{% else %}not-allowed{% endif %};opacity:{% if det_configured %}1{% else %}0.4{% endif %};"
+                   title="{% if not det_configured %}{{ det_label }} API key not configured{% endif %}">
+              <input type="checkbox" name="detectors" value="{{ det_value }}"
+                     {% if det_configured %}checked{% else %}disabled{% endif %}
+                     style="accent-color:#f59e0b;">
+              {{ det_label }}
+            </label>
+          {% endfor %}
+        </div>
+      </div>
       {% endif %}
       <button type="submit" name="job_type" value="bulk_pdf_export" class="btn-secondary" style="border-color:#ec4899;color:#ec4899;">
         Export all PDFs
@@ -189,7 +202,7 @@
       <strong style="color:#a78bfa;">Extraction</strong> — downloads &amp; parses every PDF in parallel (one worker per report).
       <strong style="color:#34d399;">Similarity</strong> — MinHash page comparison (sequential) then image comparison in parallel chunks; requires extraction to have run first.
       <strong style="color:#6687fc;">Full analysis</strong> — extraction + similarity in one job (sequential).
-      {% if can_run_ai_detection %}<strong style="color:#f59e0b;">AI detection</strong> — sends each page's text to ZeroGPT to check for AI-generated content. Requires an event to be selected (billed per word).{% endif %}
+      {% if can_run_ai_detection %}<strong style="color:#f59e0b;">AI detection</strong> — sends each page's text to all configured detectors (ZeroGPT, GPTZero, Copyleaks) for independent AI-content checks. Requires an event to be selected (billed per word per detector).{% endif %}
       <strong style="color:#ec4899;">Export all PDFs</strong> — generates a plagiarism report PDF for every extracted report and bundles them into a downloadable ZIP. Requires an event to be selected.
     </p>
   </form>
@@ -220,7 +233,12 @@
               </span>
             </td>
             <td>{{ job.report_type|default:"All" }}</td>
-            <td style="font-size:0.8rem;color:#9ca3af;">{{ job.event.event_name|default:"—" }}</td>
+            <td style="font-size:0.8rem;color:#9ca3af;">
+              {{ job.event.event_name|default:"—" }}
+              {% if job.job_type == 'AI_DETECTION' and job.detectors %}
+                <br><span style="font-size:0.72rem;color:#6b7280;">{{ job.detectors }}</span>
+              {% endif %}
+            </td>
             <td>
               <span class="status-chip {{ job.status }}" id="status-{{ job.job_id }}">
                 {{ job.status }}

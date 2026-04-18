@@ -8,6 +8,12 @@ class ReportPage(models.Model):
         on_delete=models.CASCADE,
         related_name="pages",
     )
+    job = models.ForeignKey(
+        "AnalysisJob",
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="extracted_pages",
+    )
     page_number = models.IntegerField()  # 1-indexed
 
     class Meta:
@@ -45,6 +51,12 @@ class ReportChunk(models.Model):
 
 class PageMatch(models.Model):
     page_match_id = models.AutoField(primary_key=True)
+    job = models.ForeignKey(
+        "AnalysisJob",
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="page_matches",
+    )
     # page_a_id is always < page_b_id to avoid storing duplicate pairs.
     page_a = models.ForeignKey(
         ReportPage,
@@ -60,7 +72,7 @@ class PageMatch(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["page_a", "page_b"], name="uniq_page_match"),
+            models.UniqueConstraint(fields=["job", "page_a", "page_b"], name="uniq_page_match_per_job"),
         ]
         indexes = [
             models.Index(fields=["-similarity"]),
@@ -104,6 +116,12 @@ class ReportImage(models.Model):
         on_delete=models.CASCADE,
         related_name="images",
     )
+    job = models.ForeignKey(
+        "AnalysisJob",
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="extracted_images",
+    )
     page_number = models.IntegerField()   # 1-indexed, matches ReportPage.page_number
     image_index = models.IntegerField()   # ordering within the page
     phash = models.CharField(max_length=16)  # 64-bit pHash stored as hex
@@ -122,6 +140,12 @@ class ReportImage(models.Model):
 
 class ImageMatch(models.Model):
     image_match_id = models.AutoField(primary_key=True)
+    job = models.ForeignKey(
+        "AnalysisJob",
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="image_matches",
+    )
     # image_a_id is always < image_b_id to avoid storing duplicate pairs.
     image_a = models.ForeignKey(
         ReportImage,
@@ -137,7 +161,7 @@ class ImageMatch(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=["image_a", "image_b"], name="uniq_image_match"),
+            models.UniqueConstraint(fields=["job", "image_a", "image_b"], name="uniq_image_match_per_job"),
         ]
         indexes = [
             models.Index(fields=["hamming_distance"]),
@@ -197,6 +221,10 @@ class AnalysisJob(models.Model):
         help_text="S3 key of the generated export file (ZIP).",
         default=""
     )
+    detectors = models.CharField(
+        max_length=64, blank=True, default="",
+        help_text="Comma-separated detector keys to use for AI_DETECTION jobs (empty = all configured).",
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -210,26 +238,48 @@ class AnalysisJob(models.Model):
 
 
 class AIDetectionResult(models.Model):
+    class Detectors(models.TextChoices):
+        ZEROGPT = "ZEROGPT", "ZeroGPT"
+        GPTZERO = "GPTZERO", "GPTZero"
+        COPYLEAKS = "COPYLEAKS", "Copyleaks"
+
     result_id = models.AutoField(primary_key=True)
-    page = models.OneToOneField(
+    page = models.ForeignKey(
         ReportPage,
         on_delete=models.CASCADE,
-        related_name="ai_detection",
+        related_name="ai_detections",
+    )
+    job = models.ForeignKey(
+        "AnalysisJob",
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name="ai_detection_results",
+    )
+    detector = models.CharField(
+        max_length=16,
+        choices=Detectors.choices,
+        default=Detectors.ZEROGPT,
     )
     fake_percentage = models.FloatField()  # 0–100
     ai_words = models.IntegerField(default=0)
     text_words = models.IntegerField(default=0)
     h_score = models.FloatField(null=True, blank=True)
     collection_id = models.CharField(max_length=255, blank=True)
-    zerogpt_id = models.CharField(max_length=255, blank=True)
+    source_id = models.CharField(max_length=255, blank=True)
     feedback = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["page"]
+        ordering = ["page", "detector"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["job", "page", "detector"],
+                name="uniq_ai_result_per_job_detector",
+            ),
+        ]
 
     def __str__(self):
-        return f"AIDetectionResult page {self.page_id} – {self.fake_percentage:.1f}% AI"
+        return f"AIDetectionResult page {self.page_id} ({self.detector}) – {self.fake_percentage:.1f}% AI"
 
 
 class AIDetectedSentence(models.Model):

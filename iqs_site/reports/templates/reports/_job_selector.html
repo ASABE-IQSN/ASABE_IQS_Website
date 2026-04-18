@@ -1,0 +1,23 @@
+{% comment %}
+Reusable job selector. Expects context vars: available_jobs, selected_job.
+Extra GET params are preserved via hidden inputs — pass extras as a dict
+in the `extra_params` context variable if needed.
+{% endcomment %}
+{% if available_jobs %}
+<form method="get" class="inline-flex items-center gap-2 mb-4">
+  {% for key, val in request.GET.items %}
+    {% if key != "job" %}
+      <input type="hidden" name="{{ key }}" value="{{ val }}">
+    {% endif %}
+  {% endfor %}
+  <label for="job-selector" class="text-sm font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">Run:</label>
+  <select id="job-selector" name="job" onchange="this.form.submit()"
+    class="text-sm border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500">
+    {% for job in available_jobs %}
+      <option value="{{ job.pk }}" {% if job.pk == selected_job %}selected{% endif %}>
+        Job #{{ job.pk }} &mdash; {{ job.created_at|date:"Y-m-d H:i" }} ({{ job.get_status_display }})
+      </option>
+    {% endfor %}
+  </select>
+</form>
+{% endif %}

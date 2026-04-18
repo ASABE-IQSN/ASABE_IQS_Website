@@ -139,6 +139,8 @@
     ({{ report.event_team.event.event_name }})
   </p>
 
+  {% include "reports/_job_selector.html" %}
+
   {% if no_images %}
     <p style="color:#9ca3af;">No images have been extracted from this report yet. Run an analysis from the dashboard first.</p>
   {% elif not match_groups %}

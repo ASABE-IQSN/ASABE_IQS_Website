@@ -38,6 +38,27 @@ def _require_staff(request):
     raise Http404()
 
 
+def _resolve_job_param(request, qs, job_field="job_id"):
+    """Return (selected_job_id, available_jobs_qs) for artifact querysets.
+
+    Builds the list of AnalysisJob rows that produced results in qs, defaults
+    to the most recent one, and honours a ?job=<pk> GET parameter.
+    """
+    job_ids = (
+        qs.exclude(**{f"{job_field}__isnull": True})
+          .values_list(job_field, flat=True)
+          .distinct()
+    )
+    available_jobs = AnalysisJob.objects.filter(pk__in=job_ids).order_by("-created_at")
+    requested = request.GET.get("job")
+    if requested and requested.isdigit():
+        req_id = int(requested)
+        if available_jobs.filter(pk=req_id).exists():
+            return req_id, available_jobs
+    first = available_jobs.first()
+    return (first.pk if first else None), available_jobs
+
+
 # ── Report download ───────────────────────────────────────────────────────────
 def report_download(request, report_id):
     report = get_object_or_404(Report, pk=report_id)
@@ -146,14 +167,22 @@ def analysis_dashboard(request):
             if not event_id:
                 messages.error(request, "AI detection requires an event to be selected.")
                 return redirect("reports:analysis_dashboard")
+            from .models import AIDetectionResult as _ADR
+            valid_keys = {c[0] for c in _ADR.Detectors.choices}
+            selected_detectors = [d for d in request.POST.getlist("detectors") if d in valid_keys]
+            detectors_str = ",".join(selected_detectors)
+            if not selected_detectors:
+                messages.error(request, "Select at least one AI detector.")
+                return redirect("reports:analysis_dashboard")
             job = AnalysisJob.objects.create(
                 report_type=report_type,
                 job_type=AnalysisJob.JobTypes.AI_DETECTION,
                 event_id=event_id,
+                detectors=detectors_str,
             )
             from .tasks import run_ai_detection
             run_ai_detection.delay(job.pk)
-            messages.success(request, f"AI detection job #{job.pk} queued.")
+            messages.success(request, f"AI detection job #{job.pk} queued ({detectors_str}).")
         elif job_type == "bulk_pdf_export":
             raw_event = request.POST.get("event_id", "").strip()
             event_id = int(raw_event) if raw_event.isdigit() else None
@@ -195,12 +224,18 @@ def analysis_dashboard(request):
 
     events = Event.objects.order_by("-event_datetime")
 
+    detector_info = [
+        (val, label, bool(getattr(settings, f"{val}_API_KEY", "")))
+        for val, label in AIDetectionResult.Detectors.choices
+    ]
+
     return render(request, "reports/analysis_dashboard.html", {
         "jobs": jobs,
         "active_job_ids_json": json.dumps(active_job_ids),
         "report_type_choices": report_type_choices,
         "events": events,
         "can_run_ai_detection": request.user.has_perm("reports.can_run_ai_detection"),
+        "detector_info": detector_info,
     })
 
 
@@ -298,7 +333,7 @@ def report_overview(request, report_id):
 
 # ── Text match grouping helper ────────────────────────────────────────────────
 
-def _get_text_match_groups(report):
+def _get_text_match_groups(report, job_id=None):
     """Return (match_groups, no_pages) for a report's text similarity matches.
 
     match_groups is a list of dicts sorted by max_sort_score descending.
@@ -310,9 +345,11 @@ def _get_text_match_groups(report):
     if not page_ids:
         return [], True
 
+    job_filter = {"job_id": job_id} if job_id is not None else {}
+
     matches = (
         PageMatch.objects
-        .filter(page_a_id__in=page_ids)
+        .filter(page_a_id__in=page_ids, **job_filter)
         .select_related(
             "page_a",
             "page_b__report__event_team__team",
@@ -322,7 +359,7 @@ def _get_text_match_groups(report):
     )
     matches_b = (
         PageMatch.objects
-        .filter(page_b_id__in=page_ids)
+        .filter(page_b_id__in=page_ids, **job_filter)
         .select_related(
             "page_b",
             "page_a__report__event_team__team",
@@ -388,13 +425,21 @@ def report_matches(request, report_id):
         pk=report_id,
     )
 
-    match_groups, no_pages = _get_text_match_groups(report)
+    page_ids = list(ReportPage.objects.filter(report=report).values_list("page_id", flat=True))
+    candidate_qs = PageMatch.objects.filter(
+        Q(page_a_id__in=page_ids) | Q(page_b_id__in=page_ids)
+    )
+    selected_job, available_jobs = _resolve_job_param(request, candidate_qs)
+
+    match_groups, no_pages = _get_text_match_groups(report, job_id=selected_job)
 
     return render(request, "reports/report_matches.html", {
         "report": report,
         "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
         "match_groups": match_groups,
         "no_pages": no_pages,
+        "available_jobs": available_jobs,
+        "selected_job": selected_job,
     })
 
 
@@ -530,13 +575,15 @@ def event_analysis(request, event_id):
             existing = report_page_img_sims[rid].get(pnum, 0)
             report_page_img_sims[rid][pnum] = max(existing, img_sim_pct)
 
-    # AI detection fake_percentage per page_id.
-    ai_pct_by_page = {
-        r["page_id"]: r["fake_percentage"]
-        for r in AIDetectionResult.objects
-            .filter(page_id__in=page_ids)
-            .values("page_id", "fake_percentage")
-    }
+    # AI detection fake_percentage per page_id — average across detectors from the latest job.
+    ai_pct_by_page = {}
+    for row in (
+        AIDetectionResult.objects
+        .filter(page_id__in=page_ids)
+        .values("page_id")
+        .annotate(avg_pct=Avg("fake_percentage"))
+    ):
+        ai_pct_by_page[row["page_id"]] = row["avg_pct"]
     # report_id → {page_number: ai fake_pct}
     report_page_ai = {r.report_id: {} for r in reports}
     for pid, (rid, pnum) in page_info.items():
@@ -643,7 +690,7 @@ def report_coverage(request):
 
 # ── Image match grouping helper ───────────────────────────────────────────────
 
-def _get_image_match_groups(report):
+def _get_image_match_groups(report, job_id=None):
     """Return (match_groups, no_images) for a report's image similarity matches.
 
     match_groups is a list of dicts sorted by min_hamming ascending.
@@ -655,15 +702,17 @@ def _get_image_match_groups(report):
     if not image_ids:
         return [], True
 
+    job_filter = {"job_id": job_id} if job_id is not None else {}
+
     matches_a = (
         ImageMatch.objects
-        .filter(image_a_id__in=image_ids)
+        .filter(image_a_id__in=image_ids, **job_filter)
         .select_related("image_a", "image_b__report__event_team__team", "image_b__report__event_team__event")
         .order_by("hamming_distance")
     )
     matches_b = (
         ImageMatch.objects
-        .filter(image_b_id__in=image_ids)
+        .filter(image_b_id__in=image_ids, **job_filter)
         .select_related("image_b", "image_a__report__event_team__team", "image_a__report__event_team__event")
         .order_by("hamming_distance")
     )
@@ -707,13 +756,21 @@ def report_image_matches(request, report_id):
         pk=report_id,
     )
 
-    match_groups, no_images = _get_image_match_groups(report)
+    image_ids = list(ReportImage.objects.filter(report=report).values_list("image_id", flat=True))
+    candidate_qs = ImageMatch.objects.filter(
+        Q(image_a_id__in=image_ids) | Q(image_b_id__in=image_ids)
+    )
+    selected_job, available_jobs = _resolve_job_param(request, candidate_qs)
+
+    match_groups, no_images = _get_image_match_groups(report, job_id=selected_job)
 
     return render(request, "reports/report_image_matches.html", {
         "report": report,
         "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
         "match_groups": match_groups,
         "no_images": no_images,
+        "available_jobs": available_jobs,
+        "selected_job": selected_job,
     })
 
 
@@ -981,13 +1038,31 @@ def retrigger_ai_detection(request, report_id):
         pk=report_id,
     )
 
-    api_key = getattr(settings, "ZEROGPT_API_KEY", "")
-    if not api_key:
-        messages.error(request, "ZEROGPT_API_KEY is not configured — cannot queue AI detection.")
+    has_any_key = any([
+        getattr(settings, "ZEROGPT_API_KEY", ""),
+        getattr(settings, "GPTZERO_API_KEY", ""),
+        getattr(settings, "COPYLEAKS_API_KEY", ""),
+    ])
+    if not has_any_key:
+        messages.error(request, "No AI detection API keys are configured — cannot queue AI detection.")
         return redirect("reports:report_ai_detection", report_id=report_id)
 
+    valid_keys = {c[0] for c in AIDetectionResult.Detectors.choices}
+    selected_detectors = [d for d in request.POST.getlist("detectors") if d in valid_keys]
+    if not selected_detectors:
+        selected_detectors = list(valid_keys)
+    detectors_str = ",".join(selected_detectors)
+
+    event = getattr(report.event_team, "event", None)
+    job = AnalysisJob.objects.create(
+        job_type=AnalysisJob.JobTypes.AI_DETECTION,
+        event=event,
+        status=AnalysisJob.Statuses.QUEUED,
+        detectors=detectors_str,
+    )
+
     from .tasks import run_ai_detection_report
-    run_ai_detection_report.delay(report.pk)
+    run_ai_detection_report.delay(report.pk, job_id=job.pk)
     messages.success(
         request,
         f"AI detection queued for {report.event_team.team.team_name} "
@@ -1227,10 +1302,42 @@ def report_ai_detection(request, report_id):
         pk=report_id,
     )
 
+    # Resolve job selector.
+    candidate_qs = AIDetectionResult.objects.filter(page__report=report)
+    selected_job, available_jobs = _resolve_job_param(request, candidate_qs)
+
+    # Resolve detector selector.
+    _key_map = {
+        AIDetectionResult.Detectors.ZEROGPT: bool(getattr(settings, "ZEROGPT_API_KEY", "")),
+        AIDetectionResult.Detectors.GPTZERO: bool(getattr(settings, "GPTZERO_API_KEY", "")),
+        AIDetectionResult.Detectors.COPYLEAKS: bool(getattr(settings, "COPYLEAKS_API_KEY", "")),
+    }
+    # List of (value, label, is_configured) for template tab strip.
+    detector_info = [
+        (val, label, _key_map.get(val, False))
+        for val, label in AIDetectionResult.Detectors.choices
+    ]
+    requested_detector = request.GET.get("detector", AIDetectionResult.Detectors.ZEROGPT)
+    if requested_detector not in _key_map:
+        requested_detector = AIDetectionResult.Detectors.ZEROGPT
+    selected_detector = requested_detector
+
+    # Build result lookup: page_id → AIDetectionResult for selected job+detector.
+    result_filter = {"page__report": report, "detector": selected_detector}
+    if selected_job is not None:
+        result_filter["job_id"] = selected_job
+    else:
+        result_filter["job__isnull"] = True
+
+    results_by_page = {
+        r.page_id: r
+        for r in AIDetectionResult.objects.filter(**result_filter).prefetch_related("sentences")
+    }
+
     pages = list(
         ReportPage.objects
         .filter(report=report)
-        .prefetch_related("chunks", "ai_detection__sentences")
+        .prefetch_related("chunks")
         .order_by("page_number")
     )
 
@@ -1238,15 +1345,11 @@ def report_ai_detection(request, report_id):
     total_ai_words = 0
     total_text_words = 0
     analyzed_count = 0
-    chunk_data = []  # flat list consumed by pdf.js renderer
+    chunk_data = []
 
     for page in pages:
-        try:
-            result = page.ai_detection
-        except AIDetectionResult.DoesNotExist:
-            result = None
+        result = results_by_page.get(page.page_id)
 
-        # Build list of flagged sentences for this page.
         flagged_sentences = []
         if result:
             analyzed_count += 1
@@ -1259,11 +1362,9 @@ def report_ai_detection(request, report_id):
                         "probability": s.generated_probability,
                     })
 
-        # Build per-chunk JSON entries for the PDF overlay renderer.
         for chunk in page.chunks.order_by("chunk_index"):
             if chunk.bbox_x0 is None:
                 continue
-            # Match flagged sentences to this chunk via substring containment.
             matching = [
                 s for s in flagged_sentences
                 if s["text"] in chunk.text or chunk.text in s["text"]
@@ -1301,6 +1402,10 @@ def report_ai_detection(request, report_id):
         "total_text_words": total_text_words,
         "chunk_data_json": json.dumps(chunk_data),
         "can_run_ai_detection": request.user.has_perm("reports.can_run_ai_detection"),
+        "available_jobs": available_jobs,
+        "selected_job": selected_job,
+        "detector_info": detector_info,
+        "selected_detector": selected_detector,
     })
 
 
