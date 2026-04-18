@@ -1391,6 +1391,34 @@ def report_ai_detection(request, report_id):
         total = sum(pd["result"].fake_percentage for pd in page_data if pd["result"])
         avg_fake_pct = round(total / analyzed_count, 1)
 
+    # Build cross-detector comparison: page_number → {detector: fake_pct}
+    all_job_filter = {"page__report": report}
+    if selected_job is not None:
+        all_job_filter["job_id"] = selected_job
+    else:
+        all_job_filter["job__isnull"] = True
+
+    detector_pcts = {}  # page_id → {detector: fake_pct}
+    for r in AIDetectionResult.objects.filter(**all_job_filter).values("page_id", "detector", "fake_percentage"):
+        detector_pcts.setdefault(r["page_id"], {})[r["detector"]] = r["fake_percentage"]
+
+    detectors_with_data = {d for pcts in detector_pcts.values() for d in pcts}
+    active_detectors = [(val, label) for val, label, _ in detector_info if val in detectors_with_data]
+
+    comparison_rows = []
+    for page in pages:
+        pcts = detector_pcts.get(page.page_id, {})
+        if not pcts:
+            continue
+        vals = [pcts.get(val) for val, label in active_detectors]
+        non_none = [v for v in vals if v is not None]
+        avg = sum(non_none) / len(non_none) if non_none else None
+        comparison_rows.append({
+            "page_number": page.page_number,
+            "pcts": [(val, label, pcts.get(val)) for val, label in active_detectors],
+            "avg": round(avg, 1) if avg is not None else None,
+        })
+
     return render(request, "reports/report_ai_detection.html", {
         "report": report,
         "report_type_label": REPORT_TYPE_LABELS.get(report.report_type, f"Type {report.report_type}"),
@@ -1402,6 +1430,8 @@ def report_ai_detection(request, report_id):
         "total_text_words": total_text_words,
         "chunk_data_json": json.dumps(chunk_data),
         "can_run_ai_detection": request.user.has_perm("reports.can_run_ai_detection"),
+        "comparison_rows": comparison_rows,
+        "active_detectors": active_detectors,
         "available_jobs": available_jobs,
         "selected_job": selected_job,
         "detector_info": detector_info,

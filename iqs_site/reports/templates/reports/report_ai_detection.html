@@ -392,6 +392,51 @@
     </div>
   </div>
 
+  {% if comparison_rows %}
+    <div style="background:#0b1120;border:1px solid #1f2937;border-radius:0.9rem;padding:0.75rem 1rem;margin-bottom:0.9rem;overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.82rem;white-space:nowrap;">
+        <thead>
+          <tr>
+            <th style="text-align:left;color:#6b7280;font-weight:500;padding:0.3rem 0.6rem 0.3rem 0;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Page</th>
+            {% for det_val, det_label in active_detectors %}
+              <th style="text-align:right;color:#6b7280;font-weight:500;padding:0.3rem 0.6rem;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">{{ det_label }}</th>
+            {% endfor %}
+            {% if active_detectors|length > 1 %}
+              <th style="text-align:right;color:#6b7280;font-weight:500;padding:0.3rem 0 0.3rem 0.6rem;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Avg</th>
+            {% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in comparison_rows %}
+            <tr style="border-top:1px solid #1f2937;">
+              <td style="padding:0.3rem 0.6rem 0.3rem 0;color:#9ca3af;">
+                <a href="#score-card-{{ row.page_number }}" style="color:#9ca3af;text-decoration:none;">p.{{ row.page_number }}</a>
+              </td>
+              {% for det_val, det_label, pct in row.pcts %}
+                <td style="text-align:right;padding:0.3rem 0.6rem;font-weight:600;
+                  {% if pct is None %}color:#4b5563;
+                  {% elif pct < 20 %}color:#22c55e;
+                  {% elif pct < 60 %}color:#f59e0b;
+                  {% else %}color:#ef4444;{% endif %}">
+                  {% if pct is not None %}{{ pct|floatformat:0 }}%{% else %}—{% endif %}
+                </td>
+              {% endfor %}
+              {% if active_detectors|length > 1 %}
+                <td style="text-align:right;padding:0.3rem 0 0.3rem 0.6rem;font-weight:700;
+                  {% if row.avg is None %}color:#4b5563;
+                  {% elif row.avg < 20 %}color:#22c55e;
+                  {% elif row.avg < 60 %}color:#f59e0b;
+                  {% else %}color:#ef4444;{% endif %}">
+                  {% if row.avg is not None %}{{ row.avg|floatformat:0 }}%{% else %}—{% endif %}
+                </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% endif %}
+
   {% if analyzed_count %}
     <div class="stats-bar">
       <div class="stat-item">
