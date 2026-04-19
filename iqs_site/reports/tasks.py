@@ -970,7 +970,8 @@ def _zerogpt_process_page(page, api_key: str, job) -> bool:
     text = "\n\n".join(c.text for c in chunks).strip()
     if not text:
         return False
-
+    print(f"Running zerogpt page {page.pk}")
+    #return True
     headers = {"ApiKey": api_key, "Content-Type": "application/json"}
     resp = requests.post(
         ZEROGPT_API_URL,
@@ -1022,7 +1023,8 @@ def _gptzero_process_page(page, api_key: str, job) -> bool:
     text = "\n\n".join(c.text for c in chunks).strip()
     if not text:
         return False
-
+    print(f"Running GPTZero page {page.pk}")
+    #return True
     headers = {"x-api-key": api_key, "Content-Type": "application/json"}
     resp = requests.post(
         GPTZERO_API_URL,
@@ -1088,6 +1090,8 @@ def _copyleaks_process_page(page, api_key: str, job) -> bool:
     text = "\n\n".join(c.text for c in chunks).strip()
     if not text:
         return False
+    print(f"Running COPYLEAKS page {page.pk}")
+    #return True
 
 
     scan_id = str(uuid.uuid4())
@@ -1191,6 +1195,7 @@ def _run_all_detectors_for_page(page, job, zerogpt_key, gptzero_key, copyleaks_k
 @shared_task
 def run_ai_detection_report(report_id: int, job_id: int | None = None):
     """Run all configured AI detectors for every page of a single report."""
+    print(f"Running AI Detection for report id: {report_id}")
     from events.models import Report as ReportModel
     zerogpt_key = getattr(settings, "ZEROGPT_API_KEY", "")
     gptzero_key = getattr(settings, "GPTZERO_API_KEY", "")
@@ -1232,16 +1237,17 @@ def run_ai_detection_report(report_id: int, job_id: int | None = None):
 @shared_task
 def run_ai_detection(job_id: int):
     """Call all configured AI detectors for each ReportPage in the job's event."""
+    print(f"Running AI detection for job {job_id}")
     job = AnalysisJob.objects.get(pk=job_id)
     job.status = AnalysisJob.Statuses.RUNNING
     job.started_at = timezone.now()
     job.save(update_fields=["status", "started_at"])
-
+    print("Job updated")
     try:
         zerogpt_key = getattr(settings, "ZEROGPT_API_KEY", "")
         gptzero_key = getattr(settings, "GPTZERO_API_KEY", "")
         copyleaks_key = getattr(settings, "COPYLEAKS_API_KEY", "")
-
+        print("API keys found")
         if not any([zerogpt_key, gptzero_key, copyleaks_key]):
             raise ValueError("No AI detection API keys are configured in settings.")
 
@@ -1255,11 +1261,19 @@ def run_ai_detection(job_id: int):
             .select_related("report")
             .order_by("report_id", "page_number")
         )
+        report_qs=(
+            Report.objects.filter(event_team__event_id=job.event_id)
+            .order_by("report_id")
+        )
         if job.report_type is not None:
             pages_qs = pages_qs.filter(report__report_type=job.report_type)
+            report_qs=report_qs.filter(report_type=job.report_type)
 
         # Use only the latest extraction per report.
-        report_ids = list(pages_qs.values_list("report_id", flat=True).distinct())
+        report_ids=list(report_qs.values_list("report_id",flat=True))
+        #report_ids = list(pages_qs.values_list("report_id", flat=True).distinct())
+        print(f"Found {len(report_ids)} reports")
+        print(report_ids)
         pages = []
         for rid in report_ids:
             pages.extend(
@@ -1269,7 +1283,8 @@ def run_ai_detection(job_id: int):
                 .filter(report__event_team__event_id=job.event_id)
                 .order_by("page_number")
             )
-
+        
+        print(f"AI detection page count found {len(pages)}")
         distinct_reports = len({p.report_id for p in pages})
         job.reports_found = distinct_reports
         job.save(update_fields=["reports_found"])
