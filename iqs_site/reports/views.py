@@ -3,6 +3,7 @@ import io
 import json
 import random
 import re
+import statistics
 
 from django.core.cache import cache
 from django.conf import settings
@@ -575,16 +576,18 @@ def event_analysis(request, event_id):
             existing = report_page_img_sims[rid].get(pnum, 0)
             report_page_img_sims[rid][pnum] = max(existing, img_sim_pct)
 
-    # AI detection fake_percentage per page_id — average across detectors from the latest job.
-    ai_pct_by_page = {}
+    # AI detection: median fake_percentage across detectors per page_id.
+    ai_pcts_by_page = {}  # page_id → list of fake_pct values (one per detector)
     for row in (
         AIDetectionResult.objects
         .filter(page_id__in=page_ids)
-        .values("page_id")
-        .annotate(avg_pct=Avg("fake_percentage"))
+        .values("page_id", "fake_percentage")
     ):
-        ai_pct_by_page[row["page_id"]] = row["avg_pct"]
-    # report_id → {page_number: ai fake_pct}
+        ai_pcts_by_page.setdefault(row["page_id"], []).append(row["fake_percentage"])
+    ai_pct_by_page = {
+        pid: statistics.median(vals) for pid, vals in ai_pcts_by_page.items()
+    }
+    # report_id → {page_number: ai median fake_pct}
     report_page_ai = {r.report_id: {} for r in reports}
     for pid, (rid, pnum) in page_info.items():
         if pid in ai_pct_by_page:
@@ -1387,9 +1390,11 @@ def report_ai_detection(request, report_id):
         })
 
     avg_fake_pct = None
+    median_fake_pct = None
     if analyzed_count:
-        total = sum(pd["result"].fake_percentage for pd in page_data if pd["result"])
-        avg_fake_pct = round(total / analyzed_count, 1)
+        pcts = [pd["result"].fake_percentage for pd in page_data if pd["result"]]
+        avg_fake_pct = round(sum(pcts) / len(pcts), 1)
+        median_fake_pct = round(statistics.median(pcts), 1)
 
     # Build cross-detector comparison: page_number → {detector: fake_pct}
     all_job_filter = {"page__report": report}
@@ -1413,10 +1418,12 @@ def report_ai_detection(request, report_id):
         vals = [pcts.get(val) for val, label in active_detectors]
         non_none = [v for v in vals if v is not None]
         avg = sum(non_none) / len(non_none) if non_none else None
+        med = statistics.median(non_none) if non_none else None
         comparison_rows.append({
             "page_number": page.page_number,
             "pcts": [(val, label, pcts.get(val)) for val, label in active_detectors],
             "avg": round(avg, 1) if avg is not None else None,
+            "median": round(med, 1) if med is not None else None,
         })
 
     return render(request, "reports/report_ai_detection.html", {
@@ -1426,6 +1433,7 @@ def report_ai_detection(request, report_id):
         "analyzed_count": analyzed_count,
         "total_pages": len(page_data),
         "avg_fake_pct": avg_fake_pct,
+        "median_fake_pct": median_fake_pct,
         "total_ai_words": total_ai_words,
         "total_text_words": total_text_words,
         "chunk_data_json": json.dumps(chunk_data),

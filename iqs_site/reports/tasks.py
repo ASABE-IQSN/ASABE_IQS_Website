@@ -952,6 +952,18 @@ def _save_ai_sentences(result, sentence_dicts):
         AIDetectedSentence.objects.bulk_create(objs)
 
 
+def _weighted_fake_pct(sentence_dicts: list[dict], total_chars: int) -> float:
+    """Compute fake_percentage as probability-weighted char coverage.
+
+    Each sentence contributes (prob * len(text)) characters worth of AI signal.
+    Sentences with no probability are treated as prob=1.0 (fully flagged).
+    """
+    if total_chars <= 0:
+        return 0.0
+    weighted = sum((s["prob"] if s["prob"] is not None else 1.0) * len(s["text"]) for s in sentence_dicts)
+    return weighted / total_chars * 100
+
+
 def _zerogpt_process_page(page, api_key: str, job) -> bool:
     """Send one ReportPage to ZeroGPT and persist the result linked to job."""
     chunks = list(page.chunks.order_by("chunk_index"))
@@ -971,29 +983,36 @@ def _zerogpt_process_page(page, api_key: str, job) -> bool:
     data = full_data.get("data", {})
     _save_ai_detection_log(str(data.get("id") or page.pk), "ZEROGPT", {"input_text": text}, full_data)
 
+    # Extract flagged sentences first so we can compute char-coverage fake_percentage
+    raw_sentences = []
+    for item in list(data.get("h") or []) + list(data.get("hi") or []):
+        if isinstance(item, dict):
+            s = str(item.get("sentence") or item.get("text") or "").strip()
+            if s:
+                raw_sentences.append({
+                    "text": s,
+                    "prob": _ai_float(item.get("generated_probability") or item.get("probability"), default=None),
+                })
+        elif str(item).strip():
+            raw_sentences.append({"text": str(item).strip(), "prob": None})
+
+    total_chars = len(text)
+    fake_pct = _weighted_fake_pct(raw_sentences, total_chars)
+    word_count = _ai_int(data.get("textWords")) or len(text.split())
+
     result, _ = AIDetectionResult.objects.get_or_create(
         page=page,
         job=job,
         detector=AIDetectionResult.Detectors.ZEROGPT,
         defaults={
-            "fake_percentage": _ai_float(data.get("fakePercentage")),
-            "ai_words": _ai_int(data.get("aiWords")),
-            "text_words": _ai_int(data.get("textWords")),
+            "fake_percentage": fake_pct,
+            "ai_words": round(fake_pct / 100 * word_count),
+            "text_words": word_count,
             "collection_id": str(data.get("collection_id") or ""),
             "source_id": str(data.get("id") or ""),
             "feedback": str(data.get("feedback") or ""),
         },
     )
-
-    raw_sentences = []
-    for item in list(data.get("h") or []) + list(data.get("hi") or []):
-        if isinstance(item, dict):
-            raw_sentences.append({
-                "text": str(item.get("sentence") or item.get("text") or ""),
-                "prob": _ai_float(item.get("generated_probability") or item.get("probability"), default=None),
-            })
-        elif str(item).strip():
-            raw_sentences.append({"text": str(item), "prob": None})
     _save_ai_sentences(result, raw_sentences)
     return True
 
@@ -1018,7 +1037,15 @@ def _gptzero_process_page(page, api_key: str, job) -> bool:
     doc = documents[0] if documents else {}
     _save_ai_detection_log(str(doc.get("id") or page.pk), "GPTZERO", {"document": text}, full_data)
 
-    fake_pct = _ai_float(doc.get("completely_generated_prob"), 0.0) * 100
+    # Include all sentences weighted by their AI probability
+    raw_sentences = [
+        {"text": s.get("sentence", "").strip(), "prob": _ai_float(s.get("generated_prob"), default=1.0)}
+        for s in (doc.get("sentences") or [])
+        if s.get("sentence", "").strip()
+    ]
+
+    total_chars = len(text)
+    fake_pct = _weighted_fake_pct(raw_sentences, total_chars)
     word_count = len(text.split())
 
     result, _ = AIDetectionResult.objects.get_or_create(
@@ -1033,13 +1060,7 @@ def _gptzero_process_page(page, api_key: str, job) -> bool:
             "feedback": "",
         },
     )
-
-    sentences = doc.get("sentences") or []
-    _save_ai_sentences(result, [
-        {"text": s.get("sentence", ""), "prob": _ai_float(s.get("generated_prob"), default=None)}
-        for s in sentences
-        if s.get("sentence", "").strip()
-    ])
+    _save_ai_sentences(result, raw_sentences)
     return True
 
 
@@ -1087,11 +1108,24 @@ def _copyleaks_process_page(page, api_key: str, job) -> bool:
     data = resp.json()
     _save_ai_detection_log(scan_id, "COPYLEAKS", {"text": text}, data)
 
-    # summary.ai is 0–1 overall AI probability
-    summary = data.get("summary") or {}
-    fake_pct = _ai_float(summary.get("ai"), 0.0) * 100
     scanned = data.get("scannedDocument") or {}
     word_count = int(scanned.get("totalWords") or len(text.split()))
+    total_chars = len(text)
+
+    # Extract AI-flagged spans — Copyleaks returns binary flags so prob=1.0 for all spans
+    sentence_dicts = []
+    try:
+        chars = data["explain"]["patterns"]["text"]["chars"]
+        starts = chars.get("starts") or []
+        lengths = chars.get("lengths") or []
+        for s, l in zip(starts, lengths):
+            span = text[s: s + l].strip()
+            if span:
+                sentence_dicts.append({"text": span, "prob": 1.0})
+    except (KeyError, TypeError, IndexError):
+        pass
+
+    fake_pct = _weighted_fake_pct(sentence_dicts, total_chars)
 
     result, _ = AIDetectionResult.objects.get_or_create(
         page=page,
@@ -1105,19 +1139,6 @@ def _copyleaks_process_page(page, api_key: str, job) -> bool:
             "feedback": "",
         },
     )
-
-    # Extract AI-flagged text spans from explain.patterns.text using char offsets
-    sentence_dicts = []
-    try:
-        chars = data["explain"]["patterns"]["text"]["chars"]
-        starts = chars.get("starts") or []
-        lengths = chars.get("lengths") or []
-        for s, l in zip(starts, lengths):
-            span = text[s: s + l].strip()
-            if span:
-                sentence_dicts.append({"text": span, "prob": 1.0})
-    except (KeyError, TypeError, IndexError):
-        pass
     _save_ai_sentences(result, sentence_dicts)
     return True
 

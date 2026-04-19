@@ -230,7 +230,7 @@
                       </a>
                       <a class="half ai-third"
                          href="{% url 'reports:report_ai_detection' cell.report_id %}#score-card-{{ row.page_number }}"
-                         title="View AI detection for page {{ row.page_number }}"
+                         title="Median AI % across detectors for page {{ row.page_number }}"
                          {% if cell.ai_pct is not None %}data-ai-pct="{{ cell.ai_pct }}"{% endif %}>
                         {% if cell.ai_pct is not None %}{{ cell.ai_pct }}%{% else %}—{% endif %}
                       </a>
