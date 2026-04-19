@@ -881,6 +881,8 @@ def run_plagiarism_analysis(self, job_id: int) -> dict:
 ZEROGPT_API_URL = "https://api.zerogpt.com/api/detect/detectText"
 GPTZERO_API_URL = "https://api.gptzero.me/v2/predict/text"
 COPYLEAKS_API_URL = "https://api.copyleaks.com/v2/writer-detector/{scan_id}/check"
+COPYLEAKS_LOGIN_URL = "https://id.copyleaks.com/v3/account/login/api"
+COPYLEAKS_TOKEN_CACHE_KEY = "copyleaks_access_token"
 
 AI_INTER_REQUEST_DELAY = 0.5  # seconds between API calls per detector
 
@@ -1004,6 +1006,26 @@ def _gptzero_process_page(page, api_key: str, job) -> bool:
     return True
 
 
+def _copyleaks_get_token(email: str, api_key: str) -> str:
+    """Return a cached Copyleaks access token, refreshing if needed."""
+    from django.core.cache import cache
+    token = cache.get(COPYLEAKS_TOKEN_CACHE_KEY)
+    if token:
+        return token
+    resp = requests.post(
+        COPYLEAKS_LOGIN_URL,
+        json={"email": email, "key": api_key},
+        headers={"Content-Type": "application/json"},
+        timeout=15,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    token = data["access_token"]
+    expires_in = int(data.get("expires_in", 86400))
+    cache.set(COPYLEAKS_TOKEN_CACHE_KEY, token, timeout=max(expires_in - 60, 300))
+    return token
+
+
 def _copyleaks_process_page(page, api_key: str, job) -> bool:
     """Send one ReportPage to Copyleaks AI detector and persist the result linked to job."""
     import uuid
@@ -1014,7 +1036,9 @@ def _copyleaks_process_page(page, api_key: str, job) -> bool:
 
     scan_id = str(uuid.uuid4())
     url = COPYLEAKS_API_URL.format(scan_id=scan_id)
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    email = getattr(settings, "COPYLEAKS_EMAIL", "")
+    token = _copyleaks_get_token(email, api_key)
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     resp = requests.post(
         url,
         headers=headers,
