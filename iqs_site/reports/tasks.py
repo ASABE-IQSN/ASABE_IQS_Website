@@ -1080,7 +1080,7 @@ def _copyleaks_process_page(page, api_key: str, job) -> bool:
     resp = requests.post(
         url,
         headers=headers,
-        json={"text": text,"explain":True,"sensitivity": 3,"sandbox": True},
+        json={"text": text,"explain":True,"sensitivity": 3},
         timeout=30,
     )
     resp.raise_for_status()
