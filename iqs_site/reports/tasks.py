@@ -996,8 +996,7 @@ def _zerogpt_process_page(page, api_key: str, job) -> bool:
         elif str(item).strip():
             raw_sentences.append({"text": str(item).strip(), "prob": None})
 
-    total_chars = len(text)
-    fake_pct = _weighted_fake_pct(raw_sentences, total_chars)
+    fake_pct = _ai_float(data.get("fakePercentage"))
     word_count = _ai_int(data.get("textWords")) or len(text.split())
 
     result, _ = AIDetectionResult.objects.get_or_create(
@@ -1037,15 +1036,13 @@ def _gptzero_process_page(page, api_key: str, job) -> bool:
     doc = documents[0] if documents else {}
     _save_ai_detection_log(str(doc.get("id") or page.pk), "GPTZERO", {"document": text}, full_data)
 
-    # Include all sentences weighted by their AI probability
     raw_sentences = [
-        {"text": s.get("sentence", "").strip(), "prob": _ai_float(s.get("generated_prob"), default=1.0)}
+        {"text": s.get("sentence", "").strip(), "prob": _ai_float(s.get("generated_prob"), default=None)}
         for s in (doc.get("sentences") or [])
         if s.get("sentence", "").strip()
     ]
 
-    total_chars = len(text)
-    fake_pct = _weighted_fake_pct(raw_sentences, total_chars)
+    fake_pct = _ai_float(doc.get("completely_generated_prob"), 0.0) * 100
     word_count = len(text.split())
 
     result, _ = AIDetectionResult.objects.get_or_create(
