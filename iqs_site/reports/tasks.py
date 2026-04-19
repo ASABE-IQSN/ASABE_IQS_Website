@@ -883,8 +883,41 @@ GPTZERO_API_URL = "https://api.gptzero.me/v2/predict/text"
 COPYLEAKS_API_URL = "https://api.copyleaks.com/v2/writer-detector/{scan_id}/check"
 COPYLEAKS_LOGIN_URL = "https://id.copyleaks.com/v3/account/login/api"
 COPYLEAKS_TOKEN_CACHE_KEY = "copyleaks_access_token"
+AI_DETECTION_LOG_BUCKET = "iqs-ai-detection-logs"
 
 AI_INTER_REQUEST_DELAY = 0.5  # seconds between API calls per detector
+
+
+def _save_ai_detection_log(scan_id: str, detector: str, request_body: dict, response_data: dict):
+    """Upload request+response JSON to SeaweedFS for auditing expensive API calls."""
+    import json
+    import boto3
+    from botocore.exceptions import BotoCoreError, ClientError
+    from django.utils import timezone as tz
+    try:
+        payload = json.dumps({
+            "detector": detector,
+            "scan_id": scan_id,
+            "timestamp": tz.now().isoformat(),
+            "request": request_body,
+            "response": response_data,
+        }, indent=2).encode("utf-8")
+        client = boto3.client(
+            "s3",
+            endpoint_url=getattr(settings, "AWS_S3_ENDPOINT_URL", ""),
+            aws_access_key_id=getattr(settings, "AWS_ACCESS_KEY_ID", ""),
+            aws_secret_access_key=getattr(settings, "AWS_SECRET_ACCESS_KEY", ""),
+            region_name="us-east-1",
+        )
+        key = f"{detector.lower()}/{tz.now().strftime('%Y/%m/%d')}/{scan_id}.json"
+        client.put_object(
+            Bucket=AI_DETECTION_LOG_BUCKET,
+            Key=key,
+            Body=payload,
+            ContentType="application/json",
+        )
+    except (BotoCoreError, ClientError, Exception) as exc:
+        logger.warning("Failed to save AI detection log for %s/%s: %s", detector, scan_id, exc)
 
 
 def _ai_float(val, default=0.0):
@@ -934,7 +967,9 @@ def _zerogpt_process_page(page, api_key: str, job) -> bool:
         timeout=30,
     )
     resp.raise_for_status()
-    data = resp.json().get("data", {})
+    full_data = resp.json()
+    data = full_data.get("data", {})
+    _save_ai_detection_log(str(data.get("id") or page.pk), "ZEROGPT", {"input_text": text}, full_data)
 
     result, _ = AIDetectionResult.objects.get_or_create(
         page=page,
@@ -978,8 +1013,10 @@ def _gptzero_process_page(page, api_key: str, job) -> bool:
         timeout=30,
     )
     resp.raise_for_status()
-    documents = resp.json().get("documents", [])
+    full_data = resp.json()
+    documents = full_data.get("documents", [])
     doc = documents[0] if documents else {}
+    _save_ai_detection_log(str(doc.get("id") or page.pk), "GPTZERO", {"document": text}, full_data)
 
     fake_pct = _ai_float(doc.get("completely_generated_prob"), 0.0) * 100
     word_count = len(text.split())
@@ -1034,6 +1071,7 @@ def _copyleaks_process_page(page, api_key: str, job) -> bool:
     if not text:
         return False
 
+
     scan_id = str(uuid.uuid4())
     url = COPYLEAKS_API_URL.format(scan_id=scan_id)
     email = getattr(settings, "COPYLEAKS_EMAIL", "")
@@ -1042,16 +1080,18 @@ def _copyleaks_process_page(page, api_key: str, job) -> bool:
     resp = requests.post(
         url,
         headers=headers,
-        json={"text": text},
+        json={"text": text,"explain":True,"sensitivity": 3,"sandbox": True},
         timeout=30,
     )
     resp.raise_for_status()
     data = resp.json()
+    _save_ai_detection_log(scan_id, "COPYLEAKS", {"text": text}, data)
 
-    # Copyleaks returns a top-level "ai" score (0–1) and optional passage list.
-    top_ai = _ai_float(data.get("ai"), 0.0)
-    fake_pct = top_ai * 100
-    word_count = len(text.split())
+    # summary.ai is 0–1 overall AI probability
+    summary = data.get("summary") or {}
+    fake_pct = _ai_float(summary.get("ai"), 0.0) * 100
+    scanned = data.get("scannedDocument") or {}
+    word_count = int(scanned.get("totalWords") or len(text.split()))
 
     result, _ = AIDetectionResult.objects.get_or_create(
         page=page,
@@ -1066,12 +1106,19 @@ def _copyleaks_process_page(page, api_key: str, job) -> bool:
         },
     )
 
-    passages = data.get("passages") or []
-    _save_ai_sentences(result, [
-        {"text": p.get("text", ""), "prob": _ai_float(p.get("ai"), default=None)}
-        for p in passages
-        if p.get("text", "").strip()
-    ])
+    # Extract AI-flagged text spans from explain.patterns.text using char offsets
+    sentence_dicts = []
+    try:
+        chars = data["explain"]["patterns"]["text"]["chars"]
+        starts = chars.get("starts") or []
+        lengths = chars.get("lengths") or []
+        for s, l in zip(starts, lengths):
+            span = text[s: s + l].strip()
+            if span:
+                sentence_dicts.append({"text": span, "prob": 1.0})
+    except (KeyError, TypeError, IndexError):
+        pass
+    _save_ai_sentences(result, sentence_dicts)
     return True
 
 
