@@ -1848,7 +1848,7 @@ def team_event_edit(request, event_id: int, team_id: int):
 
     existing_photos = (
         EventTeamPhoto.objects
-        .filter(event_team=event_team, approved=True)
+        .filter(event_team=event_team)
         .order_by("event_team_photo_id")
     )
     existing_reports = (
@@ -1889,7 +1889,10 @@ def team_event_edit(request, event_id: int, team_id: int):
                     submitted_from_ip=ip,
                     approved=approved,
                 )
-                messages.success(request, "Photo uploaded successfully!")
+                if approved:
+                    messages.success(request, "Photo uploaded successfully!")
+                else:
+                    messages.success(request, "Photo uploaded — waiting for approval before it appears publicly.")
             else:
                 messages.error(request, "Invalid file type. Please upload an image (png, jpg, jpeg, gif, webp).")
 
