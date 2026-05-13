@@ -128,6 +128,66 @@
     }
 
     .layout-val { color: var(--text); }
+
+    .toggles-row {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    .toggle-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .65rem;
+      padding: .6rem .9rem;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255,255,255,.02);
+      cursor: pointer;
+      user-select: none;
+      transition: border-color .15s, background .15s;
+    }
+    .toggle-pill:hover { border-color: rgba(96,165,250,.35); }
+
+    .toggle-pill input { display: none; }
+
+    .toggle-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      background: rgba(148,163,184,.25);
+      border-radius: 999px;
+      transition: background .2s;
+      flex-shrink: 0;
+    }
+    .toggle-switch::after {
+      content: "";
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      transition: transform .2s;
+    }
+    .toggle-pill input:checked + .toggle-switch {
+      background: rgba(96,165,250,.7);
+    }
+    .toggle-pill input:checked + .toggle-switch::after {
+      transform: translateX(16px);
+    }
+
+    .toggle-label {
+      font-size: .9rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .toggle-sub {
+      font-size: .75rem;
+      color: var(--muted);
+      margin-left: .25rem;
+    }
   </style>
 {% endblock %}
 
@@ -144,6 +204,24 @@
     <div class="header-meta">
       <span class="muted">Active team:&nbsp;<strong id="activeTeamName">Waiting…</strong></span>
       <span class="chip" id="sseStatus">SSE</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2 class="panel-title">Overlay Modules</h2>
+    </div>
+    <div class="panel-body">
+      <div class="toggles-row">
+        <label class="toggle-pill">
+          <input type="checkbox" id="toggleTractorCard">
+          <span class="toggle-switch"></span>
+          <span>
+            <span class="toggle-label">Tractor card</span>
+            <span class="toggle-sub">Photo, name &amp; bio of the active tractor</span>
+          </span>
+        </label>
+      </div>
     </div>
   </div>
 

@@ -57,4 +57,5 @@ urlpatterns = [
     # ── Overlay Producer ──────────────────────────────────────────
     path("overlay/active-responses/", views.overlay_active_responses, name="overlay_active_responses"),
     path("overlay/card/", views.overlay_card_trigger, name="overlay_card"),
+    path("overlay/toggle/", views.overlay_toggle, name="overlay_toggle"),
 ]

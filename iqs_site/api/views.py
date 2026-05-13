@@ -1050,3 +1050,47 @@ def overlay_card_trigger(request):
     r.publish("overlay:card", payload_str)
 
     return Response({"ok": True})
+
+
+_OVERLAY_TOGGLE_KEYS = {"tractor_card"}
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAdminUser])
+def overlay_toggle(request):
+    """Read or update overlay toggle flags (e.g. tractor_card on/off).
+
+    GET  → returns current toggle state.
+    POST → body { key: "tractor_card", value: true|false }; merges into state,
+           persists in Redis, and publishes so all overlay/producer clients sync.
+    """
+    import redis as redis_lib
+    import json as json_lib
+    from django.conf import settings as django_settings
+
+    r = redis_lib.Redis.from_url(django_settings.REDIS_URL, decode_responses=True)
+    raw = r.get("overlay:toggle:latest")
+    state = {}
+    if raw:
+        try:
+            state = json_lib.loads(raw) or {}
+        except Exception:
+            state = {}
+
+    if request.method == "GET":
+        return Response(state)
+
+    key = request.data.get("key")
+    value = request.data.get("value")
+    if key not in _OVERLAY_TOGGLE_KEYS:
+        return Response({"error": f"unknown toggle key: {key}"},
+                        status=status.HTTP_400_BAD_REQUEST)
+    if not isinstance(value, bool):
+        return Response({"error": "value must be boolean"},
+                        status=status.HTTP_400_BAD_REQUEST)
+
+    state[key] = value
+    payload_str = json_lib.dumps(state)
+    r.set("overlay:toggle:latest", payload_str)
+    r.publish("overlay:toggle", payload_str)
+    return Response(state)

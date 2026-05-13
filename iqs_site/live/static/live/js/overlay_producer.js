@@ -7,6 +7,7 @@ const teamNameInline = document.getElementById("teamNameInline");
 const responsesBody = document.getElementById("responsesBody");
 const refreshBtn    = document.getElementById("refreshBtn");
 const sentToast     = document.getElementById("sentToast");
+const toggleTractorCard = document.getElementById("toggleTractorCard");
 
 // ── State ─────────────────────────────────────────────────────────────
 let currentPullId   = null;
@@ -46,6 +47,13 @@ function startSSE() {
 
   es.addEventListener("info", handleInfo);
   es.addEventListener("pull_info", handleInfo);
+
+  es.addEventListener("overlay_toggle", (e) => {
+    try {
+      const state = JSON.parse(e.data) || {};
+      syncToggleUI(state);
+    } catch (_) {}
+  });
 
   es.onopen = () => {
     sseStatus.textContent = "LIVE";
@@ -214,6 +222,53 @@ function escHtml(str) {
     .replace(/"/g, "&quot;");
 }
 
+// ── Overlay toggles ───────────────────────────────────────────────────
+let suppressToggleEvents = false;
+
+function syncToggleUI(state) {
+  if (!toggleTractorCard) return;
+  suppressToggleEvents = true;
+  toggleTractorCard.checked = !!state.tractor_card;
+  suppressToggleEvents = false;
+}
+
+async function sendToggle(key, value) {
+  try {
+    const res = await fetch("/api/v1/overlay/toggle/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+      body: JSON.stringify({ key, value }),
+    });
+    if (!res.ok) throw new Error(res.status);
+    const state = await res.json();
+    syncToggleUI(state);
+  } catch (err) {
+    console.warn("Toggle failed", err);
+    // Revert UI
+    if (key === "tractor_card" && toggleTractorCard) {
+      suppressToggleEvents = true;
+      toggleTractorCard.checked = !value;
+      suppressToggleEvents = false;
+    }
+  }
+}
+
+async function loadToggleState() {
+  try {
+    const res = await fetch("/api/v1/overlay/toggle/");
+    if (!res.ok) return;
+    syncToggleUI(await res.json());
+  } catch (_) {}
+}
+
+if (toggleTractorCard) {
+  toggleTractorCard.addEventListener("change", () => {
+    if (suppressToggleEvents) return;
+    sendToggle("tractor_card", toggleTractorCard.checked);
+  });
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────
 refreshBtn.addEventListener("click", fetchResponses);
 startSSE();
+loadToggleState();

@@ -180,6 +180,14 @@ function startSSE() {
     setField("hook_name", info.hook_name ?? "—");
     setField("team_name", info.team_name ?? "—");
     setField("team_number", info.team_number ?? "");
+
+    handleTractorInfo(info);
+  });
+
+  es.addEventListener("overlay_toggle", (e) => {
+    try {
+      applyOverlayToggle(JSON.parse(e.data) || {});
+    } catch (_) {}
   });
 
   es.addEventListener("data", (e) => {
@@ -483,6 +491,104 @@ function updatePollCard(data) {
       { opacity: 0, y: 20 },
       { opacity: 1, y: 0, duration: 0.5, ease: "back.out(1.5)" }
     );
+}
+
+// --- tractor card ---
+const ocTractorCard       = document.getElementById("ocTractorCard");
+const tcPhoto             = document.getElementById("tcPhoto");
+const tcPhotoPlaceholder  = document.getElementById("tcPhotoPlaceholder");
+const tcName              = document.getElementById("tcName");
+const tcSub               = document.getElementById("tcSub");
+const tcBio               = document.getElementById("tcBio");
+
+let tractorEnabled  = false;
+let activeTractorId = null;
+let latestInfo      = null;
+
+function applyOverlayToggle(state) {
+  tractorEnabled = !!state.tractor_card;
+  refreshTractorCard();
+}
+
+function handleTractorInfo(info) {
+  latestInfo = info;
+  refreshTractorCard();
+}
+
+function refreshTractorCard() {
+  if (!ocTractorCard) return;
+  const tractorId = latestInfo?.tractor_id ?? null;
+
+  if (!tractorEnabled || !tractorId) {
+    ocTractorCard.classList.remove("show");
+    activeTractorId = null;
+    return;
+  }
+
+  if (tractorId === activeTractorId) {
+    ocTractorCard.classList.add("show");
+    return;
+  }
+  activeTractorId = tractorId;
+  loadTractor(tractorId, latestInfo);
+}
+
+async function loadTractor(tractorId, infoFallback) {
+  try {
+    const res = await fetch(`/api/v1/tractors/${tractorId}/`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const detail = await res.json();
+    if (tractorId !== activeTractorId || !tractorEnabled) return;
+    renderTractor(detail, infoFallback);
+  } catch (err) {
+    console.warn("Failed to load tractor", tractorId, err);
+    if (tractorId !== activeTractorId || !tractorEnabled) return;
+    tcName.textContent = infoFallback?.tractor_name || "Unnamed Tractor";
+    tcSub.innerHTML = "";
+    tcBio.textContent = "";
+    tcPhoto.style.display = "none";
+    tcPhotoPlaceholder.style.display = "";
+    ocTractorCard.classList.add("show");
+  }
+}
+
+function renderTractor(detail, infoFallback) {
+  const info = detail.info || {};
+  const displayName = info.nickname || detail.tractor_name ||
+                      infoFallback?.tractor_name || "Unnamed Tractor";
+  tcName.textContent = displayName;
+
+  const subParts = [];
+  if (detail.tractor_name && info.nickname) subParts.push(detail.tractor_name);
+  if (detail.year) subParts.push(detail.year);
+  if (detail.original_team && detail.original_team.team_name) {
+    subParts.push(`Built by ${detail.original_team.team_name}`);
+  }
+  tcSub.innerHTML = subParts
+    .map((p) => `<span>${escapeHtml(p)}</span>`)
+    .join('<span class="tc-dot">•</span>');
+
+  tcBio.textContent = info.bio || "";
+
+  const photoUrl = detail.primary_photo_url || "";
+  if (photoUrl) {
+    tcPhoto.src = photoUrl;
+    tcPhoto.style.display = "";
+    tcPhotoPlaceholder.style.display = "none";
+  } else {
+    tcPhoto.style.display = "none";
+    tcPhotoPlaceholder.style.display = "";
+  }
+
+  ocTractorCard.classList.add("show");
+}
+
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
 
 // --- boot ---
