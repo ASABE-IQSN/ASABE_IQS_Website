@@ -454,6 +454,22 @@ def pull_detail(request, pull_id):
     return Response(PullDetailSerializer(pull).data)
 
 
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def recompute_pull_etas_view(request, hook_id):
+    """Recompute expected_start_time for all SCHEDULED pulls in `hook_id`.
+
+    Runs the task body synchronously so the caller receives the freshly
+    written ETAs in the response. Signal-driven invocations use .delay().
+    """
+    from events.tasks import recompute_pull_etas
+
+    hook = get_object_or_404(Hook, pk=hook_id)
+    # Run inline so the caller gets back the freshly written ETAs.
+    updated = recompute_pull_etas.apply(args=[hook.hook_id]).get()
+    return Response({"hook_id": hook.hook_id, "updated": updated})
+
+
 # ── Durability ───────────────────────────────────────────────────────
 
 @api_view(["GET"])

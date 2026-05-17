@@ -76,16 +76,50 @@ class EventAdmin(admin.ModelAdmin):
 
 @admin.register(Hook)
 class HookAdmin(admin.ModelAdmin):
-    list_display = ("hook_id", "hook_name", "event")
+    list_display = ("hook_id", "hook_name", "event", "start_time", "end_time")
     search_fields = ("hook_name",)
     list_filter = ("event",)
 
 
 @admin.register(Pull)
 class PullAdmin(admin.ModelAdmin):
-    list_display = ("pull_id", "team", "event", "hook", "tractor", "final_distance")
-    list_filter = ("event", "hook", "tractor")
+    list_display = (
+        "pull_id", "team", "event", "hook", "tractor",
+        "run_order", "state",
+        "expected_start_time", "start_time", "end_time",
+        "final_distance",
+    )
+    list_filter = ("event", "hook", "state", "tractor")
     search_fields = ("team__team_name", "team__team_number")
+    ordering = ("hook", "run_order")
+    actions = ["drop_to_end", "recompute_etas"]
+
+    @admin.action(description="Drop selected pull(s) to end of their hook")
+    def drop_to_end(self, request, queryset):
+        from django.db.models import Max
+        touched = 0
+        for pull in queryset.select_related("hook"):
+            if not pull.hook_id:
+                continue
+            max_ro = (
+                Pull.objects.filter(hook_id=pull.hook_id)
+                .aggregate(m=Max("run_order"))["m"] or 0
+            )
+            pull.run_order = max_ro + 1
+            pull.save(update_fields=["run_order"])  # fires signal -> recompute
+            touched += 1
+        self.message_user(request, f"Dropped {touched} pull(s) to end of hook.")
+
+    @admin.action(description="Recompute ETAs for selected pulls' hooks")
+    def recompute_etas(self, request, queryset):
+        from events.tasks import recompute_pull_etas
+        hook_ids = {h for h in queryset.values_list("hook_id", flat=True) if h}
+        for hook_id in hook_ids:
+            recompute_pull_etas.delay(hook_id)
+        self.message_user(
+            request,
+            f"Queued ETA recompute for {len(hook_ids)} hook(s).",
+        )
 
 
 @admin.register(PullData)

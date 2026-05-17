@@ -39,6 +39,7 @@ urlpatterns = [
 
     # ── Performance Data ──────────────────────────────────────────
     path("pulls/<int:pull_id>/", views.pull_detail, name="pull_detail"),
+    path("pulls/recompute_eta/<int:hook_id>/", views.recompute_pull_etas_view, name="recompute_pull_etas"),
     path("durability-runs/<int:run_id>/", views.durability_run_detail, name="durability_run_detail"),
     path("maneuverability-runs/<int:run_id>/", views.maneuverability_run_detail, name="maneuverability_run_detail"),
 

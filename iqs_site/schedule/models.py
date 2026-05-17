@@ -48,6 +48,7 @@ class ScheduleItemType(models.Model):
 class ScheduleItem(models.Model):
     schedule_item_id = models.AutoField(primary_key=True)
     datetime = models.DateTimeField()
+    end = models.DateTimeField()
     name = models.CharField(max_length=45)
     type = models.ForeignKey(
         ScheduleItemType,
@@ -77,7 +78,8 @@ class ScheduleItem(models.Model):
     )
 
     def __str__(self):
-        return f"{self.name} – {self.team} @ {self.datetime:%Y-%m-%d %H:%M}"
+        when = f"{self.datetime:%Y-%m-%d %H:%M}" if self.datetime else "unscheduled"
+        return f"{self.name} – {self.team} @ {when}"
 
     class Meta:
         managed = False

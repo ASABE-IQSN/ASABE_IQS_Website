@@ -166,6 +166,9 @@ class TractorEvent(models.Model):
         return f"TractorEvent #{self.tractor_event_id}"
 
 
+# DDL (managed=False — must be applied manually):
+#   ALTER TABLE hooks ADD COLUMN start_time DATETIME NULL;
+#   ALTER TABLE hooks ADD COLUMN end_time   DATETIME NULL;
 class Hook(models.Model):
     hook_id = models.AutoField(primary_key=True)
     event = models.ForeignKey(
@@ -175,6 +178,8 @@ class Hook(models.Model):
         related_name="hooks",
     )
     hook_name = models.CharField(max_length=255, blank=True, null=True)
+    start_time = models.DateTimeField(blank=True, null=True)
+    end_time = models.DateTimeField(blank=True, null=True)
 
     class Meta:
         managed = False
@@ -184,9 +189,27 @@ class Hook(models.Model):
         return f"Hook {self.hook_id} (Event {self.event_id})"
 
 
+# DDL (managed=False — must be applied manually):
+#   ALTER TABLE pulls ADD COLUMN expected_start_time INT NULL;
+#   CREATE INDEX ix_pulls_hook_run_order ON pulls (hook_id, run_order);
+#   CREATE INDEX ix_pulls_hook_state     ON pulls (hook_id, state);
+# (state, start_time, end_time, top_speed, updated_at, updated_by_source
+# already exist on the DB table; this model now exposes them.)
 class Pull(models.Model):
+    class States(models.TextChoices):
+        SCHEDULED = "SCHEDULED"
+        RUNNING = "RUNNING"
+        COMPLETED = "COMPLETED"
+        SCRATCHED = "SCRATCHED"
+
     pull_id = models.AutoField(primary_key=True)
     final_distance = models.FloatField(blank=True, null=True)
+    top_speed = models.FloatField(blank=True, null=True)
+
+    # All three are unix epoch seconds.
+    start_time = models.IntegerField(blank=True, null=True)
+    end_time = models.IntegerField(blank=True, null=True)
+    expected_start_time = models.IntegerField(blank=True, null=True)
 
     team = models.ForeignKey(
         Team,
@@ -218,11 +241,21 @@ class Pull(models.Model):
         blank=True,
         null=True,
     )
+    run_order = models.IntegerField(default=0)
+    state = models.CharField(
+        max_length=24,
+        choices=States.choices,
+        default=States.SCHEDULED,
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by_source = models.CharField(max_length=16, default="system")
 
+    # Default ordering is by leaderboard rank (-final_distance). Run-sheet
+    # views must call .order_by("run_order") explicitly.
     class Meta:
         managed = False
         db_table = "pulls"
-        ordering = ["-final_distance"]  # roughly matches order_by in SQLAlchemy
+        ordering = ["-final_distance"]
 
     def __str__(self):
         return f"Pull {self.pull_id} – {self.team} ({self.final_distance or 0:.2f} ft)"

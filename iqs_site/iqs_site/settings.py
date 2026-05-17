@@ -95,7 +95,7 @@ INSTALLED_APPS = [
     'django.contrib.sitemaps',
     "corsheaders",
     "rest_framework",
-    'events',
+    'events.apps.EventsConfig',
     'live',
     "techin",
     "users",
