@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Producer – Pull | IQS{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'live/css/announcer.css' %}">
+  <style>
+    .producer-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      max-width: 640px;
+    }
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: .35rem;
+    }
+    .form-row label {
+      font-size: .8rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+    .form-row select {
+      padding: .6rem .75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      font-size: 1rem;
+    }
+    .button-row {
+      display: flex;
+      gap: .75rem;
+      margin-top: .5rem;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: .65rem 1.2rem;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+      font-size: .95rem;
+      transition: all .15s;
+    }
+    .btn:hover { border-color: rgba(96,165,250,.5); background: rgba(96,165,250,.08); }
+    .btn-primary { background: rgba(52,211,153,.18); border-color: rgba(52,211,153,.5); color: #d1fae5; }
+    .btn-primary:hover { background: rgba(52,211,153,.3); }
+    .btn-stop { background: rgba(248,113,113,.15); border-color: rgba(248,113,113,.45); color: #fecaca; }
+    .btn-stop:hover { background: rgba(248,113,113,.28); }
+    .btn:disabled { opacity: .4; pointer-events: none; }
+
+    #statusMsg {
+      margin-top: 1rem;
+      padding: .65rem .9rem;
+      border-radius: 8px;
+      font-size: .9rem;
+      display: none;
+    }
+    #statusMsg.ok { display: block; background: rgba(52,211,153,.12); border: 1px solid rgba(52,211,153,.4); color: #a7f3d0; }
+    #statusMsg.err { display: block; background: rgba(248,113,113,.12); border: 1px solid rgba(248,113,113,.4); color: #fecaca; }
+
+    .warn-banner {
+      padding: .75rem 1rem;
+      background: rgba(251,191,36,.1);
+      border: 1px solid rgba(251,191,36,.35);
+      border-radius: 10px;
+      color: #fde68a;
+      font-size: .9rem;
+      margin-bottom: 1rem;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div class="live-page">
+
+  <div class="announcer-header">
+    <h1>Producer &mdash; Pull Test</h1>
+    <div class="header-meta">
+      <span class="muted">{% if active_event %}{{ active_event }}{% else %}No active event{% endif %}</span>
+    </div>
+  </div>
+
+  <div class="warn-banner">
+    Manually publishes a pull status to the live API. Use for testing or when the event side has broken.
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2 class="panel-title">Select Pull</h2>
+    </div>
+    <div class="panel-body">
+      {% if not active_event %}
+        <div class="empty">No active event &mdash; cannot list hooks.</div>
+      {% else %}
+      <div class="producer-form">
+        <div class="form-row">
+          <label for="hookSel">Hook</label>
+          <select id="hookSel">
+            <option value="">-- Choose a hook --</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label for="pullSel">Pull</label>
+          <select id="pullSel" disabled>
+            <option value="">-- Choose a pull --</option>
+          </select>
+        </div>
+        <div class="button-row">
+          <button id="sendActive" class="btn btn-primary" disabled>Send Pull Active (status=1)</button>
+          <button id="sendIdle" class="btn btn-stop" disabled>Send Pull Idle (status=0)</button>
+        </div>
+        <div id="statusMsg"></div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<script id="hooksData" type="application/json">{{ hooks_json|safe }}</script>
+<script>
+  window.IQS = { apiUrl: "{{ api_url }}" };
+  (function() {
+    const hooks = JSON.parse(document.getElementById("hooksData").textContent || "[]");
+    const hookSel = document.getElementById("hookSel");
+    const pullSel = document.getElementById("pullSel");
+    const sendActive = document.getElementById("sendActive");
+    const sendIdle = document.getElementById("sendIdle");
+    const statusMsg = document.getElementById("statusMsg");
+
+    if (!hookSel) return;
+
+    hooks.forEach(h => {
+      const opt = document.createElement("option");
+      opt.value = h.hook_id;
+      opt.textContent = `${h.hook_name} (${h.pulls.length} pulls)`;
+      hookSel.appendChild(opt);
+    });
+
+    hookSel.addEventListener("change", () => {
+      pullSel.innerHTML = '<option value="">-- Choose a pull --</option>';
+      const h = hooks.find(x => String(x.hook_id) === hookSel.value);
+      if (!h) {
+        pullSel.disabled = true;
+        updateButtons();
+        return;
+      }
+      h.pulls.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.pull_id;
+        opt.textContent = `${p.label} [${p.state}]`;
+        pullSel.appendChild(opt);
+      });
+      pullSel.disabled = false;
+      updateButtons();
+    });
+
+    pullSel.addEventListener("change", updateButtons);
+
+    function updateButtons() {
+      const hasPull = !!pullSel.value;
+      sendActive.disabled = !hasPull;
+      sendIdle.disabled = !hasPull;
+    }
+
+    async function send(statusVal) {
+      const pullId = parseInt(pullSel.value, 10);
+      if (!pullId) return;
+      statusMsg.className = "";
+      statusMsg.style.display = "none";
+      sendActive.disabled = true;
+      sendIdle.disabled = true;
+      try {
+        const res = await fetch(`${window.IQS.apiUrl}/api/ingest/pull/status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pull_id: pullId,
+            status: statusVal,
+            ts: Date.now() / 1000,
+          }),
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`HTTP ${res.status}: ${txt}`);
+        }
+        statusMsg.className = "ok";
+        statusMsg.textContent = `Sent pull_id=${pullId} status=${statusVal} ✓`;
+      } catch (err) {
+        statusMsg.className = "err";
+        statusMsg.textContent = `Failed: ${err.message}`;
+      } finally {
+        updateButtons();
+      }
+    }
+
+    sendActive.addEventListener("click", () => send(1));
+    sendIdle.addEventListener("click", () => send(0));
+  })();
+</script>
+{% endblock %}

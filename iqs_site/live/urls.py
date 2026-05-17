@@ -10,6 +10,7 @@ urlpatterns = [
     path('durability', views.live_durability, name='durability'),
     path('overlay', views.overlay, name="pull_overlay"),
     path('overlay/producer', views.overlay_producer, name="overlay_producer"),
+    path('producer/pull', views.producer_pull, name="producer_pull"),
     path('announcer/pull', views.announcer_pull, name="announcer_pull"),
     path('announcer/maneuverability', views.announcer_maneuverability, name="announcer_maneuverability"),
     path('announcer/durability', views.announcer_durability, name="announcer_durability"),

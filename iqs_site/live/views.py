@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.contrib.admin.views.decorators import staff_member_required
-from events.models import Team, Event, EventTeam
+from events.models import Team, Event, EventTeam, Hook, Pull
 from django.conf import settings
 from compforms.models import OverlayScene
 import json
@@ -35,6 +35,38 @@ def overlay(request):
 def overlay_producer(request):
     context = {"api_url": settings.APIURL}
     return render(request, "overlay_producer.html", context)
+
+
+@staff_member_required
+def producer_pull(request):
+    active_event = Event.objects.filter(event_active=True).first()
+    hooks_data = []
+    if active_event:
+        hooks = Hook.objects.filter(event=active_event).order_by("start_time", "hook_id")
+        for h in hooks:
+            pulls = (
+                Pull.objects.filter(hook=h)
+                .select_related("team", "tractor")
+                .order_by("run_order", "pull_id")
+            )
+            hooks_data.append({
+                "hook_id": h.hook_id,
+                "hook_name": h.hook_name or f"Hook {h.hook_id}",
+                "pulls": [
+                    {
+                        "pull_id": p.pull_id,
+                        "label": f"#{p.run_order} – {p.team.team_name} (pull {p.pull_id})",
+                        "state": p.state,
+                    }
+                    for p in pulls
+                ],
+            })
+    context = {
+        "api_url": settings.APIURL,
+        "active_event": active_event,
+        "hooks_json": json.dumps(hooks_data),
+    }
+    return render(request, "producer_pull.html", context)
 
 
 @staff_member_required

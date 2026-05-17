@@ -225,6 +225,12 @@ function startSSE() {
     updatePollCard(data);
   });
 
+  es.addEventListener("pull_schedule", (e) => {
+    try {
+      handlePullSchedule(JSON.parse(e.data) || {});
+    } catch (_) {}
+  });
+
   es.onerror = (err) => {
     // Browser auto-reconnects; this fires frequently during reconnect
     console.warn("SSE error", err);
@@ -508,6 +514,59 @@ let latestInfo      = null;
 function applyOverlayToggle(state) {
   tractorEnabled = !!state.tractor_card;
   refreshTractorCard();
+  upNextEnabled = !!state.up_next;
+  refreshUpNextCard();
+}
+
+// --- up next card ---
+const ocUpNextCard = document.getElementById("ocUpNextCard");
+const unList       = document.getElementById("unList");
+let upNextEnabled = false;
+let latestSchedule = null;
+
+function handlePullSchedule(payload) {
+  latestSchedule = payload;
+  refreshUpNextCard();
+}
+
+function _fmtEta(epoch) {
+  if (!epoch) return "—";
+  const d = new Date(epoch * 1000);
+  let h = d.getHours();
+  const m = d.getMinutes().toString().padStart(2, "0");
+  const am = h < 12 ? "AM" : "PM";
+  h = h % 12 || 12;
+  return `${h}:${m} ${am}`;
+}
+
+function refreshUpNextCard() {
+  if (!ocUpNextCard) return;
+  if (!upNextEnabled) {
+    ocUpNextCard.classList.remove("show");
+    return;
+  }
+
+  const pulls = (latestSchedule && Array.isArray(latestSchedule.pulls))
+    ? latestSchedule.pulls : [];
+
+  const upcoming = pulls
+    .filter(p => p.state === "SCHEDULED")
+    .sort((a, b) => (a.run_order ?? 0) - (b.run_order ?? 0))
+    .slice(0, 5);
+
+  if (!upcoming.length) {
+    unList.innerHTML = '<div class="un-empty">No upcoming pulls</div>';
+  } else {
+    unList.innerHTML = upcoming.map(p => `
+      <div class="un-row">
+        <div class="un-order">#${p.run_order ?? "?"}</div>
+        <div class="un-team">${escapeHtml(p.team_name || `Team ${p.team_number || p.team_id || ""}`)}</div>
+        <div class="un-time">${_fmtEta(p.expected_start_time)}</div>
+      </div>
+    `).join("");
+  }
+
+  ocUpNextCard.classList.add("show");
 }
 
 function handleTractorInfo(info) {

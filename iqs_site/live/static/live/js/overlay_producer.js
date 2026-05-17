@@ -8,6 +8,7 @@ const responsesBody = document.getElementById("responsesBody");
 const refreshBtn    = document.getElementById("refreshBtn");
 const sentToast     = document.getElementById("sentToast");
 const toggleTractorCard = document.getElementById("toggleTractorCard");
+const toggleUpNext      = document.getElementById("toggleUpNext");
 
 // ── State ─────────────────────────────────────────────────────────────
 let currentPullId   = null;
@@ -226,9 +227,9 @@ function escHtml(str) {
 let suppressToggleEvents = false;
 
 function syncToggleUI(state) {
-  if (!toggleTractorCard) return;
   suppressToggleEvents = true;
-  toggleTractorCard.checked = !!state.tractor_card;
+  if (toggleTractorCard) toggleTractorCard.checked = !!state.tractor_card;
+  if (toggleUpNext)      toggleUpNext.checked      = !!state.up_next;
   suppressToggleEvents = false;
 }
 
@@ -244,12 +245,10 @@ async function sendToggle(key, value) {
     syncToggleUI(state);
   } catch (err) {
     console.warn("Toggle failed", err);
-    // Revert UI
-    if (key === "tractor_card" && toggleTractorCard) {
-      suppressToggleEvents = true;
-      toggleTractorCard.checked = !value;
-      suppressToggleEvents = false;
-    }
+    suppressToggleEvents = true;
+    if (key === "tractor_card" && toggleTractorCard) toggleTractorCard.checked = !value;
+    if (key === "up_next"      && toggleUpNext)      toggleUpNext.checked      = !value;
+    suppressToggleEvents = false;
   }
 }
 
@@ -265,6 +264,13 @@ if (toggleTractorCard) {
   toggleTractorCard.addEventListener("change", () => {
     if (suppressToggleEvents) return;
     sendToggle("tractor_card", toggleTractorCard.checked);
+  });
+}
+
+if (toggleUpNext) {
+  toggleUpNext.addEventListener("change", () => {
+    if (suppressToggleEvents) return;
+    sendToggle("up_next", toggleUpNext.checked);
   });
 }
 

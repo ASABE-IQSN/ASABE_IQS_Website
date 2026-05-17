@@ -1068,7 +1068,7 @@ def overlay_card_trigger(request):
     return Response({"ok": True})
 
 
-_OVERLAY_TOGGLE_KEYS = {"tractor_card"}
+_OVERLAY_TOGGLE_KEYS = {"tractor_card", "up_next"}
 
 
 @api_view(["GET", "POST"])

@@ -18,7 +18,7 @@ from django.db import transaction
 from django.template.loader import render_to_string
 from django.utils import timezone
 
-from .models import Hook, Pull, PullData, PullExportJob
+from .models import Hook, Pull, PullData, PullExportJob, Team
 
 logger = logging.getLogger(__name__)
 
@@ -227,6 +227,14 @@ def _redis_client():
 
 
 def _publish_pull_schedule(hook: Hook, pulls: list[Pull]) -> None:
+    team_ids = {p.team_id for p in pulls if p.team_id}
+    teams_by_id = {
+        t.team_id: t
+        for t in Team.objects.filter(team_id__in=team_ids).only(
+            "team_id", "team_name", "team_number"
+        )
+    } if team_ids else {}
+
     payload = {
         "hook_id": hook.hook_id,
         "event_id": hook.event_id,
@@ -235,6 +243,8 @@ def _publish_pull_schedule(hook: Hook, pulls: list[Pull]) -> None:
             {
                 "pull_id": p.pull_id,
                 "team_id": p.team_id,
+                "team_name": getattr(teams_by_id.get(p.team_id), "team_name", None),
+                "team_number": getattr(teams_by_id.get(p.team_id), "team_number", None),
                 "run_order": p.run_order,
                 "state": p.state,
                 "start_time": p.start_time,
