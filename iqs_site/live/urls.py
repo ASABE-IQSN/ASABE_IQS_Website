@@ -5,6 +5,9 @@ app_name = "live"
 
 urlpatterns = [
     path('', views.live_landing, name='landing'),
+    path('api/leaderboard.json', views.live_leaderboard_json, name='api_leaderboard'),
+    path('api/runs.json', views.live_runs_json, name='api_runs'),
+    path('api/techin.json', views.live_techin_json, name='api_techin'),
     path('pull', views.live_pull, name='pull'),
     path('maneuverability', views.live_maneuverability, name='maneuverability'),
     path('durability', views.live_durability, name='durability'),

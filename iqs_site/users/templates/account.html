@@ -62,11 +62,13 @@
     <div class="staff-card">
       <h2>Staff Tools</h2>
       <div class="staff-links">
-        <a class="staff-link primary" href="{% url 'stats:daily_activity' %}">Daily Activity</a>
+        <a class="staff-link primary" href="{% url 'users:admin_tools' %}">Admin Tools</a>
+        <a class="staff-link" href="{% url 'stats:daily_activity' %}">Daily Activity</a>
         <a class="staff-link" href="{% url 'reports:reports_overview' %}">Report Analysis</a>
         <a class="staff-link" href="{% url 'reports:report_coverage' %}">Coverage</a>
         <a class="staff-link" href="{% url 'reports:analysis_dashboard' %}">Analysis Dashboard</a>
         <a class="staff-link" href="{% url 'compforms:forms_list' %}">Form Templates</a>
+        <a class="staff-link" href="{% url 'users:review_team_requests' %}">Team Requests</a>
       </div>
     </div>
   {% endif %}

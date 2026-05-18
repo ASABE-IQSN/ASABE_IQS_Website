@@ -17,8 +17,46 @@ from collections import OrderedDict
 
 from events.models import Event, Team, TractorEvent
 
-from .models import EventTractorRuleStatus, Rule, RuleCategory, RuleSubCategory, RuleTractorMedia
+from .models import (
+    EventTractorRuleStatus,
+    RuleTractorMedia,
+    TechinCategoryInstance,
+    TechinRuleInstance,
+    TechinSubCategoryInstance,
+)
 from .permissions import judge_required, user_can_access_team
+
+
+def _resolve_rule_instance(event, rule_id):
+    """Look up the TechinRuleInstance for a given event + global rule id."""
+    return get_object_or_404(
+        TechinRuleInstance.objects.select_related(
+            "rule",
+            "subcategory_instance__rule_subcategory__category",
+            "subcategory_instance__category_instance__rule_category",
+        ),
+        event=event,
+        rule_id=rule_id,
+    )
+
+
+def _resolve_subcategory_instance(event, subcategory_id):
+    return get_object_or_404(
+        TechinSubCategoryInstance.objects.select_related(
+            "rule_subcategory__category",
+            "category_instance__rule_category",
+        ),
+        event=event,
+        rule_subcategory_id=subcategory_id,
+    )
+
+
+def _resolve_category_instance(event, category_id):
+    return get_object_or_404(
+        TechinCategoryInstance.objects.select_related("rule_category"),
+        event=event,
+        rule_category_id=category_id,
+    )
 
 # @log_view
 # @cache_page(300)
@@ -156,38 +194,55 @@ from .permissions import judge_required, user_can_access_team
 def event_tech_in_overview(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
 
-    # All categories with their subcategories & rules
-    categories = list(
-        RuleCategory.objects
-        .prefetch_related("subcategories__rules")
-        .order_by("rule_category_name")
+    category_insts = list(
+        TechinCategoryInstance.objects
+        .filter(event=event, released=True)
+        .select_related("rule_category")
+        .order_by("display_order", "rule_category__rule_category_name")
     )
 
-    # All tractor-events (teams) for this event
+    sub_insts = list(
+        TechinSubCategoryInstance.objects
+        .filter(event=event)
+        .select_related("rule_subcategory")
+    )
+    subs_by_cat = {}
+    for s in sub_insts:
+        subs_by_cat.setdefault(s.category_instance_id, []).append(s)
+
+    rule_insts = list(
+        TechinRuleInstance.objects
+        .filter(event=event)
+        .only("rule_instance_id", "subcategory_instance_id")
+    )
+    rules_by_sub = {}
+    rule_inst_ids_by_cat = {}
+    for r in rule_insts:
+        rules_by_sub.setdefault(r.subcategory_instance_id, []).append(r.rule_instance_id)
+    for cat_inst in category_insts:
+        ids = []
+        for s in subs_by_cat.get(cat_inst.rule_category_instance_id, []):
+            ids.extend(rules_by_sub.get(s.rule_subcategory_instance_id, []))
+        rule_inst_ids_by_cat[cat_inst.rule_category_instance_id] = ids
+
     tractor_events = list(
         TractorEvent.objects
-        .filter(event=event,team__team_class=1)
+        .filter(event=event, team__team_class=1)
         .select_related("team", "event")
         .order_by("team__team_name")
     )
 
-    # All statuses for these tractor-events, indexed by (tractor_event_id, rule_id)
     statuses_qs = (
         EventTractorRuleStatus.objects
         .filter(event_tractor__in=tractor_events)
-        .select_related("rule")
+        .values_list("event_tractor_id", "rule_instance_id", "status")
     )
-    status_by_te_rule = {
-        (rs.event_tractor_id, rs.rule.rule_id): rs.status
-        for rs in statuses_qs
-    }
+    status_by_te_rule_inst = {(te_id, ri_id): status for te_id, ri_id, status in statuses_qs}
 
-    def is_complete(status_value: int | None) -> bool:
-        # Pass (3) or Corrected (2) count as "complete"
+    def is_complete(status_value):
         return status_value in (2, 3)
 
     rows = []
-
     for te in tractor_events:
         row = {
             "tractor_event": te,
@@ -195,81 +250,60 @@ def event_tech_in_overview(request, event_id):
             "event_name": te.event.event_name,
             "category_values": [],
         }
-
-        for cat in categories:
-            total_rules = 0
-            completed_rules = 0
-
-            # all rules in this category (via subcategories)
-            for subcat in cat.subcategories.all():
-                for rule in subcat.rules.all():
-                    total_rules += 1
-                    status_value = status_by_te_rule.get((te.pk, rule.rule_id))
-                    if is_complete(status_value):
-                        completed_rules += 1
-
-            if total_rules > 0:
-                percent = round((completed_rules / total_rules) * 100)
-            else:
-                percent = 0
-
+        for cat_inst in category_insts:
+            ri_ids = rule_inst_ids_by_cat.get(cat_inst.rule_category_instance_id, [])
+            total = len(ri_ids)
+            done = sum(
+                1 for ri_id in ri_ids
+                if is_complete(status_by_te_rule_inst.get((te.pk, ri_id)))
+            )
+            percent = round((done / total) * 100) if total else 0
             row["category_values"].append({
-                "category": cat,
+                "category": cat_inst,
                 "percent_complete": percent,
             })
-
         rows.append(row)
 
     context = {
         "event": event,
-        "categories": categories,
+        "categories": category_insts,
         "rows": rows,
     }
     return render(request, "tech_in/overview.html", context)
 
 def subcategory_detail(request, event_id, subcategory_id):
-    """
-    Shows one subcategory (within an event context) and lists its rules.
-    """
+    """Shows one subcategory's rule instances for this event."""
     event = get_object_or_404(Event, pk=event_id)
-    subcategory = get_object_or_404(
-        RuleSubCategory.objects.select_related("category"),
-        pk=subcategory_id,
+    sub_inst = _resolve_subcategory_instance(event, subcategory_id)
+
+    rule_insts = list(
+        TechinRuleInstance.objects
+        .filter(event=event, subcategory_instance=sub_inst)
+        .select_related("rule")
+        .order_by("display_order", "rule__rule_id")
     )
 
-    rules = (
-        Rule.objects
-        .filter(sub_category=subcategory)
-        .order_by("rule_id")
+    cat_inst = sub_inst.category_instance or _resolve_category_instance(
+        event, sub_inst.rule_subcategory.category_id
     )
 
     context = {
         "event": event,
-        "subcategory": subcategory,
-        "category": subcategory.category,
-        "rules": rules,
+        "subcategory": sub_inst,
+        "category": cat_inst,
+        "rules": rule_insts,
     }
     return render(request, "tech_in/subcategory_detail.html", context)
 
 def rule_detail(request, event_id, rule_id):
-    """
-    Shows a single rule, and for this event, all tractor/team status rows
-    (EventTractorRuleStatus) attached to this rule.
-    """
+    """Shows a single rule instance with all team statuses for this event."""
     event = get_object_or_404(Event, pk=event_id)
-    rule = get_object_or_404(
-        Rule.objects.select_related("sub_category__category"),
-        pk=rule_id,
-    )
+    rule_inst = _resolve_rule_instance(event, rule_id)
 
-    # All tractor-event rule records for this event + rule
     statuses = (
         EventTractorRuleStatus.objects
         .select_related("event_tractor__team")
-        .filter(
-            rule=rule,
-            event_tractor__event=event,
-        )
+        .filter(rule_instance=rule_inst)
         .order_by("event_tractor__team__team_name")
     )
 
@@ -289,16 +323,18 @@ def rule_detail(request, event_id, rule_id):
             "status_label": label,
             "status_class": css_class,
             "raw": rs,
-            # placeholders for future:
-            "images": [],      # later: attach images per rs
-            "comments": [],    # later: attach comments per rs
+            "images": [],
+            "comments": [],
         })
+
+    sub_inst = rule_inst.subcategory_instance
+    cat_inst = sub_inst.category_instance if sub_inst else None
 
     context = {
         "event": event,
-        "rule": rule,
-        "subcategory": rule.sub_category,
-        "category": rule.sub_category.category,
+        "rule": rule_inst,
+        "subcategory": sub_inst,
+        "category": cat_inst,
         "status_rows": status_rows,
     }
     return render(request, "tech_in/rule_detail.html", context)
@@ -324,63 +360,62 @@ def team_tech_overview(request, event_id, team_id):
             event=event,
         )
 
-        # Pull all categories, and for each category prefetch its subcategories and rules
-        categories = (
-            RuleCategory.objects
-            .prefetch_related("subcategories__rules")
-            .order_by("rule_category_name")
+        category_insts = list(
+            TechinCategoryInstance.objects
+            .filter(event=event, released=True)
+            .select_related("rule_category")
+            .order_by("display_order", "rule_category__rule_category_name")
         )
+        sub_insts = list(
+            TechinSubCategoryInstance.objects
+            .filter(event=event)
+            .select_related("rule_subcategory")
+            .order_by("display_order", "rule_subcategory__rule_subcategory_name")
+        )
+        subs_by_cat = {}
+        for s in sub_insts:
+            subs_by_cat.setdefault(s.category_instance_id, []).append(s)
 
-        # All statuses for this tractor/event, indexed by rule_id for quick lookup
-        statuses_qs = (
+        rule_insts = list(
+            TechinRuleInstance.objects
+            .filter(event=event)
+            .only("rule_instance_id", "subcategory_instance_id")
+        )
+        rule_ids_by_sub = {}
+        for r in rule_insts:
+            rule_ids_by_sub.setdefault(r.subcategory_instance_id, []).append(r.rule_instance_id)
+
+        status_by_rule_inst_id = dict(
             EventTractorRuleStatus.objects
             .filter(event_tractor=te)
-            .select_related("rule")
+            .values_list("rule_instance_id", "status")
         )
-        status_by_rule_id = {rs.rule.rule_id: rs.status for rs in statuses_qs}
 
-        def is_complete(status_value: int | None) -> bool:
-            # Pass (3) or Corrected (2) count as "complete"
+        def is_complete(status_value):
             return status_value in (2, 3)
 
         category_rows = []
-
-        for cat in categories:
-            cat_total_rules = 0
-            cat_completed_rules = 0
+        for cat_inst in category_insts:
+            cat_total = 0
+            cat_done = 0
             sub_rows = []
-
-            for subcat in cat.subcategories.all():
-                rules = list(subcat.rules.all())
-                total_rules = len(rules)
-                completed_rules = 0
-
-                for rule in rules:
-                    status_value = status_by_rule_id.get(rule.rule_id)
-                    if is_complete(status_value):
-                        completed_rules += 1
-
-                # Update category-level counts
-                cat_total_rules += total_rules
-                cat_completed_rules += completed_rules
-
-                if total_rules > 0:
-                    sub_percent = round((completed_rules / total_rules) * 100)
-                else:
-                    sub_percent = 0
-
+            for sub_inst in subs_by_cat.get(cat_inst.rule_category_instance_id, []):
+                ri_ids = rule_ids_by_sub.get(sub_inst.rule_subcategory_instance_id, [])
+                total = len(ri_ids)
+                done = sum(
+                    1 for ri_id in ri_ids
+                    if is_complete(status_by_rule_inst_id.get(ri_id))
+                )
+                cat_total += total
+                cat_done += done
+                sub_percent = round((done / total) * 100) if total else 0
                 sub_rows.append({
-                    "subcategory": subcat,
+                    "subcategory": sub_inst,
                     "percent_complete": sub_percent,
                 })
-
-            if cat_total_rules > 0:
-                cat_percent = round((cat_completed_rules / cat_total_rules) * 100)
-            else:
-                cat_percent = 0
-
+            cat_percent = round((cat_done / cat_total) * 100) if cat_total else 0
             category_rows.append({
-                "category": cat,
+                "category": cat_inst,
                 "percent_complete": cat_percent,
                 "subcategories": sub_rows,
             })
@@ -415,19 +450,20 @@ def team_subcategory_detail(request, event_id, team_id, subcategory_id):
             team=team,
             event=event,
         )
-        subcategory = get_object_or_404(
-            RuleSubCategory.objects.select_related("category"),
-            pk=subcategory_id,
-        )
+        sub_inst = _resolve_subcategory_instance(event, subcategory_id)
 
-        rules = Rule.objects.filter(sub_category=subcategory).order_by("rule_id")
+        rule_insts = list(
+            TechinRuleInstance.objects
+            .filter(event=event, subcategory_instance=sub_inst)
+            .select_related("rule")
+            .order_by("display_order", "rule__rule_id")
+        )
 
         statuses_qs = (
             EventTractorRuleStatus.objects
-            .filter(event_tractor=te, rule__in=rules)
-            .select_related("rule")
+            .filter(event_tractor=te, rule_instance__in=rule_insts)
         )
-        status_by_rule_id = {rs.rule.rule_id: rs for rs in statuses_qs}
+        status_by_ri_id = {rs.rule_instance_id: rs for rs in statuses_qs}
 
         STATUS_MAP = {
             0: ("Not Started", "status-not-started"),
@@ -437,27 +473,30 @@ def team_subcategory_detail(request, event_id, team_id, subcategory_id):
         }
 
         rule_rows = []
-        for rule in rules:
-            rs = status_by_rule_id.get(rule.rule_id)
+        for ri in rule_insts:
+            rs = status_by_ri_id.get(ri.rule_instance_id)
             if rs:
                 label, css_class = STATUS_MAP.get(rs.status, ("Unknown", "status-unknown"))
             else:
                 label, css_class = ("Not Started", "status-not-started")
                 rs = None
-
             rule_rows.append({
-                "rule": rule,
+                "rule": ri,
                 "status_label": label,
                 "status_class": css_class,
                 "status_obj": rs,
             })
 
+        cat_inst = sub_inst.category_instance or _resolve_category_instance(
+            event, sub_inst.rule_subcategory.category_id
+        )
+
         context = {
             "event": event,
             "tractor_event": te,
             "team": te.team,
-            "subcategory": subcategory,
-            "category": subcategory.category,
+            "subcategory": sub_inst,
+            "category": cat_inst,
             "rule_rows": rule_rows,
         }
         ren=render(request, "tech_in/team_subcategory_detail.html", context)
@@ -476,14 +515,11 @@ def team_rule_detail(request, event_id, team_id, rule_id):
         team=team,
         event=event,
     )
-    rule = get_object_or_404(
-        Rule.objects.select_related("sub_category__category"),
-        pk=rule_id,
-    )
+    rule_inst = _resolve_rule_instance(event, rule_id)
 
     rs = EventTractorRuleStatus.objects.filter(
         event_tractor=te,
-        rule=rule,
+        rule_instance=rule_inst,
     ).first()
     #print(rs.event_tractor_rule_status_id)
     STATUS_MAP = {
@@ -502,26 +538,30 @@ def team_rule_detail(request, event_id, team_id, rule_id):
         status_label, status_class = STATUS_MAP.get(rs.status, ("Unknown", "status-unknown"))
     else:
         status_label, status_class = ("Not Started", "status-not-started")
+    sub_inst = rule_inst.subcategory_instance
+    cat_inst = sub_inst.category_instance if sub_inst else None
     context = {
         "comments":comments,
         "images":images,
         "event": event,
         "tractor_event": te,
         "team": te.team,
-        "rule": rule,
-        "subcategory": rule.sub_category,
-        "category": rule.sub_category.category,
+        "rule": rule_inst,
+        "subcategory": sub_inst,
+        "category": cat_inst,
         "status_obj": rs,
         "status_label": status_label,
         "status_class": status_class,
     }
-    #print(rs.event_tractor_rule_status_id)
     return render(request, "tech_in/team_rule_detail.html", context)
 
 def category_view(request,event_id,category_id):
-    category=get_object_or_404(RuleCategory,pk=category_id)
     event=get_object_or_404(Event,pk=event_id)
-    rts=EventTractorRuleStatus.objects.filter(event_tractor__event=event,rule__sub_category__category=category).all()
+    cat_inst = _resolve_category_instance(event, category_id)
+    rts=EventTractorRuleStatus.objects.filter(
+        event_tractor__event=event,
+        rule_instance__subcategory_instance__category_instance=cat_inst,
+    ).all()
     #print(rts)
     context={}
     return render(request,"tech_in/permission_denied.html",context)
@@ -537,22 +577,29 @@ STATUS_CHOICES = [(3, "Pass"), (1, "Fail"), (2, "Corrected"), (0, "Not Started")
 @judge_required
 def judge_event_overview(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
-    categories = list(RuleCategory.objects.order_by("rule_category_name"))
+    category_insts = list(
+        TechinCategoryInstance.objects
+        .filter(event=event, released=True)
+        .select_related("rule_category")
+        .order_by("display_order", "rule_category__rule_category_name")
+    )
     return render(request, "tech_in/judge/event_overview.html", {
         "event": event,
-        "categories": categories,
+        "categories": category_insts,
     })
 
 
 @judge_required
 def judge_category_teams(request, event_id, category_id):
     event = get_object_or_404(Event, pk=event_id)
-    category = get_object_or_404(RuleCategory, pk=category_id)
+    cat_inst = _resolve_category_instance(event, category_id)
 
-    rules_in_cat = list(
-        Rule.objects.filter(sub_category__category=category).values_list("rule_id", flat=True)
+    rule_inst_ids = list(
+        TechinRuleInstance.objects
+        .filter(event=event, subcategory_instance__category_instance=cat_inst)
+        .values_list("rule_instance_id", flat=True)
     )
-    total = len(rules_in_cat)
+    total = len(rule_inst_ids)
 
     tractor_events = (
         TractorEvent.objects
@@ -561,10 +608,13 @@ def judge_category_teams(request, event_id, category_id):
         .order_by("team__team_name")
     )
 
-    # Aggregate completed (status 2 or 3) counts per tractor_event
     completed_by_te = dict(
         EventTractorRuleStatus.objects
-        .filter(event_tractor__in=tractor_events, rule_id__in=rules_in_cat, status__in=(2, 3))
+        .filter(
+            event_tractor__in=tractor_events,
+            rule_instance_id__in=rule_inst_ids,
+            status__in=(2, 3),
+        )
         .values("event_tractor_id")
         .annotate(n=Count("event_tractor_rule_status_id"))
         .values_list("event_tractor_id", "n")
@@ -584,7 +634,7 @@ def judge_category_teams(request, event_id, category_id):
 
     return render(request, "tech_in/judge/category_teams.html", {
         "event": event,
-        "category": category,
+        "category": cat_inst,
         "team_rows": team_rows,
     })
 
@@ -592,33 +642,44 @@ def judge_category_teams(request, event_id, category_id):
 @judge_required
 def judge_team_subcategories(request, event_id, category_id, team_id):
     event = get_object_or_404(Event, pk=event_id)
-    category = get_object_or_404(RuleCategory, pk=category_id)
+    cat_inst = _resolve_category_instance(event, category_id)
     team = get_object_or_404(Team, pk=team_id)
     te = get_object_or_404(TractorEvent, event=event, team=team)
 
-    subcategories = list(
-        RuleSubCategory.objects.filter(category=category)
-        .prefetch_related("rules")
-        .order_by("rule_subcategory_name")
+    sub_insts = list(
+        TechinSubCategoryInstance.objects
+        .filter(event=event, category_instance=cat_inst)
+        .select_related("rule_subcategory")
+        .order_by("display_order", "rule_subcategory__rule_subcategory_name")
     )
 
-    # All completed statuses for this TE in this category
-    completed_by_subcat = dict(
+    ri_counts_by_sub = dict(
+        TechinRuleInstance.objects
+        .filter(event=event, subcategory_instance__in=sub_insts)
+        .values("subcategory_instance_id")
+        .annotate(n=Count("rule_instance_id"))
+        .values_list("subcategory_instance_id", "n")
+    )
+
+    completed_by_sub = dict(
         EventTractorRuleStatus.objects
-        .filter(event_tractor=te, rule__sub_category__category=category, status__in=(2, 3))
-        .values("rule__sub_category_id")
+        .filter(
+            event_tractor=te,
+            rule_instance__subcategory_instance__in=sub_insts,
+            status__in=(2, 3),
+        )
+        .values("rule_instance__subcategory_instance_id")
         .annotate(n=Count("event_tractor_rule_status_id"))
-        .values_list("rule__sub_category_id", "n")
+        .values_list("rule_instance__subcategory_instance_id", "n")
     )
 
     subcat_rows = []
-    for subcat in subcategories:
-        rules = list(subcat.rules.all())
-        total = len(rules)
-        completed = completed_by_subcat.get(subcat.pk, 0)
+    for sub_inst in sub_insts:
+        total = ri_counts_by_sub.get(sub_inst.rule_subcategory_instance_id, 0)
+        completed = completed_by_sub.get(sub_inst.rule_subcategory_instance_id, 0)
         percent = round((completed / total) * 100) if total else 0
         subcat_rows.append({
-            "subcategory": subcat,
+            "subcategory": sub_inst,
             "completed": completed,
             "total": total,
             "percent": percent,
@@ -626,7 +687,7 @@ def judge_team_subcategories(request, event_id, category_id, team_id):
 
     return render(request, "tech_in/judge/team_subcategories.html", {
         "event": event,
-        "category": category,
+        "category": cat_inst,
         "team": team,
         "tractor_event": te,
         "subcat_rows": subcat_rows,
@@ -636,23 +697,28 @@ def judge_team_subcategories(request, event_id, category_id, team_id):
 @judge_required
 def judge_subcategory_rules(request, event_id, category_id, team_id, subcategory_id):
     event = get_object_or_404(Event, pk=event_id)
-    category = get_object_or_404(RuleCategory, pk=category_id)
+    cat_inst = _resolve_category_instance(event, category_id)
     team = get_object_or_404(Team, pk=team_id)
     te = get_object_or_404(TractorEvent, event=event, team=team)
-    subcategory = get_object_or_404(RuleSubCategory, pk=subcategory_id, category=category)
+    sub_inst = _resolve_subcategory_instance(event, subcategory_id)
 
-    rules = list(Rule.objects.filter(sub_category=subcategory).order_by("rule_id"))
+    rule_insts = list(
+        TechinRuleInstance.objects
+        .filter(event=event, subcategory_instance=sub_inst)
+        .select_related("rule")
+        .order_by("display_order", "rule__rule_id")
+    )
 
     statuses_qs = (
         EventTractorRuleStatus.objects
-        .filter(event_tractor=te, rule__in=rules)
+        .filter(event_tractor=te, rule_instance__in=rule_insts)
         .prefetch_related("media")
     )
-    status_by_rule = {rs.rule_id: rs for rs in statuses_qs}
+    status_by_ri = {rs.rule_instance_id: rs for rs in statuses_qs}
 
     rule_rows = []
-    for rule in rules:
-        rs = status_by_rule.get(rule.pk)
+    for ri in rule_insts:
+        rs = status_by_ri.get(ri.rule_instance_id)
         if rs:
             status_val = rs.status
             status_id = rs.pk
@@ -666,7 +732,7 @@ def judge_subcategory_rules(request, event_id, category_id, team_id, subcategory
             status_id = None
             comment = ""
         rule_rows.append({
-            "rule": rule,
+            "rule": ri,
             "status": status_val,
             "status_id": status_id,
             "comment": comment,
@@ -674,10 +740,10 @@ def judge_subcategory_rules(request, event_id, category_id, team_id, subcategory
 
     return render(request, "tech_in/judge/subcategory_rules.html", {
         "event": event,
-        "category": category,
+        "category": cat_inst,
         "team": team,
         "tractor_event": te,
-        "subcategory": subcategory,
+        "subcategory": sub_inst,
         "rule_rows": rule_rows,
         "status_choices": STATUS_CHOICES,
         "url_update_status": "/techin/judge/ajax/update-status/",
@@ -688,25 +754,25 @@ def judge_subcategory_rules(request, event_id, category_id, team_id, subcategory
 @judge_required
 def judge_rule_photos(request, event_id, category_id, team_id, rule_id):
     event = get_object_or_404(Event, pk=event_id)
-    category = get_object_or_404(RuleCategory, pk=category_id)
+    cat_inst = _resolve_category_instance(event, category_id)
     team = get_object_or_404(Team, pk=team_id)
     te = get_object_or_404(TractorEvent, event=event, team=team)
-    rule = get_object_or_404(Rule, pk=rule_id, sub_category__category=category)
+    rule_inst = _resolve_rule_instance(event, rule_id)
 
     rs, _ = EventTractorRuleStatus.objects.get_or_create(
-        event_tractor=te, rule=rule, defaults={"status": 0}
+        event_tractor=te, rule_instance=rule_inst, defaults={"status": 0}
     )
     photos = rs.media.filter(media_type=RuleTractorMedia.types.IMAGE).order_by("id")
 
     return render(request, "tech_in/judge/rule_photos.html", {
         "event": event,
-        "category": category,
+        "category": cat_inst,
         "team": team,
         "tractor_event": te,
-        "rule": rule,
+        "rule": rule_inst,
         "status_obj": rs,
         "photos": photos,
-        "subcategory": rule.sub_category,
+        "subcategory": rule_inst.subcategory_instance,
     })
 
 
@@ -732,13 +798,17 @@ def judge_update_status(request):
     event = get_object_or_404(Event, pk=event_id)
     team = get_object_or_404(Team, pk=team_id)
     te = get_object_or_404(TractorEvent, event=event, team=team)
-    rule = get_object_or_404(Rule, pk=rule_id)
+    rule_inst = _resolve_rule_instance(event, rule_id)
 
     with transaction.atomic():
         rs, created = (
             EventTractorRuleStatus.objects
             .select_for_update()
-            .get_or_create(event_tractor=te, rule=rule, defaults={"status": status})
+            .get_or_create(
+                event_tractor=te,
+                rule_instance=rule_inst,
+                defaults={"status": status},
+            )
         )
         if not created:
             rs.status = status
@@ -803,7 +873,7 @@ def judge_upload_photo(request):
     filename = (
         f"techin_event{rs.event_tractor.event_id}"
         f"_team{rs.event_tractor.team_id}"
-        f"_rule{rs.rule_id}"
+        f"_ruleinst{rs.rule_instance_id}"
         f"_{safe_root}.{ext}"
     )
     rel_path = f"techin/photos/{filename}"

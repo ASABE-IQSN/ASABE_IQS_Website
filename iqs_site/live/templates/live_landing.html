@@ -1,6 +1,7 @@
 {% extends "base.html" %}
+{% load static %}
 
-{% block title %}Live Results – {{ event.event_name|default:"IQS Live" }}{% endblock %}
+{% block title %}Live Results – {{ active_event.event_name|default:"IQS Live" }}{% endblock %}
 
 {% block extra_head %}
 <style>
@@ -42,7 +43,7 @@
     border-radius: 999px;
     background: #020617;
     border: 1px solid #1f2937;
-    color: #020617;
+    color: #e5e7eb;
   }
 
   .live-grid {
@@ -115,6 +116,13 @@
     background: rgba(22, 163, 74, 0.2);
   }
 
+  .empty-row td {
+    color: #6b7280;
+    font-style: italic;
+    text-align: center;
+    padding: 0.75rem 0.25rem;
+  }
+
   .badge {
     display: inline-block;
     padding: 0.1rem 0.5rem;
@@ -137,6 +145,11 @@
     color: #fecaca;
   }
 
+  .badge-gray {
+    background: rgba(107, 114, 128, 0.2);
+    color: #d1d5db;
+  }
+
   .schedule-list {
     list-style: none;
     padding: 0;
@@ -149,8 +162,10 @@
     justify-content: space-between;
     gap: 0.75rem;
     padding: 0.3rem 0;
-    border-bottom: 1px solid #020617;
+    border-bottom: 1px solid #111827;
   }
+
+  .schedule-item:last-child { border-bottom: none; }
 
   .schedule-time {
     width: 5.5rem;
@@ -165,6 +180,12 @@
   .schedule-location {
     font-size: 0.8rem;
     color: #9ca3af;
+  }
+
+  .schedule-empty {
+    color: #6b7280;
+    font-style: italic;
+    padding: 0.5rem 0;
   }
 
   .section-group-title {
@@ -199,13 +220,24 @@
     display: inline-block;
     margin-right: 0.3rem;
   }
+
+  .empty-event {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: #9ca3af;
+  }
 </style>
 {% endblock %}
 
 {% block content %}
+<script>
+  window.IQS = { apiUrl: "{{ api_url }}" };
+</script>
+
 <div class="live-page">
   <header class="live-header">
-    <h1>Live Results – {{ event.event_name|default:"IQS Competition" }}</h1>
+    <h1>Live Results – {{ active_event.event_name|default:"IQS Competition" }}</h1>
+    {% if active_event %}
     <p>
       <span class="live-status-dot"></span>
       Live scoring and schedules for on-site teams.
@@ -215,16 +247,28 @@
       <span class="pill">Maneuverability</span>
       <span class="pill">Durability</span>
       <span class="pill">Tech Inspection</span>
-      <span class="pill">Awards</span>
-      <span class="pill">Defense of Design</span>
-      <span class="pill">Presentations</span>
+      {% if dod_today %}<span class="pill">Defense of Design</span>{% endif %}
+      {% if presentations_today %}<span class="pill">Presentations</span>{% endif %}
       <span class="pill">Event Schedule</span>
     </div>
     <p class="last-updated">
       Last update: <span id="last-updated-text">{{ last_updated|default:"Waiting for first update…" }}</span>
     </p>
+    {% endif %}
   </header>
 
+  {% if schedule_date_overridden %}
+    <div style="background:#7c2d12;color:#fed7aa;padding:.5rem .75rem;border-radius:.5rem;margin-bottom:1rem;font-size:.85rem;">
+      Showing schedule for <strong>{{ schedule_date|date:"l, F j, Y" }}</strong> (test override). Remove <code>?date=</code> to see today.
+    </div>
+  {% endif %}
+
+  {% if not active_event %}
+    <div class="empty-event">
+      <h2>No active event right now</h2>
+      <p>Check back once an event is in progress.</p>
+    </div>
+  {% else %}
   <div class="live-grid">
     <!-- LEFT COLUMN: Dynamic results -->
     <div>
@@ -233,9 +277,15 @@
         <div class="live-card-header">
           <div>
             <div class="live-card-title">Pulls – Live Leaderboard</div>
-            <div class="live-card-subtitle">Current hook & overall standings</div>
+            <div class="live-card-subtitle" id="pulls-subtitle">
+              {% if current_pull %}
+                Now: {{ current_pull.team_name }} on {{ current_pull.hook_name }}
+              {% else %}
+                Top {{ leaderboard|length }} by distance
+              {% endif %}
+            </div>
           </div>
-          <div class="badge badge-green">Live</div>
+          <div id="live-badge" class="badge badge-green" style="{% if not current_pull %}display:none;{% endif %}">Live</div>
         </div>
         <table class="live-table" id="pulls-table">
           <thead>
@@ -247,15 +297,18 @@
               <th>Class</th>
             </tr>
           </thead>
-          <tbody>
-            <!-- to be filled by JS / template loop -->
+          <tbody id="pulls-tbody">
+            {% for row in leaderboard %}
             <tr>
-              <td>1</td>
-              <td>Example Team</td>
-              <td>Hook 3</td>
-              <td>295.4</td>
-              <td>Production</td>
+              <td>{{ forloop.counter }}</td>
+              <td>{{ row.team_name }}</td>
+              <td>{{ row.hook_name }}</td>
+              <td>{{ row.distance }}</td>
+              <td>{{ row.team_class }}</td>
             </tr>
+            {% empty %}
+            <tr class="empty-row"><td colspan="5">No completed pulls yet.</td></tr>
+            {% endfor %}
           </tbody>
         </table>
       </section>
@@ -263,135 +316,139 @@
       <!-- Maneuverability & Durability -->
       <h2 class="section-group-title">Dynamic Events</h2>
       <div class="subgrid subgrid-2">
-        <!-- Maneuverability -->
         <section id="maneuver-card" class="live-card">
           <div class="live-card-header">
             <div>
               <div class="live-card-title">Maneuverability</div>
-              <div class="live-card-subtitle">Live scoring</div>
+              <div class="live-card-subtitle">Run status</div>
             </div>
           </div>
           <table class="live-table" id="maneuver-table">
             <thead>
               <tr>
+                <th>Run #</th>
                 <th>Team</th>
-                <th>Score</th>
-                <th>Penalties</th>
+                <th>Status</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>Example Team</td>
-                <td>85.0</td>
-                <td>+5 sec</td>
+            <tbody id="maneuver-tbody">
+              {% for r in maneuverability_summary %}
+              <tr {% if r.state == "RUNNING" %}class="highlight"{% endif %}>
+                <td>{{ r.run_order }}</td>
+                <td>{{ r.team_name }}</td>
+                <td>
+                  {% if r.state == "RUNNING" %}<span class="badge badge-green">Running</span>
+                  {% elif r.state == "COMPLETED" %}<span class="badge badge-gray">Completed</span>
+                  {% else %}<span class="badge badge-yellow">{{ r.state|title }}</span>
+                  {% endif %}
+                </td>
               </tr>
+              {% empty %}
+              <tr class="empty-row"><td colspan="3">No maneuverability runs yet.</td></tr>
+              {% endfor %}
             </tbody>
           </table>
         </section>
 
-        <!-- Durability -->
         <section id="durability-card" class="live-card">
           <div class="live-card-header">
             <div>
               <div class="live-card-title">Durability</div>
-              <div class="live-card-subtitle">Progress & completion</div>
+              <div class="live-card-subtitle">Laps & status</div>
             </div>
           </div>
           <table class="live-table" id="durability-table">
             <thead>
               <tr>
+                <th>Run #</th>
                 <th>Team</th>
                 <th>Laps</th>
                 <th>Status</th>
               </tr>
             </thead>
-            <tbody>
-              <tr>
-                <td>Example Team</td>
-                <td>12 / 15</td>
-                <td><span class="badge badge-yellow">On course</span></td>
+            <tbody id="durability-tbody">
+              {% for r in durability_summary %}
+              <tr {% if r.state == "RUNNING" %}class="highlight"{% endif %}>
+                <td>{{ r.run_order }}</td>
+                <td>{{ r.team_name }}</td>
+                <td>{{ r.total_laps|default:"–" }}</td>
+                <td>
+                  {% if r.state == "RUNNING" %}<span class="badge badge-green">Running</span>
+                  {% elif r.state == "COMPLETED" %}<span class="badge badge-gray">Completed</span>
+                  {% else %}<span class="badge badge-yellow">{{ r.state|title }}</span>
+                  {% endif %}
+                </td>
               </tr>
+              {% empty %}
+              <tr class="empty-row"><td colspan="4">No durability runs yet.</td></tr>
+              {% endfor %}
             </tbody>
           </table>
         </section>
       </div>
 
-      <!-- Tech-in Status & Awards -->
-      <h2 class="section-group-title">Tech & Awards</h2>
-      <div class="subgrid subgrid-2">
-        <!-- Tech In -->
-        <section id="tech-card" class="live-card">
-          <div class="live-card-header">
-            <div>
-              <div class="live-card-title">Tech Inspection Status</div>
-              <div class="live-card-subtitle">By team</div>
-            </div>
+      <!-- Tech-in -->
+      <h2 class="section-group-title">Tech Inspection</h2>
+      <section id="tech-card" class="live-card">
+        <div class="live-card-header">
+          <div>
+            <div class="live-card-title">Tech Inspection Progress</div>
+            <div class="live-card-subtitle">% of rules passed or corrected, by team</div>
           </div>
-          <table class="live-table" id="tech-table">
-            <thead>
-              <tr>
-                <th>Team</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Example Team</td>
-                <td><span class="badge badge-green">Passed</span></td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
-
-        <!-- Awards -->
-        <section id="awards-card" class="live-card">
-          <div class="live-card-header">
-            <div>
-              <div class="live-card-title">Awards (Live / Final)</div>
-              <div class="live-card-subtitle">Populated as events conclude</div>
-            </div>
-          </div>
-          <table class="live-table" id="awards-table">
-            <thead>
-              <tr>
-                <th>Award</th>
-                <th>Team</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Example Award</td>
-                <td>Example Team</td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
-      </div>
+        </div>
+        <table class="live-table" id="tech-table">
+          <thead>
+            <tr>
+              <th>Team</th>
+              <th>#</th>
+              <th>Complete</th>
+            </tr>
+          </thead>
+          <tbody id="tech-tbody">
+            {% for row in tech_status %}
+            <tr>
+              <td>{{ row.team_name }}</td>
+              <td>{{ row.team_number }}</td>
+              <td>
+                {% if row.percent == 100 %}<span class="badge badge-green">100%</span>
+                {% elif row.percent >= 50 %}<span class="badge badge-yellow">{{ row.percent }}%</span>
+                {% else %}<span class="badge badge-red">{{ row.percent }}%</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr class="empty-row"><td colspan="3">No tech inspection data yet.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
     </div>
 
     <!-- RIGHT COLUMN: Schedules -->
     <aside>
-      <!-- General Event Schedule -->
       <section id="event-schedule-card" class="live-card">
         <div class="live-card-header">
           <div>
-            <div class="live-card-title">General Event Schedule</div>
-            <div class="live-card-subtitle">Today’s timeline</div>
+            <div class="live-card-title">Today’s Schedule</div>
+            <div class="live-card-subtitle">General event timeline</div>
           </div>
         </div>
         <ul class="schedule-list" id="event-schedule-list">
+          {% for item in schedule_today %}
           <li class="schedule-item">
-            <div class="schedule-time">08:00</div>
+            <div class="schedule-time">{{ item.time }}</div>
             <div class="schedule-main">
-              Registration & Tech Open
-              <div class="schedule-location">Tech Barn</div>
+              {{ item.name }}{% if item.team_name %} – {{ item.team_name }}{% endif %}
+              {% if item.location %}<div class="schedule-location">{{ item.location }}</div>{% endif %}
             </div>
           </li>
-          
+          {% empty %}
+          <li class="schedule-empty">No items scheduled today.</li>
+          {% endfor %}
         </ul>
       </section>
 
-      <!-- Defense of Design Schedule -->
+      {% if dod_today %}
       <section id="dod-schedule-card" class="live-card">
         <div class="live-card-header">
           <div>
@@ -400,17 +457,20 @@
           </div>
         </div>
         <ul class="schedule-list" id="dod-schedule-list">
+          {% for item in dod_today %}
           <li class="schedule-item">
-            <div class="schedule-time">09:00</div>
+            <div class="schedule-time">{{ item.time }}</div>
             <div class="schedule-main">
-              Example Team
-              <div class="schedule-location">Room A</div>
+              {{ item.team_name|default:item.name }}
+              {% if item.location %}<div class="schedule-location">{{ item.location }}</div>{% endif %}
             </div>
           </li>
+          {% endfor %}
         </ul>
       </section>
+      {% endif %}
 
-      <!-- Presentation Schedule -->
+      {% if presentations_today %}
       <section id="presentation-schedule-card" class="live-card">
         <div class="live-card-header">
           <div>
@@ -419,16 +479,24 @@
           </div>
         </div>
         <ul class="schedule-list" id="presentation-schedule-list">
+          {% for item in presentations_today %}
           <li class="schedule-item">
-            <div class="schedule-time">13:30</div>
+            <div class="schedule-time">{{ item.time }}</div>
             <div class="schedule-main">
-              Example Team
-              <div class="schedule-location">Room B</div>
+              {{ item.team_name|default:item.name }}
+              {% if item.location %}<div class="schedule-location">{{ item.location }}</div>{% endif %}
             </div>
           </li>
+          {% endfor %}
         </ul>
       </section>
+      {% endif %}
     </aside>
   </div>
+  {% endif %}
 </div>
+
+{% if active_event %}
+<script defer src="{% static 'live/js/live_landing.js' %}"></script>
+{% endif %}
 {% endblock %}

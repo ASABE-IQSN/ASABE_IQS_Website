@@ -1,6 +1,6 @@
 from events.models import Team, EventTeam
 from compforms.models import EventForm, FormResponse
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth import get_user_model
 from django.shortcuts import get_object_or_404, render, redirect
 from django.http import HttpResponseForbidden
@@ -23,7 +23,9 @@ from django.middleware.csrf import get_token
 from django.views.decorators.cache import cache_control
 from django.views.decorators.vary import vary_on_cookie
 from django.utils import timezone
-from users.models import GroupProfile, TeamEmail, TeamEnrollmentRequest, UserProfile
+from users.models import GroupProfile, TeamEmail, TeamEnrollmentRequest, UserProfile, View as PageView
+from datetime import timedelta
+from django.db.models import Count, Q
 
 @login_required
 def account(request):
@@ -322,6 +324,159 @@ def manage_team_members(request, team_id):
         "admin_user_ids": admin_user_ids,
         "active_page": "my account",
     })
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def admin_tools(request):
+    return render(request, "admin_tools.html", {
+        "active_page": "my account",
+    })
+
+
+@login_required
+@user_passes_test(lambda u: u.is_staff)
+def review_team_requests(request):
+    if request.method == "POST":
+        action = request.POST.get("action")
+        request_id = request.POST.get("request_id")
+        if request_id and action in ("approve_request", "reject_request"):
+            try:
+                enrollment_request = TeamEnrollmentRequest.objects.select_related(
+                    'user', 'team', 'team__group_profile__group'
+                ).get(request_id=request_id, status='pending')
+            except TeamEnrollmentRequest.DoesNotExist:
+                messages.error(request, "Enrollment request not found or already processed.")
+                return redirect("users:review_team_requests")
+
+            if action == "approve_request":
+                gp = getattr(enrollment_request.team, "group_profile", None)
+                if gp is None:
+                    messages.error(request, f"{enrollment_request.team.team_name} has no group profile configured.")
+                    return redirect("users:review_team_requests")
+                gp.group.user_set.add(enrollment_request.user)
+                enrollment_request.status = 'approved'
+                enrollment_request.reviewed_by = request.user
+                enrollment_request.reviewed_at = timezone.now()
+                enrollment_request.save()
+
+                send_mail(
+                    "Your team join request has been approved",
+                    f"Hi {enrollment_request.user.username},\n\nYour request to join {enrollment_request.team.team_name} has been approved. You now have access to the team.\n\nIQS Connect",
+                    "no-reply@iqsconnect.org",
+                    [enrollment_request.user.email],
+                    fail_silently=True,
+                )
+                messages.success(request, f"Approved {enrollment_request.user.username}'s request to join {enrollment_request.team.team_name}.")
+            else:
+                enrollment_request.status = 'rejected'
+                enrollment_request.reviewed_by = request.user
+                enrollment_request.reviewed_at = timezone.now()
+                enrollment_request.save()
+                messages.success(request, f"Rejected {enrollment_request.user.username}'s request to join {enrollment_request.team.team_name}.")
+
+        return redirect("users:review_team_requests")
+
+    status_filter = request.GET.get("status", "pending")
+    if status_filter not in ("pending", "approved", "rejected", "all"):
+        status_filter = "pending"
+
+    qs = TeamEnrollmentRequest.objects.select_related(
+        'user', 'team', 'reviewed_by'
+    )
+    if status_filter != "all":
+        qs = qs.filter(status=status_filter)
+
+    requests_list = list(qs.order_by('-requested_at')[:500])
+
+    # Member counts per team (via GroupProfile -> Group -> users)
+    team_ids = {r.team_id for r in requests_list}
+    member_count_map = {}
+    if team_ids:
+        gp_counts = (
+            GroupProfile.objects
+            .filter(team_id__in=team_ids)
+            .annotate(member_count=Count('group__user'))
+            .values('team_id', 'member_count')
+        )
+        member_count_map = {row['team_id']: row['member_count'] for row in gp_counts}
+
+    # Best-effort location: find the View record closest to requested_at
+    # for this user (within a ~2 min window) and resolve its IP via geo cache.
+    ip_by_request = {}
+    if requests_list:
+        try:
+            from stats.views import resolve_geo
+        except Exception:
+            resolve_geo = None
+
+        # Build per-user window query: pull all candidate views in a bounded time range
+        # then pick the closest one in Python.
+        min_time = min(r.requested_at for r in requests_list) - timedelta(minutes=2)
+        max_time = max(r.requested_at for r in requests_list) + timedelta(seconds=10)
+        user_ids = {r.user_id for r in requests_list}
+        candidate_views = list(
+            PageView.objects
+            .filter(user_id__in=user_ids, time__gte=min_time, time__lte=max_time)
+            .values('user_id', 'time', 'ip')
+        )
+        # Group by user
+        views_by_user = {}
+        for v in candidate_views:
+            views_by_user.setdefault(v['user_id'], []).append(v)
+
+        for r in requests_list:
+            best = None
+            best_delta = None
+            for v in views_by_user.get(r.user_id, []):
+                delta = abs((v['time'] - r.requested_at).total_seconds())
+                if delta <= 120 and (best_delta is None or delta < best_delta):
+                    best = v
+                    best_delta = delta
+            if best:
+                ip_by_request[r.request_id] = best['ip']
+
+        if resolve_geo and ip_by_request:
+            geo_map = resolve_geo(list({ip for ip in ip_by_request.values() if ip}))
+        else:
+            geo_map = {}
+    else:
+        geo_map = {}
+
+    def _format_location(ip):
+        if not ip:
+            return None
+        geo = geo_map.get(ip)
+        if not geo:
+            return ip
+        if geo.get('is_private'):
+            return f"Private ({ip})"
+        parts = [p for p in (geo.get('city'), geo.get('region'), geo.get('country')) if p]
+        loc = ", ".join(parts) if parts else ip
+        return loc
+
+    enriched_requests = []
+    for r in requests_list:
+        ip = ip_by_request.get(r.request_id)
+        enriched_requests.append({
+            'req': r,
+            'member_count': member_count_map.get(r.team_id, 0),
+            'ip': ip,
+            'location': _format_location(ip),
+        })
+
+    counts = {
+        'pending': TeamEnrollmentRequest.objects.filter(status='pending').count(),
+        'approved': TeamEnrollmentRequest.objects.filter(status='approved').count(),
+        'rejected': TeamEnrollmentRequest.objects.filter(status='rejected').count(),
+    }
+
+    return render(request, "teams/review_team_requests.html", {
+        "requests_list": enriched_requests,
+        "status_filter": status_filter,
+        "counts": counts,
+        "active_page": "my account",
+    })
+
 
 def signup(request):
     if request.method == "POST":

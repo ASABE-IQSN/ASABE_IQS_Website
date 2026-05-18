@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block extra_styles %}
+  .tools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.2rem;
+    margin-top: 1.2rem;
+  }
+  .tools-card {
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 1rem 1.2rem;
+  }
+  .tools-card h2 {
+    margin: 0 0 0.7rem;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #9ca3af;
+    font-weight: 600;
+  }
+  .tools-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .tools-card a {
+    display: block;
+    padding: 0.4rem 0.7rem;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    color: #cbd5e1;
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+  .tools-card a:hover {
+    border-color: #6687fc;
+    color: #6687fc;
+  }
+  .tools-card .desc {
+    color: #6b7280;
+    font-size: 0.8rem;
+    display: block;
+    margin-top: 0.15rem;
+  }
+{% endblock %}
+
+{% block content %}
+  <h1>Admin Tools</h1>
+  <p style="color:#6b7280; margin-top:-0.5rem;">Quick links to staff-only and producer pages.</p>
+
+  <div class="tools-grid">
+
+    <div class="tools-card">
+      <h2>Live Event Pages</h2>
+      <ul>
+        <li><a href="{% url 'live:landing' %}">Live Landing<span class="desc">Public live event hub</span></a></li>
+        <li><a href="{% url 'live:pull' %}">Pull Live<span class="desc">Live pull data view</span></a></li>
+        <li><a href="{% url 'live:maneuverability' %}">Maneuverability Live</a></li>
+        <li><a href="{% url 'live:durability' %}">Durability Live</a></li>
+      </ul>
+    </div>
+
+    <div class="tools-card">
+      <h2>Overlays</h2>
+      <ul>
+        <li><a href="{% url 'live:pull_overlay' %}">Pull Overlay<span class="desc">OBS broadcast overlay</span></a></li>
+        <li><a href="{% url 'live:overlay_producer' %}">Overlay Producer<span class="desc">Controls overlay state</span></a></li>
+        <li><a href="{% url 'live:overlay_scene_list' %}">Overlay Scenes<span class="desc">Manage scene layouts</span></a></li>
+      </ul>
+    </div>
+
+    <div class="tools-card">
+      <h2>Producer / Announcer</h2>
+      <ul>
+        <li><a href="{% url 'live:producer_pull' %}">Producer – Pull</a></li>
+        <li><a href="{% url 'live:announcer_pull' %}">Announcer – Pull</a></li>
+        <li><a href="{% url 'live:announcer_maneuverability' %}">Announcer – Maneuverability</a></li>
+        <li><a href="{% url 'live:announcer_durability' %}">Announcer – Durability</a></li>
+      </ul>
+    </div>
+
+    <div class="tools-card">
+      <h2>Engagement</h2>
+      <ul>
+        <li><a href="{% url 'engagement:staff_hub' %}">Staff Hub<span class="desc">Engagement control center</span></a></li>
+        <li><a href="{% url 'engagement:producer_queue' %}">Crowd Submission Queue</a></li>
+        <li><a href="{% url 'engagement:poll_manage' %}">Manage Polls</a></li>
+        <li><a href="{% url 'engagement:fan_vote_results' %}">Fan Vote Results</a></li>
+      </ul>
+    </div>
+
+    <div class="tools-card">
+      <h2>Users &amp; Teams</h2>
+      <ul>
+        <li><a href="{% url 'users:review_team_requests' %}">Team Enrollment Requests</a></li>
+        <li><a href="/admin/">Django Admin<span class="desc">Full database admin</span></a></li>
+      </ul>
+    </div>
+
+    <div class="tools-card">
+      <h2>Reports &amp; Forms</h2>
+      <ul>
+        <li><a href="{% url 'reports:reports_overview' %}">Report Analysis</a></li>
+        <li><a href="{% url 'reports:analysis_dashboard' %}">Analysis Dashboard</a></li>
+        <li><a href="{% url 'reports:report_coverage' %}">Coverage</a></li>
+        <li><a href="{% url 'compforms:forms_list' %}">Form Templates</a></li>
+        <li><a href="{% url 'awards:manage_event_list' %}">Manage Awards</a></li>
+      </ul>
+    </div>
+
+    <div class="tools-card">
+      <h2>Stats &amp; Activity</h2>
+      <ul>
+        <li><a href="{% url 'stats:daily_activity' %}">Daily Activity</a></li>
+        <li><a href="{% url 'stats:page_overview' %}">Page Overview</a></li>
+        <li><a href="{% url 'stats:ip_list' %}">IP List</a></li>
+        <li><a href="{% url 'stats:team_page_activity' %}">Team Page Activity</a></li>
+        <li><a href="{% url 'stats:plot_page' %}">Plot</a></li>
+        <li><a href="{% url 'stats:explore_page' %}">Explore</a></li>
+      </ul>
+    </div>
+
+  </div>
+{% endblock %}

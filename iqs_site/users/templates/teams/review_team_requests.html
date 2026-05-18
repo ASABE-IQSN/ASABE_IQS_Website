@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block extra_styles %}
+  .filter-bar {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin: 1rem 0 1.5rem;
+  }
+  .filter-link {
+    border: 1px solid #334155;
+    color: #9ca3af;
+    border-radius: 999px;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.85rem;
+    text-decoration: none;
+  }
+  .filter-link.active {
+    background: #6687fc;
+    border-color: #6687fc;
+    color: #020617;
+    font-weight: 600;
+  }
+  .request-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .request-table th, .request-table td {
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid #1f2937;
+    vertical-align: top;
+  }
+  .request-table th {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .status-pending { background: #facc15; color: #1f2937; }
+  .status-approved { background: #16a34a; color: white; }
+  .status-rejected { background: #dc2626; color: white; }
+  .action-btn {
+    padding: 0.3rem 0.7rem;
+    font-size: 0.85rem;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    color: white;
+  }
+  .action-approve { background: #16a34a; }
+  .action-reject { background: #dc2626; }
+  .msg-cell { color: #cbd5e1; font-style: italic; max-width: 320px; }
+{% endblock %}
+
+{% block content %}
+  <h1>Team Enrollment Requests</h1>
+  <p style="color:#6b7280; margin-top:-0.5rem;">Review and act on user requests to join teams.</p>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div style="padding:0.6rem 0.8rem; margin-bottom:0.6rem; border-radius:6px; background:#1f2937; color:#e5e7eb;">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="filter-bar">
+    <a class="filter-link {% if status_filter == 'pending' %}active{% endif %}" href="?status=pending">Pending ({{ counts.pending }})</a>
+    <a class="filter-link {% if status_filter == 'approved' %}active{% endif %}" href="?status=approved">Approved ({{ counts.approved }})</a>
+    <a class="filter-link {% if status_filter == 'rejected' %}active{% endif %}" href="?status=rejected">Rejected ({{ counts.rejected }})</a>
+    <a class="filter-link {% if status_filter == 'all' %}active{% endif %}" href="?status=all">All</a>
+  </div>
+
+  {% if requests_list %}
+    <table class="request-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Team</th>
+          <th>Members</th>
+          <th>Message</th>
+          <th>Requested</th>
+          <th>Location</th>
+          <th>Status</th>
+          <th>Reviewed</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in requests_list %}
+          {% with req=row.req %}
+          <tr>
+            <td>
+              <strong>{{ req.user.username }}</strong><br>
+              <span style="color:#9ca3af; font-size:0.85rem;">{{ req.user.email|default:"no email" }}</span>
+            </td>
+            <td>
+              {{ req.team.team_name }}
+              {% if req.team.team_number %}<br><span style="color:#9ca3af; font-size:0.85rem;">#{{ req.team.team_number }}</span>{% endif %}
+            </td>
+            <td>{{ row.member_count }}</td>
+            <td class="msg-cell">{% if req.message %}"{{ req.message }}"{% else %}—{% endif %}</td>
+            <td>{{ req.requested_at|date:"M d, Y g:i A" }}</td>
+            <td>
+              {% if row.location %}
+                {{ row.location }}
+                {% if row.ip %}<br><span style="color:#9ca3af; font-size:0.8rem;">{{ row.ip }}</span>{% endif %}
+              {% else %}—{% endif %}
+            </td>
+            <td><span class="status-badge status-{{ req.status }}">{{ req.status }}</span></td>
+            <td>
+              {% if req.reviewed_at %}
+                {{ req.reviewed_at|date:"M d, Y g:i A" }}<br>
+                <span style="color:#9ca3af; font-size:0.85rem;">by {{ req.reviewed_by.username|default:"—" }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if req.status == 'pending' %}
+                <form method="post" style="display:inline;">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="approve_request">
+                  <input type="hidden" name="request_id" value="{{ req.request_id }}">
+                  <button type="submit" class="action-btn action-approve">Approve</button>
+                </form>
+                <form method="post" style="display:inline;">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="reject_request">
+                  <input type="hidden" name="request_id" value="{{ req.request_id }}">
+                  <button type="submit" class="action-btn action-reject" onclick="return confirm('Reject {{ req.user.username }}\'s request?');">Reject</button>
+                </form>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endwith %}
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p><em>No requests match this filter.</em></p>
+  {% endif %}
+{% endblock %}

@@ -50,6 +50,119 @@ class Rule(models.Model):
         return self.rule_content
 
 
+class TechinCategoryInstance(models.Model):
+    rule_category_instance_id = models.AutoField(primary_key=True)
+    rule_category = models.ForeignKey(
+        RuleCategory,
+        on_delete=models.DO_NOTHING,
+        related_name="instances",
+        db_column="rule_category_id",
+        db_constraint=False,
+    )
+    event = models.ForeignKey(
+        "events.Event",
+        on_delete=models.DO_NOTHING,
+        related_name="techin_category_instances",
+        db_column="event_id",
+    )
+    released = models.BooleanField(default=False)
+    display_order = models.IntegerField(default=0)
+
+    class Meta:
+        managed = True
+        db_table = "rule_category_instances"
+
+    def __str__(self):
+        return f"{self.event} – {self.rule_category}"
+
+    @property
+    def rule_category_name(self):
+        return self.rule_category.rule_category_name
+
+
+class TechinSubCategoryInstance(models.Model):
+    rule_subcategory_instance_id = models.AutoField(primary_key=True)
+    rule_subcategory = models.ForeignKey(
+        RuleSubCategory,
+        on_delete=models.DO_NOTHING,
+        related_name="instances",
+        db_column="rule_subcategory_id",
+        db_constraint=False,
+    )
+    event = models.ForeignKey(
+        "events.Event",
+        on_delete=models.DO_NOTHING,
+        related_name="techin_subcategory_instances",
+        db_column="event_id",
+    )
+    category_instance = models.ForeignKey(
+        TechinCategoryInstance,
+        on_delete=models.DO_NOTHING,
+        related_name="subcategory_instances",
+        db_column="rule_category_instance_id",
+        null=True,
+        blank=True,
+        db_constraint=False,
+    )
+    released = models.BooleanField(default=False)
+    display_order = models.IntegerField(default=0)
+
+    class Meta:
+        managed = True
+        db_table = "rule_subcategory_instances"
+
+    def __str__(self):
+        return f"{self.event} – {self.rule_subcategory}"
+
+    @property
+    def rule_subcategory_name(self):
+        return self.rule_subcategory.rule_subcategory_name
+
+
+class TechinRuleInstance(models.Model):
+    rule_instance_id = models.AutoField(primary_key=True)
+    rule = models.ForeignKey(
+        Rule,
+        on_delete=models.DO_NOTHING,
+        related_name="instances",
+        db_column="rule_id",
+        db_constraint=False,
+    )
+    event = models.ForeignKey(
+        "events.Event",
+        on_delete=models.DO_NOTHING,
+        related_name="techin_rule_instances",
+        db_column="event_id",
+    )
+    subcategory_instance = models.ForeignKey(
+        TechinSubCategoryInstance,
+        on_delete=models.DO_NOTHING,
+        related_name="rule_instances",
+        db_column="rule_subcategory_instance_id",
+        null=True,
+        blank=True,
+        db_constraint=False,
+    )
+    rule_number_override = models.CharField(max_length=45, blank=True, default="")
+    rule_content_override = models.CharField(max_length=512, blank=True, default="")
+    display_order = models.IntegerField(default=0)
+
+    class Meta:
+        managed = True
+        db_table = "rule_instances"
+
+    def __str__(self):
+        return f"{self.event} – {self.rule_content}"
+
+    @property
+    def rule_number(self):
+        return self.rule_number_override or self.rule.rule_number
+
+    @property
+    def rule_content(self):
+        return self.rule_content_override or self.rule.rule_content
+
+
 class EventTractorRuleStatus(models.Model):
     event_tractor_rule_status_id = models.AutoField(
         db_column="event_tractor_rule_status_id",
@@ -67,6 +180,17 @@ class EventTractorRuleStatus(models.Model):
         on_delete=models.DO_NOTHING,
         related_name="statuses",
         db_column="rule_id",
+        null=True,
+        blank=True,
+    )
+    rule_instance = models.ForeignKey(
+        TechinRuleInstance,
+        on_delete=models.DO_NOTHING,
+        related_name="statuses",
+        db_column="rule_instance_id",
+        null=True,
+        blank=True,
+        db_constraint=False,
     )
     status = models.IntegerField()  # Pass: 3 Corrected: 2 Failed: 1 Not Started: 0
 
@@ -75,7 +199,10 @@ class EventTractorRuleStatus(models.Model):
         managed = False
 
     def __str__(self):
-        return f"{self.event_tractor} – {self.rule.rule_content} – {self.status}"
+        label = self.rule_instance.rule_content if self.rule_instance_id else (
+            self.rule.rule_content if self.rule_id else "?"
+        )
+        return f"{self.event_tractor} – {label} – {self.status}"
 
 class RuleTractorMedia(models.Model):
     id=models.AutoField(db_column="rule_tractor_media_id",primary_key=True)
