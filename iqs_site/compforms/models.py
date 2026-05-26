@@ -158,6 +158,19 @@ class QuestionResponse(models.Model):
         on_delete=models.DO_NOTHING,
         related_name='answers',
     )
+    # Typed anchors — exactly one will be non-null after migration
+    form_question = models.ForeignKey(
+        'FormQuestion',
+        on_delete=models.DO_NOTHING,
+        null=True, blank=True,
+        related_name='answers',
+    )
+    team_assignment = models.ForeignKey(
+        'TeamQuestionAssignment',
+        on_delete=models.DO_NOTHING,
+        null=True, blank=True,
+        related_name='answers',
+    )
     answer = models.TextField(blank=True)
     image = models.ImageField(upload_to='form_responses/', null=True, blank=True)
     flagged = models.BooleanField(default=False)
@@ -171,7 +184,13 @@ class QuestionResponse(models.Model):
     flag_reason = models.TextField(blank=True)
 
     class Meta:
-        unique_together = ('form_response', 'question')
+        # MySQL allows multiple NULLs in a unique index, so these correctly enforce
+        # uniqueness only when the FK is non-null (i.e. flat vs group question rows
+        # don't interfere with each other).
+        unique_together = [
+            ('form_response', 'form_question'),
+            ('form_response', 'team_assignment'),
+        ]
 
     def __str__(self):
         return f"Answer to '{self.question}': {self.answer[:50]}"

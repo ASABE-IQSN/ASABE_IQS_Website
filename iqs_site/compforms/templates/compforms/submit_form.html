@@ -265,7 +265,7 @@
 
 <div class="form-card">
   {% if event_form.is_open %}
-    <form method="post" enctype="multipart/form-data">
+    <form method="post" enctype="multipart/form-data" autocomplete="off">
       {% csrf_token %}
       {% for section in sections %}
         {% if section.type == 'flat' %}
@@ -353,7 +353,7 @@
             <p class="group-description">{{ section.group.description }}</p>
           {% endif %}
 
-          {% for q, current_answer, flag_reason in section.questions %}
+          {% for q, current_answer, flag_reason, assignment_id in section.questions %}
             <div class="question-block">
               {% if flag_reason is not None %}
                 <div class="flag-banner">
@@ -365,13 +365,13 @@
                 </div>
               {% endif %}
 
-              <label class="question-label" for="q{{ q.question_id }}">
+              <label class="question-label" for="ga{{ assignment_id }}">
                 {{ q.question_text }}
               </label>
               {% if q.question_type == 'SHORT_TEXT' %}
                 <input type="text" class="question-input"
-                  id="q{{ q.question_id }}"
-                  name="question_{{ q.question_id }}"
+                  id="ga{{ assignment_id }}"
+                  name="ga_{{ assignment_id }}"
                   value="{{ current_answer }}"
                   data-group="{{ section.group.group_id }}">
               {% elif q.question_type == 'IMAGE' %}
@@ -379,8 +379,8 @@
                   <img src="{{ current_answer }}" alt="Current upload" style="max-width:100%;max-height:200px;border-radius:8px;margin-bottom:.5rem;display:block;">
                 {% endif %}
                 <input type="file" class="question-input"
-                  id="q{{ q.question_id }}"
-                  name="question_{{ q.question_id }}"
+                  id="ga{{ assignment_id }}"
+                  name="ga_{{ assignment_id }}"
                   accept="image/*"
                   data-group="{{ section.group.group_id }}">
               {% elif q.question_type == 'RADIO' %}
@@ -388,7 +388,7 @@
                   {% for opt in q.radio_opts %}
                     <label class="radio-option-label">
                       <input type="radio"
-                        name="question_{{ q.question_id }}"
+                        name="ga_{{ assignment_id }}"
                         value="{{ opt.option_text }}"
                         {% if current_answer == opt.option_text %}checked{% endif %}>
                       {{ opt.option_text }}
@@ -402,7 +402,7 @@
                   {% for opt in q.radio_opts %}
                     <label class="radio-option-label">
                       <input type="checkbox"
-                        name="question_{{ q.question_id }}"
+                        name="ga_{{ assignment_id }}"
                         value="{{ opt.option_text }}"
                         {% if opt.option_text in current_answer %}checked{% endif %}>
                       {{ opt.option_text }}
@@ -413,8 +413,8 @@
                 </div>
               {% elif q.question_type == 'TRACTOR_SELECT' %}
                 <select class="question-input"
-                  id="q{{ q.question_id }}"
-                  name="question_{{ q.question_id }}"
+                  id="ga{{ assignment_id }}"
+                  name="ga_{{ assignment_id }}"
                   data-group="{{ section.group.group_id }}">
                   <option value="">— Select a tractor —</option>
                   {% for tractor in team_tractors %}
@@ -430,8 +430,8 @@
                 </select>
               {% else %}
                 <textarea class="question-textarea"
-                  id="q{{ q.question_id }}"
-                  name="question_{{ q.question_id }}"
+                  id="ga{{ assignment_id }}"
+                  name="ga_{{ assignment_id }}"
                   rows="4"
                   data-group="{{ section.group.group_id }}">{{ current_answer }}</textarea>
               {% endif %}
@@ -498,7 +498,7 @@
         {% if section.group.description %}
           <p class="group-description">{{ section.group.description }}</p>
         {% endif %}
-        {% for q, current_answer, flag_reason in section.questions %}
+        {% for q, current_answer, flag_reason, assignment_id in section.questions %}
           <div class="question-block">
             <span class="question-label">{{ q.question_text }}</span>
             <div class="read-only-answer">
@@ -580,14 +580,22 @@ function doExtra(groupId) {
     setStatus('saving', 'Saving\u2026');
 
     var data = new FormData(mainForm);
+    var debugEntries = {};
+    data.forEach(function(v, k) { if (k.startsWith('question_') || k.startsWith('ga_')) debugEntries[k] = v; });
+    console.log('[autosave] Sending answers:', debugEntries);
+
     fetch(AUTOSAVE_URL, {
       method: 'POST',
       headers: { 'X-CSRFToken': getCsrf() },
       body: data,
     })
-    .then(function (r) { return r.json(); })
+    .then(function (r) {
+      console.log('[autosave] HTTP status:', r.status, r.url);
+      return r.json();
+    })
     .then(function (d) {
       saving = false;
+      console.log('[autosave] Response:', d);
       if (d.ok) {
         setStatus('saved', 'All changes saved');
         setTimeout(function () {
@@ -599,8 +607,9 @@ function doExtra(groupId) {
         setStatus('error', 'Auto-save failed \u2014 use Save Answers');
       }
     })
-    .catch(function () {
+    .catch(function (err) {
       saving = false;
+      console.error('[autosave] Error:', err);
       setStatus('error', 'Auto-save failed \u2014 use Save Answers');
     });
   }

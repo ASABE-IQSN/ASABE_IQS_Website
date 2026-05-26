@@ -18,6 +18,21 @@ from .models import (
 )
 
 
+def _qr_uoc_kwargs(form_response, anchor, qid):
+    """
+    Return (lookup, defaults) for QuestionResponse.update_or_create keyed on
+    the typed anchor (FormQuestion or TeamQuestionAssignment) rather than the
+    raw Question FK.
+    """
+    if anchor['form_question_id'] is not None:
+        lookup = {'form_response': form_response, 'form_question_id': anchor['form_question_id']}
+        defaults = {'question_id': qid, 'team_assignment_id': None}
+    else:
+        lookup = {'form_response': form_response, 'team_assignment_id': anchor['team_assignment_id']}
+        defaults = {'question_id': qid, 'form_question_id': None}
+    return lookup, defaults
+
+
 def _user_on_team(user, team):
     """Return True if user is a member of the given team via GroupProfile."""
     gp = getattr(team, 'group_profile', None)
@@ -27,7 +42,14 @@ def _user_on_team(user, team):
 
 
 def _build_sections(event_form, event_team, existing_answers, flagged_qids):
-    """Return merged, order-sorted sections list for submit_form and swap_question."""
+    """Return (sections, flat_anchor_map, group_anchor_map).
+
+    existing_answers: {('fq', form_question_id): value} for flat, {('ta', assignment_id): value} for group
+    flagged_qids:     {('fq', form_question_id): reason} for flat, {('ta', assignment_id): reason} for group
+
+    flat_anchor_map:  {question_id: {'form_question_id': int, 'team_assignment_id': None}}
+    group_anchor_map: {assignment_id: {'form_question_id': None, 'team_assignment_id': int, 'question_id': int}}
+    """
     flat_fqs = list(
         event_form.form.form_questions.select_related('question').order_by('order')
     )
@@ -38,35 +60,64 @@ def _build_sections(event_form, event_team, existing_answers, flagged_qids):
         for group in groups
     }
 
+    # Map (group_id, question_id) -> assignment_id for all assigned questions
+    assignment_map = {}
+    if groups:
+        assigned_qids = {q.question_id for qs in group_assignments.values() for q in qs}
+        if assigned_qids:
+            for row in TeamQuestionAssignment.objects.filter(
+                event_team=event_team,
+                group__in=groups,
+                question_id__in=assigned_qids,
+            ).values('assignment_id', 'question_id', 'group_id'):
+                assignment_map[(row['group_id'], row['question_id'])] = row['assignment_id']
+
     sections = []
     for fq in flat_fqs:
         sections.append({
             'type': 'flat',
             'order': fq.order,
             'fq': fq,
-            'answer': existing_answers.get(fq.question.question_id, ''),
+            'answer': existing_answers.get(('fq', fq.form_question_id), ''),
         })
     for group in groups:
         assigned = group_assignments[group.group_id]
+        group_questions = []
+        for q in assigned:
+            aid = assignment_map.get((group.group_id, q.question_id))
+            ta_key = ('ta', aid) if aid else None
+            group_questions.append((
+                q,
+                existing_answers.get(ta_key, '') if ta_key else '',
+                flagged_qids.get(ta_key) if ta_key else None,
+                aid,
+            ))
         sections.append({
             'type': 'group',
             'order': group.order,
             'group': group,
             'swappable': group.num_assigned > 0,
-            'questions': [
-                (q, existing_answers.get(q.question_id, ''), flagged_qids.get(q.question_id))
-                for q in assigned
-            ],
+            'questions': group_questions,
         })
     sections.sort(key=lambda s: s['order'])
 
-    # Also return flat list of valid question IDs for POST whitelisting
-    valid_ids = {fq.question.question_id for fq in flat_fqs}
-    for qs in group_assignments.values():
-        for q in qs:
-            valid_ids.add(q.question_id)
+    flat_anchor_map = {
+        fq.question.question_id: {
+            'form_question_id': fq.form_question_id,
+            'team_assignment_id': None,
+        }
+        for fq in flat_fqs
+    }
+    group_anchor_map = {
+        aid: {
+            'form_question_id': None,
+            'team_assignment_id': aid,
+            'question_id': qid,
+        }
+        for (gid, qid), aid in assignment_map.items()
+    }
 
-    return sections, valid_ids
+    return sections, flat_anchor_map, group_anchor_map
 
 
 def _extra_info_for_groups(event_team, event_form):
@@ -145,14 +196,21 @@ def submit_form(request, event_form_id, team_id):
     ).prefetch_related('answers__question').first()
 
     existing_answers = {}
-    flagged_qids = {}  # {question_id: flag_reason}
+    flagged_qids = {}
     if existing_response:
         for ans in existing_response.answers.all():
-            existing_answers[ans.question_id] = ans.image.url if ans.image else ans.answer
+            if ans.team_assignment_id is not None:
+                k = ('ta', ans.team_assignment_id)
+                existing_answers[k] = ans.image.url if ans.image else ans.answer
+            elif ans.form_question_id is not None:
+                k = ('fq', ans.form_question_id)
+                existing_answers[k] = ans.image.url if ans.image else ans.answer
+            else:
+                continue
             if ans.flagged:
-                flagged_qids[ans.question_id] = ans.flag_reason
+                flagged_qids[k] = ans.flag_reason
 
-    sections, valid_question_ids = _build_sections(
+    sections, flat_anchor_map, group_anchor_map = _build_sections(
         event_form, event_team, existing_answers, flagged_qids
     )
 
@@ -170,9 +228,12 @@ def submit_form(request, event_form_id, team_id):
 
         # Pre-fetch question types so we can route text vs. image correctly
         from .models import Question as QuestionModel
+        all_question_ids = set(flat_anchor_map.keys()) | {
+            a['question_id'] for a in group_anchor_map.values()
+        }
         question_types = {
             q.pk: q.question_type
-            for q in QuestionModel.objects.filter(pk__in=valid_question_ids).only('pk', 'question_type')
+            for q in QuestionModel.objects.filter(pk__in=all_question_ids).only('pk', 'question_type')
         }
 
         def _clear_flag(qr):
@@ -185,46 +246,73 @@ def submit_form(request, event_form_id, team_id):
 
         # Text / radio / multi-select answers
         for key in request.POST.keys():
-            if not key.startswith('question_'):
-                continue
-            try:
-                qid = int(key[len('question_'):])
-            except ValueError:
-                continue
-            if qid not in valid_question_ids:
-                continue
-            qtype = question_types.get(qid)
-            if qtype == QuestionModel.IMAGE:
-                continue  # handled via FILES
-            if qtype == QuestionModel.MULTI_SELECT:
-                answer = '\n'.join(v.strip() for v in request.POST.getlist(key) if v.strip())
-            else:
-                answer = request.POST[key].strip()
-            qr, _ = QuestionResponse.objects.update_or_create(
-                form_response=form_response,
-                question_id=qid,
-                defaults={'answer': answer},
-            )
-            _clear_flag(qr)
+            if key.startswith('question_'):
+                try:
+                    qid = int(key[len('question_'):])
+                except ValueError:
+                    continue
+                anchor = flat_anchor_map.get(qid)
+                if anchor is None:
+                    continue
+                qtype = question_types.get(qid)
+                if qtype == QuestionModel.IMAGE:
+                    continue
+                if qtype == QuestionModel.MULTI_SELECT:
+                    answer = '\n'.join(v.strip() for v in request.POST.getlist(key) if v.strip())
+                else:
+                    answer = request.POST[key].strip()
+                lookup = {'form_response': form_response, 'form_question_id': anchor['form_question_id']}
+                defaults = {'question_id': qid, 'team_assignment_id': None, 'answer': answer}
+                qr, _ = QuestionResponse.objects.update_or_create(**lookup, defaults=defaults)
+                _clear_flag(qr)
+            elif key.startswith('ga_'):
+                try:
+                    aid = int(key[len('ga_'):])
+                except ValueError:
+                    continue
+                anchor = group_anchor_map.get(aid)
+                if anchor is None:
+                    continue
+                qid = anchor['question_id']
+                qtype = question_types.get(qid)
+                if qtype == QuestionModel.IMAGE:
+                    continue
+                if qtype == QuestionModel.MULTI_SELECT:
+                    answer = '\n'.join(v.strip() for v in request.POST.getlist(key) if v.strip())
+                else:
+                    answer = request.POST[key].strip()
+                lookup = {'form_response': form_response, 'team_assignment_id': aid}
+                defaults = {'question_id': qid, 'form_question_id': None, 'answer': answer}
+                qr, _ = QuestionResponse.objects.update_or_create(**lookup, defaults=defaults)
+                _clear_flag(qr)
 
         # Image answers
         for key, file in request.FILES.items():
-            if not key.startswith('question_'):
-                continue
-            try:
-                qid = int(key[len('question_'):])
-            except ValueError:
-                continue
-            if qid not in valid_question_ids:
-                continue
-            if question_types.get(qid) != QuestionModel.IMAGE:
-                continue
-            qr, _ = QuestionResponse.objects.update_or_create(
-                form_response=form_response,
-                question_id=qid,
-                defaults={'image': file, 'answer': ''},
-            )
-            _clear_flag(qr)
+            if key.startswith('question_'):
+                try:
+                    qid = int(key[len('question_'):])
+                except ValueError:
+                    continue
+                anchor = flat_anchor_map.get(qid)
+                if anchor is None or question_types.get(qid) != QuestionModel.IMAGE:
+                    continue
+                lookup = {'form_response': form_response, 'form_question_id': anchor['form_question_id']}
+                defaults = {'question_id': qid, 'team_assignment_id': None, 'image': file, 'answer': ''}
+                qr, _ = QuestionResponse.objects.update_or_create(**lookup, defaults=defaults)
+                _clear_flag(qr)
+            elif key.startswith('ga_'):
+                try:
+                    aid = int(key[len('ga_'):])
+                except ValueError:
+                    continue
+                anchor = group_anchor_map.get(aid)
+                if anchor is None or question_types.get(anchor['question_id']) != QuestionModel.IMAGE:
+                    continue
+                qid = anchor['question_id']
+                lookup = {'form_response': form_response, 'team_assignment_id': aid}
+                defaults = {'question_id': qid, 'form_question_id': None, 'image': file, 'answer': ''}
+                qr, _ = QuestionResponse.objects.update_or_create(**lookup, defaults=defaults)
+                _clear_flag(qr)
 
         messages.success(request, "Your answers have been saved.")
         return redirect('compforms:submit_form', event_form_id=event_form_id, team_id=team_id)
@@ -261,7 +349,7 @@ def submit_form(request, event_form_id, team_id):
             if section['fq'].question.question_type in (Question.RADIO, Question.MULTI_SELECT):
                 radio_qids.add(section['fq'].question.question_id)
         else:
-            for q, _, _ in section['questions']:
+            for q, _, _, _ in section['questions']:
                 if q.question_type in (Question.RADIO, Question.MULTI_SELECT):
                     radio_qids.add(q.question_id)
     question_options = {}
@@ -275,7 +363,7 @@ def submit_form(request, event_form_id, team_id):
             if q.question_type in (Question.RADIO, Question.MULTI_SELECT):
                 q.radio_opts = question_options.get(q.question_id, [])
         else:
-            for q, _, _ in section['questions']:
+            for q, _, _, _ in section['questions']:
                 if q.question_type in (Question.RADIO, Question.MULTI_SELECT):
                     q.radio_opts = question_options.get(q.question_id, [])
 
@@ -341,11 +429,18 @@ def autosave_form(request, event_form_id, team_id):
     flagged_qids = {}
     if existing_response:
         for ans in existing_response.answers.all():
-            existing_answers[ans.question_id] = ans.answer
+            if ans.team_assignment_id is not None:
+                k = ('ta', ans.team_assignment_id)
+                existing_answers[k] = ans.answer
+            elif ans.form_question_id is not None:
+                k = ('fq', ans.form_question_id)
+                existing_answers[k] = ans.answer
+            else:
+                continue
             if ans.flagged:
-                flagged_qids[ans.question_id] = ans.flag_reason
+                flagged_qids[k] = ans.flag_reason
 
-    _, valid_question_ids = _build_sections(event_form, event_team, existing_answers, flagged_qids)
+    _, flat_anchor_map, group_anchor_map = _build_sections(event_form, event_team, existing_answers, flagged_qids)
 
     form_response, _ = FormResponse.objects.get_or_create(
         event_form=event_form,
@@ -356,32 +451,54 @@ def autosave_form(request, event_form_id, team_id):
 
     autosave_question_types = {
         q.pk: q.question_type
-        for q in Question.objects.filter(pk__in=valid_question_ids).only('pk', 'question_type')
+        for q in Question.objects.filter(
+            pk__in=set(flat_anchor_map.keys()) | {a['question_id'] for a in group_anchor_map.values()}
+        ).only('pk', 'question_type')
     }
     for key in request.POST.keys():
-        if not key.startswith('question_'):
-            continue
-        try:
-            qid = int(key[len('question_'):])
-        except ValueError:
-            continue
-        if qid not in valid_question_ids:
-            continue
-        if autosave_question_types.get(qid) == Question.MULTI_SELECT:
-            answer = '\n'.join(v.strip() for v in request.POST.getlist(key) if v.strip())
-        else:
-            answer = request.POST[key].strip()
-        qr, _ = QuestionResponse.objects.update_or_create(
-            form_response=form_response,
-            question_id=qid,
-            defaults={'answer': answer},
-        )
-        if qr.flagged:
-            qr.flagged = False
-            qr.flagged_by = None
-            qr.flagged_at = None
-            qr.flag_reason = ''
-            qr.save(update_fields=['flagged', 'flagged_by', 'flagged_at', 'flag_reason'])
+        if key.startswith('question_'):
+            try:
+                qid = int(key[len('question_'):])
+            except ValueError:
+                continue
+            anchor = flat_anchor_map.get(qid)
+            if anchor is None:
+                continue
+            if autosave_question_types.get(qid) == Question.MULTI_SELECT:
+                answer = '\n'.join(v.strip() for v in request.POST.getlist(key) if v.strip())
+            else:
+                answer = request.POST[key].strip()
+            lookup = {'form_response': form_response, 'form_question_id': anchor['form_question_id']}
+            defaults = {'question_id': qid, 'team_assignment_id': None, 'answer': answer}
+            qr, _ = QuestionResponse.objects.update_or_create(**lookup, defaults=defaults)
+            if qr.flagged:
+                qr.flagged = False
+                qr.flagged_by = None
+                qr.flagged_at = None
+                qr.flag_reason = ''
+                qr.save(update_fields=['flagged', 'flagged_by', 'flagged_at', 'flag_reason'])
+        elif key.startswith('ga_'):
+            try:
+                aid = int(key[len('ga_'):])
+            except ValueError:
+                continue
+            anchor = group_anchor_map.get(aid)
+            if anchor is None:
+                continue
+            qid = anchor['question_id']
+            if autosave_question_types.get(qid) == Question.MULTI_SELECT:
+                answer = '\n'.join(v.strip() for v in request.POST.getlist(key) if v.strip())
+            else:
+                answer = request.POST[key].strip()
+            lookup = {'form_response': form_response, 'team_assignment_id': aid}
+            defaults = {'question_id': qid, 'form_question_id': None, 'answer': answer}
+            qr, _ = QuestionResponse.objects.update_or_create(**lookup, defaults=defaults)
+            if qr.flagged:
+                qr.flagged = False
+                qr.flagged_by = None
+                qr.flagged_at = None
+                qr.flag_reason = ''
+                qr.save(update_fields=['flagged', 'flagged_by', 'flagged_at', 'flag_reason'])
 
     return JsonResponse({'ok': True})
 
