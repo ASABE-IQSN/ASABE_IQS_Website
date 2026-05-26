@@ -162,7 +162,7 @@ function startSSE() {
     setField("hook_name", info.hook_name);
     setField("team_name", info.team_name);
     setField("team_number", info.team_number);
-    setField("tractor_name",info.tractor_name);
+    setField("tractor_name", info.tractor_nickname || info.tractor_name);
     renderHookLeaderboard(info.hook_leaders);
   });
 
