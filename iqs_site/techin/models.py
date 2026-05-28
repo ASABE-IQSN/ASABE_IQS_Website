@@ -67,6 +67,10 @@ class TechinCategoryInstance(models.Model):
     )
     released = models.BooleanField(default=False)
     display_order = models.IntegerField(default=0)
+    sheet_name = models.CharField(max_length=255, blank=True, default="")
+    sheet_key = models.CharField(max_length=255, blank=True, default="")
+    # 1 = A Team, 2 = X Team (mirrors teams.team_class_id)
+    team_class_id = models.IntegerField(default=1)
 
     class Meta:
         managed = True

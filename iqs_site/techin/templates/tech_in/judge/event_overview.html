@@ -7,6 +7,16 @@
 <div class="judge-container">
   <h1>Tech Inspection – Judge</h1>
   <p><strong>Event:</strong> {{ event.event_name }}</p>
+
+  <div class="class-selector">
+    {% for tc in team_classes %}
+      <a href="?class={{ tc.slug }}"
+         class="class-tab{% if tc.id == team_class_id %} active{% endif %}">
+        {{ tc.label }}
+      </a>
+    {% endfor %}
+  </div>
+
   <p>Select a category to begin inspecting teams:</p>
 
   <div class="category-list">
@@ -23,6 +33,12 @@
 
 <style>
   .judge-container { max-width: 800px; margin: 1.5rem auto; }
+  .class-selector { display: flex; gap: 0.5rem; margin: 0.75rem 0; }
+  .class-tab {
+    padding: 0.4rem 1rem; border-radius: 0.5rem; text-decoration: none;
+    font-weight: 600; border: 1px solid #4b5563; color: inherit; background: #020617;
+  }
+  .class-tab.active { background: #2563eb; border-color: #2563eb; color: white; }
   .category-list { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem; }
   .category-card {
     display: flex; justify-content: space-between; align-items: center;

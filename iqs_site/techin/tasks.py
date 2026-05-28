@@ -1,110 +1,166 @@
+import pickle
+import re
 import time
+
 import gspread
 from celery import shared_task
 from django.conf import settings
 from django.db import transaction
 
-from techin.models import RuleCategory, EventTractorRuleStatus
-from events.models import TractorEvent
-import resources.dict_loader as dict_loader
+from techin.models import (
+    EventTractorRuleStatus,
+    TechinCategoryInstance,
+    TechinRuleInstance,
+)
+from events.models import TractorEvent, Team
+
+
+def _norm(text: str) -> str:
+    return re.sub(r"\s+", " ", text.strip().lower())
 
 
 def compute_status(line: list[str]) -> int:
-    # line indexes based on your script:
-    # pass_check=line[1], fail_check=line[2], corrected_check=line[3]
-    pass_check = len(line) > 1 and line[1] != ""
-    fail_check = len(line) > 2 and line[2] != ""
-    corrected_check = len(line) > 3 and line[3] != ""
+    # Cells are read starting at column C, so:
+    #   C=line[0] content, D=line[1] pass, E=line[2] fail, F=line[3] corrected
+    pass_check = len(line) > 1 and line[1].strip() != ""
+    fail_check = len(line) > 2 and line[2].strip() != ""
+    corrected_check = len(line) > 3 and line[3].strip() != ""
     return 3 if pass_check else 2 if corrected_check else 1 if fail_check else 0
+
+
+def _load_team_resolver():
+    """Resolve a worksheet tab title to a team_id.
+
+    Primary source is the maintained alias pickle (handles abbreviations and
+    alternate spellings). Falls back to exact DB team names.
+    """
+    alias = {}
+    path = getattr(settings, "TECHIN_TEAM_DICT_PATH", None)
+    if path:
+        try:
+            with open(path, "rb") as fh:
+                alias = pickle.load(fh)
+        except (OSError, pickle.PickleError):
+            alias = {}
+    db_names = {t.team_name: t.team_id for t in Team.objects.all()}
+
+    def resolve(title: str):
+        return alias.get(title) or db_names.get(title)
+
+    return resolve
 
 
 @shared_task
 def ping():
     return "pong"
 
+
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=5)
-def scrape_tech_in_task(self, event_id: int = 25) -> dict:
-    """
-    Periodic task: sync rule statuses from Google Sheets into MySQL via Django ORM.
-    """
+def scrape_tech_in_task(self, event_id: int = 26, sheet_names: list[str] | None = None) -> dict:
+    """Sync rule statuses from the per-event category workbooks into MySQL.
 
-    # Better than hardcoding a relative path: store this in settings / env
+    Sheet keys are read from each event's TechinCategoryInstance, and rule rows
+    are matched by normalized rule content (column C). Content is used rather
+    than the column-G checklist number because the rule-source workbook and the
+    team scoring workbooks number rules independently. Pass sheet_names (e.g.
+    ["Overall_Sheet"]) to limit the run to specific category sheets while others
+    are still being filled in.
+    """
     gc = gspread.service_account(filename=settings.GSPREAD_SERVICE_ACCOUNT_JSON)
+    resolve_team = _load_team_resolver()
 
-    rule_categories = RuleCategory.objects.exclude(sheet_name__isnull=True).exclude(sheet_name="")
+    cats = (
+        TechinCategoryInstance.objects
+        .filter(event_id=event_id)
+        .exclude(sheet_key="")
+        .select_related("rule_category")
+    )
+    if sheet_names:
+        cats = cats.filter(sheet_name__in=sheet_names)
 
-    created_or_updated = 0
-    skipped_teams = 0
-    missing_rules = 0
-    bad_tractor_events = 0
+    tractor_event_by_team = {
+        t["team_id"]: t["tractor_event_id"]
+        for t in TractorEvent.objects.filter(event_id=event_id).values("team_id", "tractor_event_id")
+    }
 
-    for cat in rule_categories:
-        workbook = gc.open_by_key(cat.sheet_key)
+    totals = {
+        "event_id": event_id,
+        "sheets": [],
+        "rows_upserted": 0,
+        "skipped_teams": 0,
+        "missing_rules": 0,
+        "bad_tractor_events": 0,
+    }
 
-        # Prefetch tractor events for this event once, for quick lookup
-        tractor_events = TractorEvent.objects.filter(event_id=event_id).values("team_id", "tractor_event_id")
-        tractor_event_by_team = {t["team_id"]: t["tractor_event_id"] for t in tractor_events}
+    for ci in cats:
+        # normalized rule content -> (rule_id, rule_instance_id) for this category
+        rule_lookup = {}
+        rinsts = (
+            TechinRuleInstance.objects
+            .filter(event_id=event_id, subcategory_instance__category_instance=ci)
+            .select_related("rule")
+        )
+        for ri in rinsts:
+            rule_lookup[_norm(ri.rule_content)] = (ri.rule_id, ri.rule_instance_id)
 
+        workbook = gc.open_by_key(ci.sheet_key)
         pending = []
 
         for sheet in workbook.worksheets():
-            team_id = dict_loader.team_dict.get(sheet.title)
+            team_id = resolve_team(sheet.title)
             if team_id is None:
-                skipped_teams += 1
+                totals["skipped_teams"] += 1
                 continue
-
             tractor_event_id = tractor_event_by_team.get(team_id)
             if tractor_event_id is None:
-                bad_tractor_events += 1
+                totals["bad_tractor_events"] += 1
                 continue
 
-            row_start = 10
-            cell_range = f"C{row_start}:L300"
-
+            cell_range = "C10:L300"
             data = None
-            while not data:
+            for _ in range(5):
                 try:
                     data = sheet.get(cell_range)
+                    break
                 except Exception:
-                    # gspread / Google can hiccup; tiny sleep avoids tight-looping
                     time.sleep(0.5)
+            if data is None:
+                continue
 
-            for row_iter, line in enumerate(data):
-                row_number = row_start + row_iter
-
-                if len(line) > 0 and line[0] != "":
-                    rule_id = dict_loader.sheet_rule_dict.get((cat.sheet_name, row_number))
-                    if not rule_id:
-                        missing_rules += 1
-                        continue
-
-                    status = compute_status(line)
-
-                    pending.append(
-                        EventTractorRuleStatus(
-                            event_tractor_id=tractor_event_id,  # works if FK db_column is event_tractor_id
-                            rule_id=rule_id,
-                            status=status,
-                        )
+            for line in data:
+                content = line[0].strip() if len(line) > 0 else ""
+                if not content or content.upper().startswith("NOTE"):
+                    continue
+                hit = rule_lookup.get(_norm(content))
+                if not hit:
+                    totals["missing_rules"] += 1
+                    continue
+                rule_id, rule_instance_id = hit
+                pending.append(
+                    EventTractorRuleStatus(
+                        event_tractor_id=tractor_event_id,
+                        rule_id=rule_id,
+                        rule_instance_id=rule_instance_id,
+                        status=compute_status(line),
                     )
+                )
 
-        # Bulk upsert per category
+        upserted = 0
         if pending:
             with transaction.atomic():
                 for i in range(0, len(pending), 1000):
-                    chunk = pending[i:i+1000]
+                    chunk = pending[i:i + 1000]
+                    # MySQL uses ON DUPLICATE KEY UPDATE against the existing
+                    # (event_tractor_id, rule_id) unique key; it does not accept
+                    # an explicit unique_fields list.
                     EventTractorRuleStatus.objects.bulk_create(
                         chunk,
                         update_conflicts=True,
-                        update_fields=["status"],
-                        unique_fields=["event_tractor", "rule_id"],
+                        update_fields=["status", "rule_instance"],
                     )
-                    created_or_updated += len(chunk)
+                    upserted += len(chunk)
 
-    return {
-        "event_id": event_id,
-        "rows_upserted": created_or_updated,
-        "skipped_teams": skipped_teams,
-        "missing_rules": missing_rules,
-        "bad_tractor_events": bad_tractor_events,
-    }
+        totals["rows_upserted"] += upserted
+        totals["sheets"].append({"sheet_name": ci.sheet_name, "rows_upserted": upserted})
+
+    return totals

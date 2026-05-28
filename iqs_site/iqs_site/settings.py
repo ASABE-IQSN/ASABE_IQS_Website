@@ -385,6 +385,17 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+# Tech-in scrape: gspread service account + maintained team-name alias map.
+# Env values may carry stray quotes/whitespace, so normalize them.
+GSPREAD_SERVICE_ACCOUNT_JSON = os.environ.get(
+    "GSPREAD_SERVICE_ACCOUNT_JSON",
+    "/run/secrets/resources/secrets/google_workers/nimble-equator-463901-k2-d0ff3569c345.json",
+).strip().strip('"').strip()
+TECHIN_TEAM_DICT_PATH = os.environ.get(
+    "TECHIN_TEAM_DICT_PATH",
+    "/run/secrets/resources/team_dict.pkl",
+).strip().strip('"').strip()
+
 APIURL=os.environ["APIURL"]
 
 # ── SeaweedFS / S3-compatible storage ────────────────────────────────

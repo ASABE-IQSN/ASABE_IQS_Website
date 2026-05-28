@@ -5,6 +5,26 @@
 {% block content %}
 <h1>{{ event.event_name }} – Tech Inspection Overview</h1>
 
+<div class="techin-class-selector" style="margin:12px 0; display:flex; gap:8px;">
+  {% for tc in team_classes %}
+    <a href="?class={{ tc.slug }}"
+       style="
+         padding:6px 16px;
+         border-radius:6px;
+         text-decoration:none;
+         font-weight:600;
+         border:1px solid #ccc;
+         {% if tc.id == team_class_id %}background-color:#2563eb;color:white;border-color:#2563eb;{% else %}background-color:#f3f4f6;color:#111;{% endif %}
+       ">
+      {{ tc.label }}
+    </a>
+  {% endfor %}
+</div>
+
+{% if not rows %}
+  <p>No {{ team_class_slug|upper }} teams registered for this event yet.</p>
+{% endif %}
+
 <table>
   <thead>
     <tr>

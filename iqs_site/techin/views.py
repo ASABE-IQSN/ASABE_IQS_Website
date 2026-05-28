@@ -27,6 +27,24 @@ from .models import (
 from .permissions import judge_required, user_can_access_team
 
 
+# 1 = A Team, 2 = X Team. Mirrors teams.team_class_id and
+# rule_category_instances.team_class_id.
+TEAM_CLASSES = [
+    {"id": 1, "slug": "a", "label": "A Team"},
+    {"id": 2, "slug": "x", "label": "X Team"},
+]
+
+
+def _team_class_from_request(request):
+    """Resolve the requested team class from the ?class= query param (default A)."""
+    raw = (request.GET.get("class") or "a").lower()
+    return 2 if raw in ("x", "2") else 1
+
+
+def _team_class_slug(class_id):
+    return "x" if class_id == 2 else "a"
+
+
 def _resolve_rule_instance(event, rule_id):
     """Look up the TechinRuleInstance for a given event + global rule id."""
     return get_object_or_404(
@@ -193,10 +211,11 @@ def _resolve_category_instance(event, category_id):
 
 def event_tech_in_overview(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
+    class_id = _team_class_from_request(request)
 
     category_insts = list(
         TechinCategoryInstance.objects
-        .filter(event=event, released=True)
+        .filter(event=event, released=True, team_class_id=class_id)
         .select_related("rule_category")
         .order_by("display_order", "rule_category__rule_category_name")
     )
@@ -227,7 +246,7 @@ def event_tech_in_overview(request, event_id):
 
     tractor_events = list(
         TractorEvent.objects
-        .filter(event=event, team__team_class=1)
+        .filter(event=event, team__team_class=class_id)
         .select_related("team", "event")
         .order_by("team__team_name")
     )
@@ -268,6 +287,9 @@ def event_tech_in_overview(request, event_id):
         "event": event,
         "categories": category_insts,
         "rows": rows,
+        "team_class_id": class_id,
+        "team_class_slug": _team_class_slug(class_id),
+        "team_classes": TEAM_CLASSES,
     }
     return render(request, "tech_in/overview.html", context)
 
@@ -362,7 +384,7 @@ def team_tech_overview(request, event_id, team_id):
 
         category_insts = list(
             TechinCategoryInstance.objects
-            .filter(event=event, released=True)
+            .filter(event=event, released=True, team_class_id=team.team_class_id)
             .select_related("rule_category")
             .order_by("display_order", "rule_category__rule_category_name")
         )
@@ -577,15 +599,19 @@ STATUS_CHOICES = [(3, "Pass"), (1, "Fail"), (2, "Corrected"), (0, "Not Started")
 @judge_required
 def judge_event_overview(request, event_id):
     event = get_object_or_404(Event, pk=event_id)
+    class_id = _team_class_from_request(request)
     category_insts = list(
         TechinCategoryInstance.objects
-        .filter(event=event, released=True)
+        .filter(event=event, released=True, team_class_id=class_id)
         .select_related("rule_category")
         .order_by("display_order", "rule_category__rule_category_name")
     )
     return render(request, "tech_in/judge/event_overview.html", {
         "event": event,
         "categories": category_insts,
+        "team_class_id": class_id,
+        "team_class_slug": _team_class_slug(class_id),
+        "team_classes": TEAM_CLASSES,
     })
 
 
@@ -603,7 +629,7 @@ def judge_category_teams(request, event_id, category_id):
 
     tractor_events = (
         TractorEvent.objects
-        .filter(event=event, team__team_class=1)
+        .filter(event=event, team__team_class=cat_inst.team_class_id)
         .select_related("team")
         .order_by("team__team_name")
     )
