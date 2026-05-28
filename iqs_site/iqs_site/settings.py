@@ -385,6 +385,16 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+# Dev and prod beat containers share this settings file and the same external
+# DB, so only schedule the tech-in scrape on prod (DEBUG=False) to avoid both
+# machines double-scraping into the same tables.
+if not DEBUG:
+    CELERY_BEAT_SCHEDULE["scrape-techin-event-26"] = {
+        "task": "techin.scrape_tech_in_task",
+        "schedule": crontab(minute="*/5"),  # every 5 minutes
+        "kwargs": {"event_id": 26},
+    }
+
 # Tech-in scrape: gspread service account + maintained team-name alias map.
 # Env values may carry stray quotes/whitespace, so normalize them.
 GSPREAD_SERVICE_ACCOUNT_JSON = os.environ.get(
