@@ -3,6 +3,7 @@ import re
 import time
 
 import gspread
+from gspread.exceptions import APIError
 from celery import shared_task
 from django.conf import settings
 from django.db import transaction
@@ -17,6 +18,29 @@ from events.models import TractorEvent, Team
 
 def _norm(text: str) -> str:
     return re.sub(r"\s+", " ", text.strip().lower())
+
+
+def _is_rate_limit(err: APIError) -> bool:
+    return err.response.status_code == 429
+
+
+def _read_with_backoff(call, max_attempts=6, base_delay=5.0, max_delay=60.0):
+    """Run a Sheets read call, backing off on 429 read-quota errors.
+
+    The Sheets read quota is per-minute-per-user, so retries use exponential
+    backoff (5s, 10s, 20s, ... capped at max_delay). Non-rate-limit errors
+    (e.g. a bad key -> 404) are raised immediately since retrying won't help.
+    Used for every read in the scrape: open_by_key, worksheets(), and get().
+    """
+    delay = base_delay
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return call()
+        except APIError as err:
+            if not _is_rate_limit(err) or attempt == max_attempts:
+                raise
+            time.sleep(min(delay, max_delay))
+            delay *= 2
 
 
 def compute_status(line: list[str]) -> int:
@@ -133,10 +157,10 @@ def scrape_tech_in_task(self, event_id: int = 26, sheet_names: list[str] | None 
         for ri in rinsts:
             rule_lookup[_norm(ri.rule_content)] = (ri.rule_id, ri.rule_instance_id)
 
-        workbook = gc.open_by_key(ci.sheet_key)
+        workbook = _read_with_backoff(lambda: gc.open_by_key(ci.sheet_key))
         pending = []
 
-        for sheet in workbook.worksheets():
+        for sheet in _read_with_backoff(workbook.worksheets):
             team_id = resolve_team(sheet.title)
             if team_id is None:
                 totals["skipped_teams"] += 1
@@ -153,14 +177,11 @@ def scrape_tech_in_task(self, event_id: int = 26, sheet_names: list[str] | None 
                 continue
 
             cell_range = "C10:L300"
-            data = None
-            for _ in range(5):
-                try:
-                    data = sheet.get(cell_range)
-                    break
-                except Exception:
-                    time.sleep(0.5)
-            if data is None:
+            try:
+                data = _read_with_backoff(lambda: sheet.get(cell_range))
+            except Exception:
+                # Rate limit exhausted or another error on this one sheet; skip
+                # it so a single bad tab doesn't abort the whole category scrape.
                 continue
 
             for line in data:
