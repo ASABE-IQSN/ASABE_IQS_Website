@@ -189,13 +189,15 @@ def live_landing(request):
     if event:
         today = _resolve_today(request)
         general, dod, pres = _schedule_today(event, today)
+        durability_summary = _durability_summary(event)
         context["schedule_date"] = today
         context["schedule_date_overridden"] = today != timezone.localdate()
         context.update({
             "leaderboard": _leaderboard(event),
             "current_pull": _current_pull(event),
             "maneuverability_summary": _maneuverability_summary(event),
-            "durability_summary": _durability_summary(event),
+            "durability_summary": durability_summary,
+            "durability_active": any(r.get("state") == "RUNNING" for r in durability_summary),
             "tech_status": _tech_status(event),
             "schedule_today": general,
             "dod_today": dod,

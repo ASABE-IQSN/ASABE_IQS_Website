@@ -225,10 +225,34 @@ function startSSE() {
     updatePollCard(data);
   });
 
+  es.addEventListener("load_toad", (e) => {
+    const d = JSON.parse(e.data);
+    const drivePressure = Number(d.drive_pressure);
+    const speed = Number(d.speed);
+    if (![drivePressure, speed].every(Number.isFinite)) return;
+
+    setField("lt_drive_pressure", drivePressure, 1);
+    setField("lt_speed", speed, 1);
+
+    const card = document.getElementById("loadToadCard");
+    if (card) card.style.display = "";
+  });
+
   es.addEventListener("pull_schedule", (e) => {
     try {
       handlePullSchedule(JSON.parse(e.data) || {});
     } catch (_) {}
+  });
+
+  // ── Durability scene ──────────────────────────────────────────────
+  es.addEventListener("dur_status", (e) => {
+    try { handleDurStatus(JSON.parse(e.data) || {}); } catch (_) {}
+  });
+  es.addEventListener("dur_info", (e) => {
+    try { handleDurInfo(JSON.parse(e.data) || {}); } catch (_) {}
+  });
+  es.addEventListener("dur_data", (e) => {
+    try { handleDurData(JSON.parse(e.data) || {}); } catch (_) {}
   });
 
   es.onerror = (err) => {
@@ -511,7 +535,19 @@ let tractorEnabled  = false;
 let activeTractorId = null;
 let latestInfo      = null;
 
+const pullScene = document.getElementById("pullScene");
+const durabilityScene = document.getElementById("durabilityScene");
+
 function applyOverlayToggle(state) {
+  // Master switches for each scene (default ON unless explicitly false).
+  if (pullScene) {
+    pullScene.classList.toggle("scene-off", state.pull_overlay === false);
+  }
+  if (durabilityScene) {
+    // Durability defaults OFF (only shown when the producer enables it).
+    durabilityScene.classList.toggle("scene-off", state.durability_overlay !== true);
+  }
+
   tractorEnabled = !!state.tractor_card;
   refreshTractorCard();
   upNextEnabled = !!state.up_next;
@@ -650,6 +686,127 @@ function escapeHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
+// =====================================================================
+// Durability scene
+// =====================================================================
+const durFields = {};
+const durStatusPill = document.getElementById("durStatusPill");
+const durStatusText = document.getElementById("durStatusText");
+let durChart = null;
+let durRunId = null;
+const DUR_MAX_POINTS = 10000;
+
+function bindDurFields() {
+  document.querySelectorAll("[data-dur]").forEach((el) => {
+    durFields[el.dataset.dur] = el;
+  });
+}
+
+function setDurField(key, value, digits = null) {
+  const el = durFields[key];
+  if (!el) return;
+  el.textContent =
+    typeof value === "number" && digits !== null ? value.toFixed(digits) : String(value);
+}
+
+function setDurStatus(mode, text) {
+  if (!durStatusPill) return;
+  durStatusPill.classList.remove("status-live", "status-stale");
+  if (mode === "live") durStatusPill.classList.add("status-live");
+  if (mode === "stale") durStatusPill.classList.add("status-stale");
+  if (durStatusText) durStatusText.textContent = text;
+}
+
+function initDurChart() {
+  const ctx = document.getElementById("durChart");
+  if (!ctx) return;
+  durChart = new Chart(ctx, {
+    type: "scatter",
+    data: {
+      datasets: [
+        { label: "Speed (mph)", data: [], yAxisID: "ySpeed",
+          borderColor: "rgb(96,165,250)", showLine: true, pointRadius: 0, borderWidth: 2 },
+        { label: "Pressure (psi)", data: [], yAxisID: "yPressure",
+          borderColor: "rgb(52,211,153)", showLine: true, pointRadius: 0, borderWidth: 2 },
+        { label: "Power (hp)", data: [], yAxisID: "yPower",
+          borderColor: "rgb(251,191,36)", showLine: true, pointRadius: 0, borderWidth: 2 },
+      ],
+    },
+    options: {
+      animation: false,
+      responsive: true,
+      maintainAspectRatio: false,
+      parsing: false,
+      plugins: {
+        legend: { labels: { color: "rgba(226,232,240,0.9)", boxWidth: 10, boxHeight: 10 } },
+        tooltip: { enabled: false },
+      },
+      scales: {
+        x: { type: "linear", min: 0,
+          title: { text: "Elapsed Time (s)", display: true, color: "rgba(148,163,184,0.95)" },
+          ticks: { color: "rgba(148,163,184,0.95)" }, grid: { color: "rgba(148,163,184,0.12)" } },
+        ySpeed: { position: "left", min: 0,
+          title: { text: "Speed (mph)", display: true, color: "rgb(96,165,250)" },
+          ticks: { color: "rgb(96,165,250)" }, grid: { color: "rgba(96,165,250,0.1)" } },
+        yPressure: { position: "right", min: 0,
+          title: { text: "Pressure (psi)", display: true, color: "rgb(52,211,153)" },
+          ticks: { color: "rgb(52,211,153)" }, grid: { drawOnChartArea: false } },
+        yPower: { position: "right", min: 0,
+          title: { text: "Power (hp)", display: true, color: "rgb(251,191,36)" },
+          ticks: { color: "rgb(251,191,36)" }, grid: { drawOnChartArea: false } },
+      },
+    },
+  });
+}
+
+function clearDurChart() {
+  if (!durChart) return;
+  durChart.data.datasets.forEach((ds) => (ds.data.length = 0));
+  durChart.update("none");
+}
+
+function pushDurPoint(t, speed, pressure, power) {
+  if (!durChart) return;
+  durChart.data.datasets[0].data.push({ x: t, y: speed });
+  durChart.data.datasets[1].data.push({ x: t, y: pressure });
+  durChart.data.datasets[2].data.push({ x: t, y: power });
+  if (durChart.data.datasets[0].data.length > DUR_MAX_POINTS) {
+    durChart.data.datasets.forEach((ds) => ds.data.shift());
+  }
+  durChart.update("none");
+}
+
+function handleDurStatus(s) {
+  if (s.run_id !== undefined && s.run_id !== durRunId) {
+    durRunId = s.run_id;
+    clearDurChart();
+  }
+  if (s.status !== undefined) {
+    setDurStatus(s.status === 1 ? "live" : "neutral", s.status === 1 ? "RUNNING" : "Standing by");
+  }
+  if (s.current_lap !== undefined) setDurField("current_lap", s.current_lap);
+  if (s.total_laps !== undefined) setDurField("total_laps", s.total_laps);
+  if (s.elapsed_time !== undefined) setDurField("elapsed_time", Number(s.elapsed_time), 1);
+}
+
+function handleDurInfo(info) {
+  setDurField("team_name", info.team_name || "—");
+  setDurField("team_number", info.team_number ? "#" + info.team_number : "");
+  setDurField("tractor_name", info.tractor_name || "—");
+}
+
+function handleDurData(data) {
+  const speed = Number(data.speed);
+  const pressure = Number(data.pressure);
+  const power = Number(data.power);
+  const t = Number(data.timestamp);
+  if (![speed, pressure, power, t].every(Number.isFinite)) return;
+  setDurField("speed", speed, 1);
+  setDurField("pressure", pressure, 1);
+  setDurField("power", power, 1);
+  pushDurPoint(t, speed, pressure, power);
+}
+
 // --- boot ---
 document.addEventListener("DOMContentLoaded", () => {
   ocReactionBurst = document.getElementById("ocReactionBurst");
@@ -657,6 +814,8 @@ document.addEventListener("DOMContentLoaded", () => {
   ocPollQuestion  = document.getElementById("ocPollQuestion");
   ocPollOptions   = document.getElementById("ocPollOptions");
   initChart();
+  bindDurFields();
+  initDurChart();
   startSSE();
   startStaleMonitor();
 });

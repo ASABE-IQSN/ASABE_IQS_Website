@@ -226,6 +226,85 @@
     padding: 4rem 1rem;
     color: #9ca3af;
   }
+
+  /* Stream call-to-action on the durability card */
+  .stream-cta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 0.6rem;
+    border: 1px solid #1f2937;
+    background: rgba(15, 23, 42, 0.6);
+    color: #cbd5e1;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+  }
+
+  .stream-cta:hover {
+    border-color: #334155;
+    background: rgba(30, 41, 59, 0.8);
+    color: #e5e7eb;
+  }
+
+  .stream-cta-dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 999px;
+    background: #6b7280;
+    flex-shrink: 0;
+  }
+
+  .stream-cta-text { flex: 1; }
+
+  .stream-cta-arrow {
+    color: #9ca3af;
+    transition: transform 0.2s ease;
+  }
+
+  .stream-cta:hover .stream-cta-arrow { transform: translateX(3px); }
+
+  /* Active state: a durability run is currently in progress */
+  .live-card.stream-active {
+    border-color: rgba(239, 68, 68, 0.6);
+    box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.3), 0 10px 25px rgba(15, 23, 42, 0.6);
+  }
+
+  .live-card.stream-active .stream-cta {
+    border-color: rgba(239, 68, 68, 0.55);
+    background: rgba(127, 29, 29, 0.35);
+    color: #fecaca;
+  }
+
+  .live-card.stream-active .stream-cta:hover {
+    background: rgba(127, 29, 29, 0.55);
+    color: #fff;
+  }
+
+  .live-card.stream-active .stream-cta-text::before {
+    content: "LIVE NOW · ";
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+
+  .live-card.stream-active .stream-cta-dot {
+    background: #ef4444;
+    animation: stream-pulse 1.4s ease-in-out infinite;
+  }
+
+  .live-card.stream-active .stream-cta-arrow { color: #fecaca; }
+
+  @keyframes stream-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .live-card.stream-active .stream-cta-dot { animation: none; }
+  }
 </style>
 {% endblock %}
 
@@ -350,13 +429,18 @@
           </table>
         </section>
 
-        <section id="durability-card" class="live-card">
+        <section id="durability-card" class="live-card{% if durability_active %} stream-active{% endif %}">
           <div class="live-card-header">
             <div>
               <div class="live-card-title">Durability</div>
               <div class="live-card-subtitle">Laps & status</div>
             </div>
           </div>
+          <a class="stream-cta" href="{% url 'live:durability' %}">
+            <span class="stream-cta-dot"></span>
+            <span class="stream-cta-text">Watch the live stream &amp; load-toad data</span>
+            <span class="stream-cta-arrow" aria-hidden="true">→</span>
+          </a>
           <table class="live-table" id="durability-table">
             <thead>
               <tr>

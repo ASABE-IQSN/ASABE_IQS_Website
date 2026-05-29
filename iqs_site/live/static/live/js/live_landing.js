@@ -97,6 +97,11 @@
           .join("");
       }
     }
+    const durCard = $("durability-card");
+    if (durCard) {
+      const durActive = (data.durability || []).some((r) => r.state === "RUNNING");
+      durCard.classList.toggle("stream-active", durActive);
+    }
   }
 
   function renderTech(data) {

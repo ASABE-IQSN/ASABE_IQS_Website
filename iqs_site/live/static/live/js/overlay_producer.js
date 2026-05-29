@@ -9,6 +9,17 @@ const refreshBtn    = document.getElementById("refreshBtn");
 const sentToast     = document.getElementById("sentToast");
 const toggleTractorCard = document.getElementById("toggleTractorCard");
 const toggleUpNext      = document.getElementById("toggleUpNext");
+const togglePullOverlay = document.getElementById("togglePullOverlay");
+const toggleDurabilityOverlay = document.getElementById("toggleDurabilityOverlay");
+
+// Map of toggle key → checkbox element. Master scene switches default ON
+// (checked unless explicitly set to false); module switches default OFF.
+const TOGGLES = {
+  tractor_card:      { el: toggleTractorCard,      defaultOn: false },
+  up_next:           { el: toggleUpNext,           defaultOn: false },
+  pull_overlay:      { el: togglePullOverlay,      defaultOn: true  },
+  durability_overlay:{ el: toggleDurabilityOverlay, defaultOn: false },
+};
 
 // ── State ─────────────────────────────────────────────────────────────
 let currentPullId   = null;
@@ -226,10 +237,17 @@ function escHtml(str) {
 // ── Overlay toggles ───────────────────────────────────────────────────
 let suppressToggleEvents = false;
 
+function checkedFor(cfg, state, key) {
+  // Master switches default ON when the key isn't present in state yet.
+  if (cfg.defaultOn) return state[key] !== false;
+  return !!state[key];
+}
+
 function syncToggleUI(state) {
   suppressToggleEvents = true;
-  if (toggleTractorCard) toggleTractorCard.checked = !!state.tractor_card;
-  if (toggleUpNext)      toggleUpNext.checked      = !!state.up_next;
+  for (const [key, cfg] of Object.entries(TOGGLES)) {
+    if (cfg.el) cfg.el.checked = checkedFor(cfg, state, key);
+  }
   suppressToggleEvents = false;
 }
 
@@ -246,8 +264,8 @@ async function sendToggle(key, value) {
   } catch (err) {
     console.warn("Toggle failed", err);
     suppressToggleEvents = true;
-    if (key === "tractor_card" && toggleTractorCard) toggleTractorCard.checked = !value;
-    if (key === "up_next"      && toggleUpNext)      toggleUpNext.checked      = !value;
+    const cfg = TOGGLES[key];
+    if (cfg && cfg.el) cfg.el.checked = !value; // roll back
     suppressToggleEvents = false;
   }
 }
@@ -260,17 +278,11 @@ async function loadToggleState() {
   } catch (_) {}
 }
 
-if (toggleTractorCard) {
-  toggleTractorCard.addEventListener("change", () => {
+for (const [key, cfg] of Object.entries(TOGGLES)) {
+  if (!cfg.el) continue;
+  cfg.el.addEventListener("change", () => {
     if (suppressToggleEvents) return;
-    sendToggle("tractor_card", toggleTractorCard.checked);
-  });
-}
-
-if (toggleUpNext) {
-  toggleUpNext.addEventListener("change", () => {
-    if (suppressToggleEvents) return;
-    sendToggle("up_next", toggleUpNext.checked);
+    sendToggle(key, cfg.el.checked);
   });
 }
 

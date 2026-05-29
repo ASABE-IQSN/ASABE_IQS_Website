@@ -36,6 +36,18 @@
       pointer-events: none; /* don’t steal mouse in OBS */
     }
 
+    /* Each scene fills the overlay; producer master switches toggle them. */
+    .scene {
+      position: absolute;
+      inset: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .scene.scene-off {
+      opacity: 0;
+      visibility: hidden;
+    }
+
     /* Top-left “info bar” */
     .hud {
       position: absolute;
@@ -156,7 +168,8 @@
       color: var(--muted);
     }
 
-    #liveChart {
+    #liveChart,
+    #durChart {
       width: 100%;
       height: calc(100% - 28px);
     }
@@ -599,6 +612,7 @@
 
 <body>
   <div class="overlay">
+   <div id="pullScene" class="scene">
     <div class="hud">
       <div class="hud-row">
         <div class="title">Live Pull</div>
@@ -637,6 +651,22 @@
         <div class="kv">
           <div class="k">Pull</div>
           <div class="v"><span data-field="pull_id">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud" id="loadToadCard" style="display:none; margin-top:10px;">
+      <div class="hud-row">
+        <div class="title">Load Toad</div>
+      </div>
+      <div class="meta">
+        <div class="kv">
+          <div class="k">Drive Pressure</div>
+          <div class="v"><span data-field="lt_drive_pressure">0.0</span> psi</div>
+        </div>
+        <div class="kv">
+          <div class="k">Speed</div>
+          <div class="v"><span data-field="lt_speed">0.0</span> ft/s</div>
         </div>
       </div>
     </div>
@@ -733,6 +763,58 @@
         <p class="tc-bio" id="tcBio"></p>
       </div>
     </div>
+   </div>
+   <!-- ── Durability scene (toggled by producer) ──────────────────── -->
+   <div id="durabilityScene" class="scene scene-off">
+    <div class="hud">
+      <div class="hud-row">
+        <div class="title">Durability</div>
+        <div class="status-pill" id="durStatusPill">
+          <span class="dot"></span>
+          <span id="durStatusText">Standing by</span>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div class="kv">
+          <div class="k">Team</div>
+          <div class="v"><span data-dur="team_name">—</span> <span data-dur="team_number"></span></div>
+        </div>
+        <div class="kv">
+          <div class="k">Tractor</div>
+          <div class="v"><span data-dur="tractor_name">—</span></div>
+        </div>
+        <div class="kv">
+          <div class="k">Lap</div>
+          <div class="v"><span data-dur="current_lap">0</span> / <span data-dur="total_laps">0</span></div>
+        </div>
+        <div class="kv">
+          <div class="k">Elapsed</div>
+          <div class="v"><span data-dur="elapsed_time">0.0</span> s</div>
+        </div>
+        <div class="kv">
+          <div class="k">Speed</div>
+          <div class="v"><span data-dur="speed">0.0</span> mph</div>
+        </div>
+        <div class="kv">
+          <div class="k">Pressure</div>
+          <div class="v"><span data-dur="pressure">0.0</span> psi</div>
+        </div>
+        <div class="kv">
+          <div class="k">Power</div>
+          <div class="v"><span data-dur="power">0.0</span> hp</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <div class="chart-title">Speed, Pressure & Power vs Time</div>
+        <div class="small">Auto-updating</div>
+      </div>
+      <canvas id="durChart"></canvas>
+    </div>
+   </div>
   </div>
 </body>
 </html>

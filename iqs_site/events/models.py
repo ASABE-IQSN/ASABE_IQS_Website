@@ -689,6 +689,54 @@ class DurabilityData(models.Model):
             models.Index(fields=["durability_run"]),
         ]
 
+class EngineData(models.Model):
+    # Engine telemetry sampled continuously while any event (pull or durability)
+    # is active. Each row links to whichever run was live when it was recorded;
+    # the other foreign key is null.
+    engine_data_id = models.AutoField(primary_key=True)
+
+    time = models.FloatField(blank=True, null=True)
+
+    pull = models.ForeignKey(
+        Pull,
+        on_delete=models.PROTECT,
+        db_column="pull_id",
+        to_field="pull_id",
+        related_name="engine_data",
+        db_constraint=False,
+        blank=True,
+        null=True,
+    )
+    durability_run = models.ForeignKey(
+        DurabilityRun,
+        on_delete=models.PROTECT,
+        db_column="durability_run_id",
+        to_field="durability_run_id",
+        related_name="engine_data",
+        db_constraint=False,
+        blank=True,
+        null=True,
+    )
+
+    eng_speed = models.FloatField(blank=True, null=True)
+    eng_percent_torque = models.FloatField(blank=True, null=True)
+    coolant_temp = models.FloatField(blank=True, null=True)
+    oil_press = models.FloatField(blank=True, null=True)
+    oil_temp = models.FloatField(blank=True, null=True)
+    fuel_rate = models.FloatField(blank=True, null=True)
+    turbo_boost_press = models.FloatField(blank=True, null=True)
+    throttle_pos = models.FloatField(blank=True, null=True)
+    percent_load = models.FloatField(blank=True, null=True)
+    fuel_level = models.FloatField(blank=True, null=True)
+
+    class Meta:
+        managed = True
+        db_table = "engine_data"
+        indexes = [
+            models.Index(fields=["pull"]),
+            models.Index(fields=["durability_run"]),
+        ]
+
 class ManeuverabilityRun(models.Model):
     maneuverability_run_id = models.AutoField(primary_key=True)
 
