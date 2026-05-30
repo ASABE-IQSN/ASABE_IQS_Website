@@ -252,6 +252,9 @@ function startSSE() {
   es.addEventListener("dur_data", (e) => {
     try { handleDurData(JSON.parse(e.data) || {}); } catch (_) {}
   });
+  es.addEventListener("dur_clock", (e) => {
+    try { handleDurClock(JSON.parse(e.data) || {}); } catch (_) {}
+  });
 
   // ── Maneuverability scene (HUD stub — no telemetry stream) ─────────
   es.addEventListener("man_status", (e) => {
@@ -850,6 +853,21 @@ function handleDurData(data) {
   setDurField("pressure", pressure, 1);
   setDurField("power", power, 1);
   pushDurPoint(t, speed, pressure, power);
+}
+
+function fmtClock(seconds) {
+  const s = Math.max(0, Math.round(Number(seconds)));
+  const m = Math.floor(s / 60);
+  return m + ":" + String(s % 60).padStart(2, "0");
+}
+
+function handleDurClock(clock) {
+  if (clock.lap_count !== undefined && Number.isFinite(Number(clock.lap_count))) {
+    setDurField("current_lap", Number(clock.lap_count));
+  }
+  if (clock.time_remaining !== undefined && Number.isFinite(Number(clock.time_remaining))) {
+    setDurField("time_remaining", fmtClock(clock.time_remaining));
+  }
 }
 
 // =====================================================================

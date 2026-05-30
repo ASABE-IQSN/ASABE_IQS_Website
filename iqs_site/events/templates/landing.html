@@ -383,6 +383,8 @@
       <p class="hero-sub"></p>
 
       {% if next_event %}
+        {% comment %} Countdown hidden for now — we have an active event and don't want it. {% endcomment %}
+        {% comment %}
         <div class="countdown" id="countdown">
           <div class="count-block">
             <div class="count-number" id="days">--</div>
@@ -401,12 +403,16 @@
             <div class="count-label">Seconds</div>
           </div>
         </div>
+        {% endcomment %}
 
+        {% comment %} Next event line hidden for now — we have an active event and don't want it. {% endcomment %}
+        {% comment %}
         <div class="next-event-info">
           Next event:
           <strong>{{ next_event.event_name }}</strong><br>
           <span>{{ next_event.event_datetime|date:"F d, Y h:i A" }}</span>
         </div>
+        {% endcomment %}
       {% else %}
         <p class="hero-sub">
           There are currently no upcoming events scheduled. Please check back later
@@ -544,7 +550,8 @@
 
 
 {% block extra_scripts %}
-  {% if next_event %}
+  {% comment %} Countdown script disabled while the countdown is hidden (active event). {% endcomment %}
+  {% if next_event and False %}
   <script>
     // next_event.event_datetime -> ISO string for JS
     const targetTime = new Date("{{ next_event.event_datetime|date:'c' }}");
