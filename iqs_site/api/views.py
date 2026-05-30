@@ -1068,17 +1068,32 @@ def overlay_card_trigger(request):
     return Response({"ok": True})
 
 
-_OVERLAY_TOGGLE_KEYS = {"tractor_card", "up_next", "pull_overlay", "durability_overlay"}
+# Every overlay card is an independently-toggleable module. All default OFF
+# (a missing key means the card is hidden); the producer turns each on as needed.
+_OVERLAY_TOGGLE_KEYS = {
+    # Pull data cards
+    "pull_hud", "pull_chart", "load_toad",
+    # Durability data cards
+    "dur_hud", "dur_chart",
+    # Maneuverability data card (HUD only — no telemetry stream yet)
+    "man_hud",
+    # Common cards (shared across all events)
+    "tractor_card", "up_next", "reactions", "poll",
+}
 
 
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminUser])
 def overlay_toggle(request):
-    """Read or update overlay toggle flags (e.g. tractor_card on/off).
+    """Read or update overlay toggle flags (one flag per overlay card).
 
     GET  → returns current toggle state.
-    POST → body { key: "tractor_card", value: true|false }; merges into state,
-           persists in Redis, and publishes so all overlay/producer clients sync.
+    POST → either:
+             - { key: "pull_hud", value: true|false } to set a single flag, or
+             - { state: { pull_hud: false, poll: false, ... } } to merge several
+               at once (used by the producer's "All Off" button).
+           The merged state is persisted in Redis and published so all
+           overlay/producer clients sync.
     """
     import redis as redis_lib
     import json as json_lib
@@ -1096,16 +1111,31 @@ def overlay_toggle(request):
     if request.method == "GET":
         return Response(state)
 
-    key = request.data.get("key")
-    value = request.data.get("value")
-    if key not in _OVERLAY_TOGGLE_KEYS:
-        return Response({"error": f"unknown toggle key: {key}"},
-                        status=status.HTTP_400_BAD_REQUEST)
-    if not isinstance(value, bool):
-        return Response({"error": "value must be boolean"},
-                        status=status.HTTP_400_BAD_REQUEST)
+    # Bulk update form: { state: { key: bool, ... } }
+    bulk = request.data.get("state")
+    if bulk is not None:
+        if not isinstance(bulk, dict):
+            return Response({"error": "state must be an object"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        for k, v in bulk.items():
+            if k not in _OVERLAY_TOGGLE_KEYS:
+                return Response({"error": f"unknown toggle key: {k}"},
+                                status=status.HTTP_400_BAD_REQUEST)
+            if not isinstance(v, bool):
+                return Response({"error": f"value for {k} must be boolean"},
+                                status=status.HTTP_400_BAD_REQUEST)
+            state[k] = v
+    else:
+        key = request.data.get("key")
+        value = request.data.get("value")
+        if key not in _OVERLAY_TOGGLE_KEYS:
+            return Response({"error": f"unknown toggle key: {key}"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(value, bool):
+            return Response({"error": "value must be boolean"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        state[key] = value
 
-    state[key] = value
     payload_str = json_lib.dumps(state)
     r.set("overlay:toggle:latest", payload_str)
     r.publish("overlay:toggle", payload_str)

@@ -36,16 +36,10 @@
       pointer-events: none; /* don’t steal mouse in OBS */
     }
 
-    /* Each scene fills the overlay; producer master switches toggle them. */
-    .scene {
-      position: absolute;
-      inset: 0;
-      transition: opacity 0.4s ease;
-    }
-
-    .scene.scene-off {
-      opacity: 0;
-      visibility: hidden;
+    /* Every card is an independently-toggled module. Cards are hidden by
+       default and the producer turns each one on individually. */
+    .card-off {
+      display: none !important;
     }
 
     /* Top-left “info bar” */
@@ -607,13 +601,14 @@
   <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
 
   <script>window.IQS = { apiUrl: "{{ api_url }}" };</script>
-  <script defer src="{% static 'live/js/live_overlay.js' %}"></script>
+  <script defer src="{% static 'live/js/live_overlay.js' %}?v={{ asset_v }}"></script>
 </head>
 
 <body>
   <div class="overlay">
-   <div id="pullScene" class="scene">
-    <div class="hud">
+
+    <!-- ══ Pull data cards ═══════════════════════════════════════════ -->
+    <div class="hud card-off" id="pullHud" data-card="pull_hud">
       <div class="hud-row">
         <div class="title">Live Pull</div>
         <div class="status-pill" id="statusPill">
@@ -655,7 +650,7 @@
       </div>
     </div>
 
-    <div class="hud" id="loadToadCard" style="display:none; margin-top:10px;">
+    <div class="hud card-off" id="loadToadCard" data-card="load_toad" style="top:210px;">
       <div class="hud-row">
         <div class="title">Load Toad</div>
       </div>
@@ -671,7 +666,7 @@
       </div>
     </div>
 
-    <div class="chart-card">
+    <div class="chart-card card-off" id="pullChartCard" data-card="pull_chart">
       <div class="chart-header">
         <div class="chart-title">Speed & Force vs Distance</div>
         <div class="small">Auto-updating</div>
@@ -679,7 +674,85 @@
       <canvas id="liveChart"></canvas>
     </div>
 
-    <!-- Stat card (single Q&A) -->
+    <!-- ══ Durability data cards ═════════════════════════════════════ -->
+    <div class="hud card-off" id="durHud" data-card="dur_hud">
+      <div class="hud-row">
+        <div class="title">Durability</div>
+        <div class="status-pill" id="durStatusPill">
+          <span class="dot"></span>
+          <span id="durStatusText">Standing by</span>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div class="kv">
+          <div class="k">Team</div>
+          <div class="v"><span data-dur="team_name">—</span> <span data-dur="team_number"></span></div>
+        </div>
+        <div class="kv">
+          <div class="k">Tractor</div>
+          <div class="v"><span data-dur="tractor_name">—</span></div>
+        </div>
+        <div class="kv">
+          <div class="k">Lap</div>
+          <div class="v"><span data-dur="current_lap">0</span> / <span data-dur="total_laps">0</span></div>
+        </div>
+        <div class="kv">
+          <div class="k">Elapsed</div>
+          <div class="v"><span data-dur="elapsed_time">0.0</span> s</div>
+        </div>
+        <div class="kv">
+          <div class="k">Speed</div>
+          <div class="v"><span data-dur="speed">0.0</span> mph</div>
+        </div>
+        <div class="kv">
+          <div class="k">Pressure</div>
+          <div class="v"><span data-dur="pressure">0.0</span> psi</div>
+        </div>
+        <div class="kv">
+          <div class="k">Power</div>
+          <div class="v"><span data-dur="power">0.0</span> hp</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card card-off" id="durChartCard" data-card="dur_chart">
+      <div class="chart-header">
+        <div class="chart-title">Speed, Pressure & Power vs Time</div>
+        <div class="small">Auto-updating</div>
+      </div>
+      <canvas id="durChart"></canvas>
+    </div>
+
+    <!-- ══ Maneuverability data card (HUD stub — no telemetry feed) ═══ -->
+    <div class="hud card-off" id="manHud" data-card="man_hud">
+      <div class="hud-row">
+        <div class="title">Maneuverability</div>
+        <div class="status-pill" id="manStatusPill">
+          <span class="dot"></span>
+          <span id="manStatusText">Standing by</span>
+        </div>
+      </div>
+
+      <div class="meta">
+        <div class="kv">
+          <div class="k">Team</div>
+          <div class="v"><span data-man="team_name">—</span> <span data-man="team_number"></span></div>
+        </div>
+        <div class="kv">
+          <div class="k">Tractor</div>
+          <div class="v"><span data-man="tractor_name">—</span></div>
+        </div>
+        <div class="kv">
+          <div class="k">Event</div>
+          <div class="v"><span data-man="event">—</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Common cards (shared across all events) ═══════════════════ -->
+
+    <!-- Stat card (single Q&A) — operator-triggered via producer Send -->
     <div class="oc-wrap" id="ocStatCard">
       <div class="oc-body">
         <div class="oc-meta">
@@ -763,58 +836,7 @@
         <p class="tc-bio" id="tcBio"></p>
       </div>
     </div>
-   </div>
-   <!-- ── Durability scene (toggled by producer) ──────────────────── -->
-   <div id="durabilityScene" class="scene scene-off">
-    <div class="hud">
-      <div class="hud-row">
-        <div class="title">Durability</div>
-        <div class="status-pill" id="durStatusPill">
-          <span class="dot"></span>
-          <span id="durStatusText">Standing by</span>
-        </div>
-      </div>
 
-      <div class="meta">
-        <div class="kv">
-          <div class="k">Team</div>
-          <div class="v"><span data-dur="team_name">—</span> <span data-dur="team_number"></span></div>
-        </div>
-        <div class="kv">
-          <div class="k">Tractor</div>
-          <div class="v"><span data-dur="tractor_name">—</span></div>
-        </div>
-        <div class="kv">
-          <div class="k">Lap</div>
-          <div class="v"><span data-dur="current_lap">0</span> / <span data-dur="total_laps">0</span></div>
-        </div>
-        <div class="kv">
-          <div class="k">Elapsed</div>
-          <div class="v"><span data-dur="elapsed_time">0.0</span> s</div>
-        </div>
-        <div class="kv">
-          <div class="k">Speed</div>
-          <div class="v"><span data-dur="speed">0.0</span> mph</div>
-        </div>
-        <div class="kv">
-          <div class="k">Pressure</div>
-          <div class="v"><span data-dur="pressure">0.0</span> psi</div>
-        </div>
-        <div class="kv">
-          <div class="k">Power</div>
-          <div class="v"><span data-dur="power">0.0</span> hp</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="chart-card">
-      <div class="chart-header">
-        <div class="chart-title">Speed, Pressure & Power vs Time</div>
-        <div class="small">Auto-updating</div>
-      </div>
-      <canvas id="durChart"></canvas>
-    </div>
-   </div>
   </div>
 </body>
 </html>

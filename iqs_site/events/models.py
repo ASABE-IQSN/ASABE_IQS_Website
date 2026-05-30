@@ -682,6 +682,10 @@ class DurabilityData(models.Model):
     speed=models.FloatField()
     pressure=models.FloatField()
     power=models.FloatField()
+    # Completed-lap count at the time this row was recorded (from the lap_counter).
+    lap_count=models.IntegerField(blank=True, null=True, default=0)
+    # Durability countdown remaining (seconds, clamped at 0) at record time.
+    time_remaining=models.FloatField(blank=True, null=True, default=0)
     class Meta:
         managed = False
         db_table = "durability_data"

@@ -231,11 +231,9 @@ function startSSE() {
     const speed = Number(d.speed);
     if (![drivePressure, speed].every(Number.isFinite)) return;
 
+    // Visibility is controlled by the load_toad toggle; just update values.
     setField("lt_drive_pressure", drivePressure, 1);
     setField("lt_speed", speed, 1);
-
-    const card = document.getElementById("loadToadCard");
-    if (card) card.style.display = "";
   });
 
   es.addEventListener("pull_schedule", (e) => {
@@ -253,6 +251,14 @@ function startSSE() {
   });
   es.addEventListener("dur_data", (e) => {
     try { handleDurData(JSON.parse(e.data) || {}); } catch (_) {}
+  });
+
+  // ── Maneuverability scene (HUD stub — no telemetry stream) ─────────
+  es.addEventListener("man_status", (e) => {
+    try { handleManStatus(JSON.parse(e.data) || {}); } catch (_) {}
+  });
+  es.addEventListener("man_info", (e) => {
+    try { handleManInfo(JSON.parse(e.data) || {}); } catch (_) {}
   });
 
   es.onerror = (err) => {
@@ -473,6 +479,12 @@ function updateReactionCounts(data) {
   });
 
   if (!ocReactionBurst) return;
+  // Only burst when the producer has enabled reactions.
+  if (!reactionsEnabled) {
+    if (reactionBurstTimeline) reactionBurstTimeline.kill();
+    gsap.set(ocReactionBurst, { opacity: 0 });
+    return;
+  }
   if (reactionBurstTimeline) reactionBurstTimeline.kill();
   reactionBurstTimeline = gsap.timeline()
     .set(ocReactionBurst, { opacity: 0 })
@@ -486,6 +498,13 @@ let pollCardTimeline = null;
 
 function updatePollCard(data) {
   if (!ocPollCard) return;
+
+  // Suppress entirely when the producer hasn't enabled the poll card.
+  if (!pollEnabled) {
+    if (pollCardTimeline) pollCardTimeline.kill();
+    gsap.set(ocPollCard, { opacity: 0, visibility: "hidden" });
+    return;
+  }
 
   if (data.status === "closed") {
     if (pollCardTimeline) pollCardTimeline.kill();
@@ -535,23 +554,49 @@ let tractorEnabled  = false;
 let activeTractorId = null;
 let latestInfo      = null;
 
-const pullScene = document.getElementById("pullScene");
-const durabilityScene = document.getElementById("durabilityScene");
+// Static (non-animated) data cards: shown/hidden by toggling `card-off`,
+// keyed by their toggle name. Every card is OFF unless explicitly enabled.
+const STATIC_CARD_IDS = {
+  pull_hud:   "pullHud",
+  pull_chart: "pullChartCard",
+  load_toad:  "loadToadCard",
+  dur_hud:    "durHud",
+  dur_chart:  "durChartCard",
+  man_hud:    "manHud",
+};
+
+// Enable flags for the animated / event-driven common cards.
+let reactionsEnabled = false;
+let pollEnabled      = false;
 
 function applyOverlayToggle(state) {
-  // Master switches for each scene (default ON unless explicitly false).
-  if (pullScene) {
-    pullScene.classList.toggle("scene-off", state.pull_overlay === false);
-  }
-  if (durabilityScene) {
-    // Durability defaults OFF (only shown when the producer enables it).
-    durabilityScene.classList.toggle("scene-off", state.durability_overlay !== true);
+  state = state || {};
+
+  // Static data cards — OFF unless the producer turned them on.
+  for (const [key, id] of Object.entries(STATIC_CARD_IDS)) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle("card-off", state[key] !== true);
   }
 
-  tractorEnabled = !!state.tractor_card;
+  // Animated common cards keep their own .show mechanism via refreshers.
+  tractorEnabled = state.tractor_card === true;
   refreshTractorCard();
-  upNextEnabled = !!state.up_next;
+  upNextEnabled = state.up_next === true;
   refreshUpNextCard();
+
+  // Reaction burst — hide immediately when disabled.
+  reactionsEnabled = state.reactions === true;
+  if (!reactionsEnabled && ocReactionBurst) {
+    if (reactionBurstTimeline) reactionBurstTimeline.kill();
+    gsap.set(ocReactionBurst, { opacity: 0 });
+  }
+
+  // Poll card — hide immediately when disabled.
+  pollEnabled = state.poll === true;
+  if (!pollEnabled && ocPollCard) {
+    if (pollCardTimeline) pollCardTimeline.kill();
+    gsap.set(ocPollCard, { opacity: 0, visibility: "hidden" });
+  }
 }
 
 // --- up next card ---
@@ -807,6 +852,45 @@ function handleDurData(data) {
   pushDurPoint(t, speed, pressure, power);
 }
 
+// =====================================================================
+// Maneuverability scene (HUD stub — man:info / man:status only, no chart)
+// =====================================================================
+const manFields = {};
+const manStatusPill = document.getElementById("manStatusPill");
+const manStatusText = document.getElementById("manStatusText");
+
+function bindManFields() {
+  document.querySelectorAll("[data-man]").forEach((el) => {
+    manFields[el.dataset.man] = el;
+  });
+}
+
+function setManField(key, value) {
+  const el = manFields[key];
+  if (el) el.textContent = String(value);
+}
+
+function setManStatus(mode, text) {
+  if (!manStatusPill) return;
+  manStatusPill.classList.remove("status-live", "status-stale");
+  if (mode === "live") manStatusPill.classList.add("status-live");
+  if (mode === "stale") manStatusPill.classList.add("status-stale");
+  if (manStatusText) manStatusText.textContent = text;
+}
+
+function handleManStatus(s) {
+  if (s.status !== undefined) {
+    setManStatus(s.status === 1 ? "live" : "neutral", s.status === 1 ? "RUNNING" : "Standing by");
+  }
+}
+
+function handleManInfo(info) {
+  setManField("team_name", info.team_name || "—");
+  setManField("team_number", info.team_number ? "#" + info.team_number : "");
+  setManField("tractor_name", info.tractor_name || "—");
+  if (info.event !== undefined && info.event !== null) setManField("event", info.event);
+}
+
 // --- boot ---
 document.addEventListener("DOMContentLoaded", () => {
   ocReactionBurst = document.getElementById("ocReactionBurst");
@@ -816,6 +900,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initChart();
   bindDurFields();
   initDurChart();
+  bindManFields();
   startSSE();
   startStaleMonitor();
 });

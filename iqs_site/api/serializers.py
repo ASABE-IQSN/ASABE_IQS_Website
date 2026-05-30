@@ -318,14 +318,15 @@ class DurabilityRunDetailSerializer(serializers.ModelSerializer):
         data_qs = (DurabilityData.objects
                    .filter(durability_run=obj)
                    .order_by("durability_data_id")
-                   .only("speed", "pressure", "power"))
-        speeds, pressures, powers = [], [], []
+                   .only("speed", "pressure", "power", "lap_count"))
+        speeds, pressures, powers, laps = [], [], [], []
         for row in data_qs:
             if row.speed is None or row.pressure is None or row.power is None:
                 continue
             speeds.append(float(row.speed))
             pressures.append(float(row.pressure))
             powers.append(float(row.power))
+            laps.append(int(row.lap_count) if row.lap_count is not None else 0)
 
         # Downsample if too many points (same logic as views.py)
         max_points = 5000
@@ -334,11 +335,13 @@ class DurabilityRunDetailSerializer(serializers.ModelSerializer):
             speeds = speeds[::step]
             pressures = pressures[::step]
             powers = powers[::step]
+            laps = laps[::step]
 
         return {
             "speeds": speeds,
             "pressures": pressures,
             "powers": powers,
+            "laps": laps,
         }
 
     def get_videos(self, obj):

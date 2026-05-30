@@ -230,10 +230,30 @@ function startSSE() {
     pushPoint(timestamp, speed, pressure, power);
   });
 
+  // Listen for dur_clock event (20-minute countdown from the lap_counter)
+  es.addEventListener("dur_clock", (e) => {
+    const c = JSON.parse(e.data);
+    const remaining = Number(c.time_remaining);
+    if (Number.isFinite(remaining)) {
+      setField("time_remaining", formatClock(remaining));
+    }
+    // Dim the clock when it is not actively counting (armed/stopped/finished).
+    const el = document.querySelector('[data-field="time_remaining"]');
+    if (el) el.style.opacity = c.clock_running ? "1" : "0.5";
+  });
+
   es.onerror = (err) => {
     console.error("SSE error", err);
     // Browser auto-reconnects
   };
+}
+
+// Format seconds remaining as mm:ss (clamped at 0).
+function formatClock(seconds) {
+  const s = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, "0")}`;
 }
 
 // --- Initialization ---

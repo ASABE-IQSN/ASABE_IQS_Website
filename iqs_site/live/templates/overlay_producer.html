@@ -135,6 +135,16 @@
       flex-wrap: wrap;
     }
 
+    .toggle-group-title {
+      font-size: .75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--muted);
+      margin: 1.25rem 0 .6rem;
+    }
+    .toggle-group-title:first-of-type { margin-top: 0; }
+
     .toggle-pill {
       display: inline-flex;
       align-items: center;
@@ -195,7 +205,7 @@
 <script>
   window.IQS = { apiUrl: "{{ api_url }}" };
 </script>
-<script defer src="{% static 'live/js/overlay_producer.js' %}"></script>
+<script defer src="{% static 'live/js/overlay_producer.js' %}?v={{ asset_v }}"></script>
 
 <div class="live-page">
 
@@ -209,35 +219,75 @@
 
   <div class="panel">
     <div class="panel-head">
-      <h2 class="panel-title">Live Scenes</h2>
+      <h2 class="panel-title">Overlay Cards</h2>
+      <button id="allOffBtn" class="chip" style="cursor:pointer;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:.8rem;" title="Turn every overlay card off">All Off</button>
     </div>
     <div class="panel-body">
+      <p class="muted" style="margin:0 0 1rem;font-size:.85rem;">
+        Every card is off by default. Turn on the cards you want for the current event.
+      </p>
+
+      <h3 class="toggle-group-title">Pull</h3>
       <div class="toggles-row">
         <label class="toggle-pill">
-          <input type="checkbox" id="togglePullOverlay">
+          <input type="checkbox" id="togglePullHud">
           <span class="toggle-switch"></span>
           <span>
-            <span class="toggle-label">Pull overlay</span>
-            <span class="toggle-sub">Master switch for the pull overlay scene</span>
+            <span class="toggle-label">Pull HUD</span>
+            <span class="toggle-sub">Team, distance, speed &amp; force info bar</span>
           </span>
         </label>
         <label class="toggle-pill">
-          <input type="checkbox" id="toggleDurabilityOverlay">
+          <input type="checkbox" id="togglePullChart">
           <span class="toggle-switch"></span>
           <span>
-            <span class="toggle-label">Durability overlay</span>
-            <span class="toggle-sub">Master switch for the durability overlay scene</span>
+            <span class="toggle-label">Pull chart</span>
+            <span class="toggle-sub">Live speed &amp; force vs distance graph</span>
+          </span>
+        </label>
+        <label class="toggle-pill">
+          <input type="checkbox" id="toggleLoadToad">
+          <span class="toggle-switch"></span>
+          <span>
+            <span class="toggle-label">Load Toad</span>
+            <span class="toggle-sub">Drive pressure &amp; speed mini-HUD</span>
           </span>
         </label>
       </div>
-    </div>
-  </div>
 
-  <div class="panel">
-    <div class="panel-head">
-      <h2 class="panel-title">Pull Overlay Modules</h2>
-    </div>
-    <div class="panel-body">
+      <h3 class="toggle-group-title">Durability</h3>
+      <div class="toggles-row">
+        <label class="toggle-pill">
+          <input type="checkbox" id="toggleDurHud">
+          <span class="toggle-switch"></span>
+          <span>
+            <span class="toggle-label">Durability HUD</span>
+            <span class="toggle-sub">Lap, elapsed, speed, pressure &amp; power info bar</span>
+          </span>
+        </label>
+        <label class="toggle-pill">
+          <input type="checkbox" id="toggleDurChart">
+          <span class="toggle-switch"></span>
+          <span>
+            <span class="toggle-label">Durability chart</span>
+            <span class="toggle-sub">Speed, pressure &amp; power vs time graph</span>
+          </span>
+        </label>
+      </div>
+
+      <h3 class="toggle-group-title">Maneuverability</h3>
+      <div class="toggles-row">
+        <label class="toggle-pill">
+          <input type="checkbox" id="toggleManHud">
+          <span class="toggle-switch"></span>
+          <span>
+            <span class="toggle-label">Maneuverability HUD</span>
+            <span class="toggle-sub">Team &amp; tractor info bar</span>
+          </span>
+        </label>
+      </div>
+
+      <h3 class="toggle-group-title">Common (all events)</h3>
       <div class="toggles-row">
         <label class="toggle-pill">
           <input type="checkbox" id="toggleTractorCard">
@@ -252,7 +302,23 @@
           <span class="toggle-switch"></span>
           <span>
             <span class="toggle-label">Up Next</span>
-            <span class="toggle-sub">Next 5 pulls with team &amp; expected time</span>
+            <span class="toggle-sub">Next 5 runs with team &amp; expected time</span>
+          </span>
+        </label>
+        <label class="toggle-pill">
+          <input type="checkbox" id="toggleReactions">
+          <span class="toggle-switch"></span>
+          <span>
+            <span class="toggle-label">Reactions</span>
+            <span class="toggle-sub">Live emoji reaction burst</span>
+          </span>
+        </label>
+        <label class="toggle-pill">
+          <input type="checkbox" id="togglePoll">
+          <span class="toggle-switch"></span>
+          <span>
+            <span class="toggle-label">Poll</span>
+            <span class="toggle-sub">Live audience poll card</span>
           </span>
         </label>
       </div>

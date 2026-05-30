@@ -7,18 +7,25 @@ const teamNameInline = document.getElementById("teamNameInline");
 const responsesBody = document.getElementById("responsesBody");
 const refreshBtn    = document.getElementById("refreshBtn");
 const sentToast     = document.getElementById("sentToast");
-const toggleTractorCard = document.getElementById("toggleTractorCard");
-const toggleUpNext      = document.getElementById("toggleUpNext");
-const togglePullOverlay = document.getElementById("togglePullOverlay");
-const toggleDurabilityOverlay = document.getElementById("toggleDurabilityOverlay");
+const allOffBtn = document.getElementById("allOffBtn");
 
-// Map of toggle key → checkbox element. Master scene switches default ON
-// (checked unless explicitly set to false); module switches default OFF.
+// Map of toggle key → checkbox element. Every overlay card is its own module
+// and defaults OFF; the producer turns each one on individually.
 const TOGGLES = {
-  tractor_card:      { el: toggleTractorCard,      defaultOn: false },
-  up_next:           { el: toggleUpNext,           defaultOn: false },
-  pull_overlay:      { el: togglePullOverlay,      defaultOn: true  },
-  durability_overlay:{ el: toggleDurabilityOverlay, defaultOn: false },
+  // Pull data cards
+  pull_hud:     { el: document.getElementById("togglePullHud") },
+  pull_chart:   { el: document.getElementById("togglePullChart") },
+  load_toad:    { el: document.getElementById("toggleLoadToad") },
+  // Durability data cards
+  dur_hud:      { el: document.getElementById("toggleDurHud") },
+  dur_chart:    { el: document.getElementById("toggleDurChart") },
+  // Maneuverability data card
+  man_hud:      { el: document.getElementById("toggleManHud") },
+  // Common cards (shared across all events)
+  tractor_card: { el: document.getElementById("toggleTractorCard") },
+  up_next:      { el: document.getElementById("toggleUpNext") },
+  reactions:    { el: document.getElementById("toggleReactions") },
+  poll:         { el: document.getElementById("togglePoll") },
 };
 
 // ── State ─────────────────────────────────────────────────────────────
@@ -237,18 +244,29 @@ function escHtml(str) {
 // ── Overlay toggles ───────────────────────────────────────────────────
 let suppressToggleEvents = false;
 
-function checkedFor(cfg, state, key) {
-  // Master switches default ON when the key isn't present in state yet.
-  if (cfg.defaultOn) return state[key] !== false;
-  return !!state[key];
-}
-
 function syncToggleUI(state) {
   suppressToggleEvents = true;
   for (const [key, cfg] of Object.entries(TOGGLES)) {
-    if (cfg.el) cfg.el.checked = checkedFor(cfg, state, key);
+    if (cfg.el) cfg.el.checked = state[key] === true;
   }
   suppressToggleEvents = false;
+}
+
+async function allOff() {
+  // Build a bulk state object turning every known card off.
+  const offState = {};
+  for (const key of Object.keys(TOGGLES)) offState[key] = false;
+  try {
+    const res = await fetch("/api/v1/overlay/toggle/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": getCsrf() },
+      body: JSON.stringify({ state: offState }),
+    });
+    if (!res.ok) throw new Error(res.status);
+    syncToggleUI(await res.json());
+  } catch (err) {
+    console.warn("All Off failed", err);
+  }
 }
 
 async function sendToggle(key, value) {
@@ -288,5 +306,6 @@ for (const [key, cfg] of Object.entries(TOGGLES)) {
 
 // ── Boot ──────────────────────────────────────────────────────────────
 refreshBtn.addEventListener("click", fetchResponses);
+if (allOffBtn) allOffBtn.addEventListener("click", allOff);
 startSSE();
 loadToggleState();

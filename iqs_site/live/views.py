@@ -11,8 +11,23 @@ from techin.models import RuleCategory, EventTractorRuleStatus
 from schedule.models import ScheduleItem
 from django.conf import settings
 from compforms.models import OverlayScene
+from django.contrib.staticfiles import finders
+import os
 import json
 # Create your views here.
+
+
+def _asset_version(*static_paths):
+    """Cache-busting token for static assets served from the (un-hashed)
+    seaweedfs bucket. Returns the newest source mtime so a normal browser
+    reload re-fetches the JS/CSS after a deploy + collectstatic, instead of
+    running a stale cached copy (e.g. a long-lived OBS overlay source)."""
+    latest = 0
+    for path in static_paths:
+        fp = finders.find(path)
+        if fp and os.path.exists(fp):
+            latest = max(latest, int(os.path.getmtime(fp)))
+    return latest
 
 
 # ── Live landing helpers ───────────────────────────────────────────────────────
@@ -249,13 +264,19 @@ def live_durability(request):
     return render(request, "live_durability.html", context)
 
 def overlay(request):
-    context = {"api_url": settings.APIURL}
+    context = {
+        "api_url": settings.APIURL,
+        "asset_v": _asset_version("live/js/live_overlay.js"),
+    }
     return render(request, "overlay.html", context)
 
 
 @staff_member_required
 def overlay_producer(request):
-    context = {"api_url": settings.APIURL}
+    context = {
+        "api_url": settings.APIURL,
+        "asset_v": _asset_version("live/js/overlay_producer.js"),
+    }
     return render(request, "overlay_producer.html", context)
 
 
