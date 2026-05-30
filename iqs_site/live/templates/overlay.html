@@ -47,13 +47,39 @@
       position: absolute;
       left: 24px;
       top: 24px;
-      width: min(720px, calc(100% - 48px));
+      width: min(800px, calc(100% - 48px));
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       backdrop-filter: blur(10px);
       padding: 16px 18px;
+    }
+
+    /* Durability HUD sits in the bottom-left corner. Top row holds team +
+       tractor (each spanning half), bottom row holds the four metrics. */
+    #durHud {
+      top: auto;
+      bottom: 24px;
+      left: 24px;
+    }
+    #durHud .meta {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    #durHud .dur-wide {
+      grid-column: span 2;
+    }
+
+    /* Maneuverability HUD sits in the bottom-right corner. Only team +
+       tractor are shown, so split the row evenly into two columns. */
+    #manHud {
+      left: auto;
+      right: 24px;
+      top: auto;
+      bottom: 24px;
+    }
+    #manHud .meta {
+      grid-template-columns: repeat(2, 1fr);
     }
 
     .hud-row {
@@ -64,7 +90,7 @@
     }
 
     .title {
-      font-size: 18px;
+      font-size: 25px;
       font-weight: 700;
       letter-spacing: 0.2px;
     }
@@ -77,7 +103,7 @@
       border-radius: 999px;
       background: rgba(2, 6, 23, 0.6);
       border: 1px solid var(--line);
-      font-size: 12px;
+      font-size: 15px;
       color: var(--muted);
     }
 
@@ -101,27 +127,27 @@
       margin-top: 10px;
       display: grid;
       grid-template-columns: 1.2fr 0.8fr 1fr;
-      gap: 10px 14px;
-      font-size: 14px;
+      gap: 10px 13px;
+      font-size: 19px;
     }
 
     .kv {
       background: var(--panel2);
       border: 1px solid var(--line);
       border-radius: 14px;
-      padding: 10px 12px;
+      padding: 11px 13px;
       min-width: 0;
     }
 
     .k {
-      font-size: 11px;
+      font-size: 14px;
       color: var(--muted);
       letter-spacing: 0.3px;
       text-transform: uppercase;
       margin-bottom: 4px;
     }
     .v {
-      font-size: 16px;
+      font-size: 21px;
       font-weight: 700;
       white-space: nowrap;
       overflow: hidden;
@@ -133,8 +159,8 @@
       position: absolute;
       left: 24px;
       bottom: 24px;
-      width: min(920px, calc(100% - 48px));
-      height: 260px;
+      width: min(1000px, calc(100% - 48px));
+      height: 290px;
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -152,13 +178,13 @@
     }
 
     .chart-title {
-      font-size: 13px;
+      font-size: 18px;
       font-weight: 700;
       color: rgba(226, 232, 240, 0.92);
     }
 
     .small {
-      font-size: 12px;
+      font-size: 15px;
       color: var(--muted);
     }
 
@@ -176,7 +202,7 @@
       position: absolute;
       right: 24px;
       bottom: 24px;
-      width: min(460px, calc(100% - 48px));
+      width: min(500px, calc(100% - 48px));
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -201,7 +227,7 @@
     }
 
     .oc-badge {
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .12em;
@@ -213,7 +239,7 @@
     }
 
     .oc-team {
-      font-size: 12px;
+      font-size: 14px;
       color: rgba(148,163,184,.85);
       white-space: nowrap;
       overflow: hidden;
@@ -221,14 +247,14 @@
     }
 
     .oc-question {
-      font-size: 13px;
+      font-size: 17px;
       color: rgba(148,163,184,.85);
       margin: 0 0 7px;
       line-height: 1.45;
     }
 
     .oc-answer {
-      font-size: 20px;
+      font-size: 26px;
       font-weight: 700;
       color: rgba(226,232,240,.97);
       line-height: 1.35;
@@ -276,7 +302,7 @@
     .oc-profile-text { flex: 1; min-width: 0; }
 
     .oc-profile-name {
-      font-size: 20px;
+      font-size: 26px;
       font-weight: 800;
       color: rgba(226,232,240,.97);
       margin-bottom: 5px;
@@ -284,7 +310,7 @@
     }
 
     .oc-profile-bio {
-      font-size: 13px;
+      font-size: 15px;
       color: rgba(148,163,184,.9);
       line-height: 1.45;
       margin-bottom: 8px;
@@ -293,7 +319,7 @@
     .oc-profile-stats { display: flex; flex-direction: column; gap: 4px; }
 
     .oc-profile-stat {
-      font-size: 13px;
+      font-size: 15px;
       color: rgba(226,232,240,.8);
     }
 
@@ -314,7 +340,7 @@
     }
 
     .oc-image-caption-text {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 600;
       color: rgba(226,232,240,.92);
     }
@@ -338,7 +364,7 @@
       border: 1px solid var(--line);
       border-radius: 999px;
       padding: 6px 12px;
-      font-size: 16px;
+      font-size: 19px;
       font-weight: 700;
       color: var(--text);
       box-shadow: var(--shadow);
@@ -346,7 +372,7 @@
     }
 
     .reaction-chip .rc-count {
-      font-size: 13px;
+      font-size: 15px;
       color: var(--muted);
     }
 
@@ -354,8 +380,8 @@
     #ocPollCard {
       position: absolute;
       left: 24px;
-      bottom: 308px; /* above chart-card (260px + 24px + some gap) */
-      width: min(480px, calc(100% - 48px));
+      bottom: 338px; /* above chart-card (290px + 24px + some gap) */
+      width: min(520px, calc(100% - 48px));
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -367,7 +393,7 @@
     }
 
     #ocPollQuestion {
-      font-size: 15px;
+      font-size: 18px;
       font-weight: 700;
       color: var(--text);
       margin-bottom: 12px;
@@ -380,7 +406,7 @@
     .poll-option-label {
       display: flex;
       justify-content: space-between;
-      font-size: 13px;
+      font-size: 15px;
       color: var(--muted);
       margin-bottom: 4px;
     }
@@ -404,7 +430,7 @@
       position: absolute;
       right: 24px;
       top: 50%;
-      width: min(380px, calc(100% - 48px));
+      width: min(420px, calc(100% - 48px));
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -466,7 +492,7 @@
       position: absolute;
       top: 12px;
       left: 12px;
-      font-size: 10px;
+      font-size: 12px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: .15em;
@@ -483,7 +509,7 @@
     }
 
     .tc-name {
-      font-size: 22px;
+      font-size: 28px;
       font-weight: 800;
       line-height: 1.15;
       margin: 0 0 4px;
@@ -491,7 +517,7 @@
     }
 
     .tc-sub {
-      font-size: 12px;
+      font-size: 14px;
       color: var(--muted);
       margin-bottom: 10px;
       display: flex;
@@ -505,7 +531,7 @@
       position: absolute;
       right: 24px;
       top: 80px;
-      width: min(360px, calc(100% - 48px));
+      width: min(400px, calc(100% - 48px));
       background: var(--panel);
       border: 1px solid var(--line);
       border-radius: var(--radius);
@@ -535,7 +561,7 @@
       margin-bottom: 10px;
     }
     .un-title {
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 800;
       text-transform: uppercase;
       letter-spacing: .18em;
@@ -557,13 +583,13 @@
       border-radius: 10px;
     }
     .un-order {
-      font-size: 13px;
+      font-size: 15px;
       font-weight: 800;
       color: rgba(148,163,184,.85);
       text-align: center;
     }
     .un-team {
-      font-size: 14px;
+      font-size: 16px;
       font-weight: 700;
       color: var(--text);
       white-space: nowrap;
@@ -571,20 +597,20 @@
       text-overflow: ellipsis;
     }
     .un-time {
-      font-size: 12px;
+      font-size: 14px;
       color: var(--muted);
       font-variant-numeric: tabular-nums;
       white-space: nowrap;
     }
     .un-empty {
-      font-size: 12px;
+      font-size: 14px;
       color: var(--muted);
       text-align: center;
       padding: 8px 0;
     }
 
     .tc-bio {
-      font-size: 13px;
+      font-size: 15px;
       line-height: 1.5;
       color: rgba(226, 232, 240, 0.88);
       margin: 0;
@@ -650,7 +676,7 @@
       </div>
     </div>
 
-    <div class="hud card-off" id="loadToadCard" data-card="load_toad" style="top:210px;">
+    <div class="hud card-off" id="loadToadCard" data-card="load_toad" style="top:252px;">
       <div class="hud-row">
         <div class="title">Load Toad</div>
       </div>
@@ -685,25 +711,21 @@
       </div>
 
       <div class="meta">
-        <div class="kv">
+        <div class="kv dur-wide">
           <div class="k">Team</div>
           <div class="v"><span data-dur="team_name">—</span> <span data-dur="team_number"></span></div>
         </div>
-        <div class="kv">
+        <div class="kv dur-wide">
           <div class="k">Tractor</div>
           <div class="v"><span data-dur="tractor_name">—</span></div>
         </div>
         <div class="kv">
-          <div class="k">Lap</div>
-          <div class="v"><span data-dur="current_lap">0</span> / <span data-dur="total_laps">0</span></div>
+          <div class="k">Laps Completed</div>
+          <div class="v"><span data-dur="current_lap">0</span></div>
         </div>
         <div class="kv">
           <div class="k">Clock</div>
           <div class="v"><span data-dur="time_remaining">—</span></div>
-        </div>
-        <div class="kv">
-          <div class="k">Elapsed</div>
-          <div class="v"><span data-dur="elapsed_time">0.0</span> s</div>
         </div>
         <div class="kv">
           <div class="k">Speed</div>
@@ -712,10 +734,6 @@
         <div class="kv">
           <div class="k">Pressure</div>
           <div class="v"><span data-dur="pressure">0.0</span> psi</div>
-        </div>
-        <div class="kv">
-          <div class="k">Power</div>
-          <div class="v"><span data-dur="power">0.0</span> hp</div>
         </div>
       </div>
     </div>
@@ -746,10 +764,6 @@
         <div class="kv">
           <div class="k">Tractor</div>
           <div class="v"><span data-man="tractor_name">—</span></div>
-        </div>
-        <div class="kv">
-          <div class="k">Event</div>
-          <div class="v"><span data-man="event">—</span></div>
         </div>
       </div>
     </div>
