@@ -29,9 +29,14 @@ const TOGGLES = {
 };
 
 // ── State ─────────────────────────────────────────────────────────────
-let currentPullId   = null;
+// The producer follows whichever activity a team is currently running.
+// activeSource.type is "pull" | "dur" | "man"; id is the matching run id.
+let activeSource    = { type: null, id: null };
 let currentTeamName = null;
 let toastTimer      = null;
+
+// Query-param name the active-responses endpoint expects per activity type.
+const SOURCE_PARAM = { pull: "pull_id", dur: "dur_run_id", man: "man_run_id" };
 
 // ── CSRF ──────────────────────────────────────────────────────────────
 function getCsrf() {
@@ -44,18 +49,24 @@ function getCsrf() {
 function startSSE() {
   const es = new EventSource(window.IQS.apiUrl + "/api/stream");
 
-  // status and pull_status both carry pull_id
-  function handleStatus(e) {
-    const s = JSON.parse(e.data);
-    const newPullId = s.pull_id ?? null;
-    if (newPullId !== currentPullId) {
-      currentPullId = newPullId;
-      fetchResponses();
-    }
+  // Status events identify the team's active run. Pull streams carry pull_id;
+  // durability/maneuverability streams carry run_id. Whichever activity reports
+  // a valid id most recently becomes the source we show responses for.
+  function statusHandler(type, idField) {
+    return (e) => {
+      const s = JSON.parse(e.data);
+      const newId = s[idField] ?? null;
+      if (type !== activeSource.type || newId !== activeSource.id) {
+        activeSource = { type: newId == null ? null : type, id: newId };
+        fetchResponses();
+      }
+    };
   }
 
-  es.addEventListener("status", handleStatus);
-  es.addEventListener("pull_status", handleStatus);
+  es.addEventListener("status",      statusHandler("pull", "pull_id"));
+  es.addEventListener("pull_status", statusHandler("pull", "pull_id"));
+  es.addEventListener("dur_status",  statusHandler("dur",  "run_id"));
+  es.addEventListener("man_status",  statusHandler("man",  "run_id"));
 
   // info events carry team name for the header display only
   function handleInfo(e) {
@@ -64,8 +75,10 @@ function startSSE() {
     updateTeamHeader();
   }
 
-  es.addEventListener("info", handleInfo);
+  es.addEventListener("info",      handleInfo);
   es.addEventListener("pull_info", handleInfo);
+  es.addEventListener("dur_info",  handleInfo);
+  es.addEventListener("man_info",  handleInfo);
 
   es.addEventListener("overlay_toggle", (e) => {
     try {
@@ -93,13 +106,14 @@ function updateTeamHeader() {
 
 // ── Fetch responses ────────────────────────────────────────────────────
 async function fetchResponses() {
-  if (!currentPullId) {
-    responsesBody.innerHTML = '<div class="empty">No active pull.</div>';
+  const param = SOURCE_PARAM[activeSource.type];
+  if (!param || !activeSource.id) {
+    responsesBody.innerHTML = '<div class="empty">No active run.</div>';
     return;
   }
   responsesBody.innerHTML = '<div class="empty">Loading…</div>';
   try {
-    const res = await fetch(`/api/v1/overlay/active-responses/?pull_id=${currentPullId}`);
+    const res = await fetch(`/api/v1/overlay/active-responses/?${param}=${activeSource.id}`);
     if (!res.ok) throw new Error(res.status);
     const data = await res.json();
 

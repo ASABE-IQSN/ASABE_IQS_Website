@@ -891,16 +891,30 @@ def overlay_active_responses(request):
     from collections import defaultdict
     from compforms.models import FormResponse, GroupOverlayConfig, GroupQuestion, TeamQuestionAssignment
 
+    # The producer page follows whichever activity a team is running, so the
+    # team + event can be resolved from a pull, durability run, or
+    # maneuverability run id. Whichever id is supplied wins.
     pull_id = request.query_params.get("pull_id")
-    if not pull_id:
+    dur_run_id = request.query_params.get("dur_run_id")
+    man_run_id = request.query_params.get("man_run_id")
+
+    if pull_id:
+        run = get_object_or_404(
+            Pull.objects.select_related("team", "event"), pk=pull_id,
+        )
+    elif dur_run_id:
+        run = get_object_or_404(
+            DurabilityRun.objects.select_related("team", "event"), pk=dur_run_id,
+        )
+    elif man_run_id:
+        run = get_object_or_404(
+            ManeuverabilityRun.objects.select_related("team", "event"), pk=man_run_id,
+        )
+    else:
         return Response({"team": None, "individual_responses": [], "layout_groups": []})
 
-    pull = get_object_or_404(
-        Pull.objects.select_related("team", "event"),
-        pk=pull_id,
-    )
-    team = pull.team
-    event = pull.event
+    team = run.team
+    event = run.event
     event_team = EventTeam.objects.filter(event=event, team=team).first()
     if not event_team:
         return Response({
