@@ -56,6 +56,14 @@
       padding: 16px 18px;
     }
 
+    /* Pull HUD sits in the bottom-left corner. */
+    #pullHud {
+      top: auto;
+      bottom: 24px;
+      left: 24px;
+      width: min(420px, calc(100% - 48px));
+    }
+
     /* Durability HUD sits in the bottom-left corner. Top row holds team +
        tractor (each spanning half), bottom row holds the four metrics. */
     #durHud {
@@ -663,17 +671,12 @@
 
         <div class="kv">
           <div class="k">Speed</div>
-          <div class="v"><span data-field="speed">0.0</span> ft/s</div>
+          <div class="v"><span data-field="speed">0.0</span> mph</div>
         </div>
 
         <div class="kv">
           <div class="k">Force</div>
           <div class="v"><span data-field="force">0</span> lbf</div>
-        </div>
-
-        <div class="kv">
-          <div class="k">Pull</div>
-          <div class="v"><span data-field="pull_id">—</span></div>
         </div>
       </div>
     </div>

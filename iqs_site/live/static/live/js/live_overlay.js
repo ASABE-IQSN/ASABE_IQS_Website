@@ -163,7 +163,6 @@ function startSSE() {
     // detect pull change
     if (s.pull_id !== pull_id) {
       pull_id = s.pull_id;
-      setField("pull_id", pull_id ?? "—");
       clearChart();
     }
 
@@ -202,8 +201,8 @@ function startSSE() {
     lastDataMs = Date.now();
     if (pull_active) setStatus("live", "LIVE");
 
-    // update page fields
-    setField("speed", speed, 1);
+    // update page fields (telemetry speed is ft/s; HUD displays mph)
+    setField("speed", speed * 0.681818, 1);
     setField("force", force, 0);
     setField("distance", distance, 1);
 
