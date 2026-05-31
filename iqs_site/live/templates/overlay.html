@@ -62,27 +62,29 @@
       top: auto;
       bottom: 24px;
       left: 24px;
-      width: min(640px, calc(100% - 48px));
+      width: min(760px, calc(100% - 48px));
     }
     #pullHud .meta {
       display: flex;
-      align-items: stretch;
+      align-items: center;
       gap: 13px;
     }
-    /* Left: team name above hook name. */
+    /* Left: team name above hook name — given the bulk of the width. */
     #pullHud .pull-left {
-      flex: 1 1 0;
+      flex: 1.7 1 0;
       min-width: 0;
       display: flex;
       flex-direction: column;
       gap: 10px;
     }
-    /* Right: speed / distance / force side by side, centered vertically. */
+    /* Right: speed / distance / force in a 2-column grid (flows to two rows),
+       centered against the team/hook stack. */
     #pullHud .pull-right {
-      flex: 1.6 1 0;
+      flex: 1 1 0;
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 13px;
+      grid-template-columns: repeat(2, 1fr);
+      align-items: center;
+      gap: 10px 13px;
     }
 
     /* Durability HUD sits in the bottom-left corner. Top row holds team +
