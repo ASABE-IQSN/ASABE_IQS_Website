@@ -56,19 +56,33 @@
       padding: 16px 18px;
     }
 
-    /* Pull HUD sits in the bottom-left corner. Team name and hook each get
-       their own full-width row; speed / distance / force share a final row. */
+    /* Pull HUD sits in the bottom-left corner. Wide + short: team and hook
+       stack on the left, the telemetry fields sit in a row on the right. */
     #pullHud {
       top: auto;
       bottom: 24px;
       left: 24px;
-      width: min(420px, calc(100% - 48px));
+      width: min(640px, calc(100% - 48px));
     }
     #pullHud .meta {
-      grid-template-columns: repeat(3, 1fr);
+      display: flex;
+      align-items: stretch;
+      gap: 13px;
     }
-    #pullHud .pull-wide {
-      grid-column: 1 / -1;
+    /* Left: team name above hook name. */
+    #pullHud .pull-left {
+      flex: 1 1 0;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    /* Right: speed / distance / force side by side, centered vertically. */
+    #pullHud .pull-right {
+      flex: 1.6 1 0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 13px;
     }
 
     /* Durability HUD sits in the bottom-left corner. Top row holds team +
@@ -661,29 +675,33 @@
       </div>
 
       <div class="meta">
-        <div class="kv pull-wide">
-          <div class="k">Team</div>
-          <div class="v"><span data-field="team_name">TEAM</span> <span data-field="team_number">#</span></div>
+        <div class="pull-left">
+          <div class="kv">
+            <div class="k">Team</div>
+            <div class="v"><span data-field="team_name">TEAM</span> <span data-field="team_number">#</span></div>
+          </div>
+
+          <div class="kv">
+            <div class="k">Hook</div>
+            <div class="v"><span data-field="hook_name">HOOK</span></div>
+          </div>
         </div>
 
-        <div class="kv pull-wide">
-          <div class="k">Hook</div>
-          <div class="v"><span data-field="hook_name">HOOK</span></div>
-        </div>
+        <div class="pull-right">
+          <div class="kv">
+            <div class="k">Speed</div>
+            <div class="v"><span data-field="speed">0.0</span> mph</div>
+          </div>
 
-        <div class="kv">
-          <div class="k">Speed</div>
-          <div class="v"><span data-field="speed">0.0</span> mph</div>
-        </div>
+          <div class="kv">
+            <div class="k">Distance</div>
+            <div class="v"><span data-field="distance">0.0</span> ft</div>
+          </div>
 
-        <div class="kv">
-          <div class="k">Distance</div>
-          <div class="v"><span data-field="distance">0.0</span> ft</div>
-        </div>
-
-        <div class="kv">
-          <div class="k">Force</div>
-          <div class="v"><span data-field="force">0</span> lbf</div>
+          <div class="kv">
+            <div class="k">Force</div>
+            <div class="v"><span data-field="force">0</span> lbf</div>
+          </div>
         </div>
       </div>
     </div>

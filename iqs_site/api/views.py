@@ -1039,6 +1039,41 @@ def overlay_active_responses(request):
     })
 
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def overlay_preload_images(request):
+    """Image URLs for the team on the given pull, so the public overlay can
+    warm them into the browser cache the moment the current pull switches —
+    making driver/headshot cards appear instantly when sent on air.
+
+    Unlike overlay_active_responses this is unauthenticated, so it deliberately
+    exposes ONLY media URLs (no answer text or question content).
+    """
+    from compforms.models import QuestionResponse
+
+    pull_id = request.query_params.get("pull_id")
+    if not pull_id:
+        return Response({"images": []})
+
+    run = Pull.objects.filter(pk=pull_id).select_related("team", "event").first()
+    if not run:
+        return Response({"images": []})
+
+    event_team = EventTeam.objects.filter(event=run.event, team=run.team).first()
+    if not event_team:
+        return Response({"images": []})
+
+    qs = (
+        QuestionResponse.objects
+        .filter(form_response__event_form__event=run.event,
+                form_response__event_team=event_team)
+        .exclude(image="")
+        .exclude(image__isnull=True)
+    )
+    images = [request.build_absolute_uri(qa.image.url) for qa in qs if qa.image]
+    return Response({"images": images})
+
+
 @api_view(["POST"])
 @permission_classes([IsAdminUser])
 def overlay_card_trigger(request):

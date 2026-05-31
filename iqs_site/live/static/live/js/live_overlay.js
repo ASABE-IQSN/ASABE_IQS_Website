@@ -164,6 +164,9 @@ function startSSE() {
     if (s.pull_id !== pull_id) {
       pull_id = s.pull_id;
       clearChart();
+      // Warm this team's response images (driver headshots, etc.) into cache
+      // so cards sent on air appear instantly instead of loading live.
+      preloadPullImages(pull_id);
     }
 
     pull_active = s.status === 1;
@@ -689,7 +692,44 @@ function refreshUpNextCard() {
 
 function handleTractorInfo(info) {
   latestInfo = info;
+  // Warm the tractor photo into cache as soon as the pull switches, even if the
+  // tractor card toggle is off, so it appears instantly when turned on.
+  preloadTractorPhoto(info?.tractor_id);
   refreshTractorCard();
+}
+
+// ── Image preloading ───────────────────────────────────────────────────
+// Best-effort cache warming so card images pop instantly when sent on air.
+const _warmedImages = new Set();
+function warmImage(url) {
+  if (!url || _warmedImages.has(url)) return;
+  _warmedImages.add(url);
+  const img = new Image();
+  img.src = url;
+}
+
+async function preloadPullImages(pullId) {
+  if (!pullId) return;
+  try {
+    const res = await fetch(`/api/v1/overlay/preload-images/?pull_id=${pullId}`,
+                            { headers: { Accept: "application/json" } });
+    if (!res.ok) return;
+    const data = await res.json();
+    (data.images || []).forEach(warmImage);
+  } catch (_) { /* preload is best-effort */ }
+}
+
+let _preloadedTractorId = null;
+async function preloadTractorPhoto(tractorId) {
+  if (!tractorId || tractorId === _preloadedTractorId) return;
+  _preloadedTractorId = tractorId;
+  try {
+    const res = await fetch(`/api/v1/tractors/${tractorId}/`,
+                            { headers: { Accept: "application/json" } });
+    if (!res.ok) return;
+    const detail = await res.json();
+    warmImage(detail.primary_photo_url);
+  } catch (_) { /* preload is best-effort */ }
 }
 
 function refreshTractorCard() {

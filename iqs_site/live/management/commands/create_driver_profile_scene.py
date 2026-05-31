@@ -25,7 +25,7 @@ from compforms.models import OverlayScene
 # renderer in live_overlay.js). At 700px tall, 3.4 ≈ 24px, 2.0 ≈ 14px.
 MUTED = "#94a3b8"
 LABEL_STYLE = {
-    "font_size": 1.4,
+    "font_size": 1.8,
     "font_weight": 700,
     "color": MUTED,
     "background": "transparent",
@@ -37,7 +37,7 @@ LABEL_STYLE = {
     "opacity": 1,
 }
 VALUE_STYLE = {
-    "font_size": 2.1,
+    "font_size": 2.8,
     "font_weight": 600,
     "color": "#ffffff",
     "background": "transparent",
@@ -109,7 +109,7 @@ ELEMENTS = [
         "binding": "name",
         "content": "",
         "style": {
-            "font_size": 3.4,
+            "font_size": 4.2,
             "font_weight": 700,
             "color": "#ffffff",
             "background": "transparent",
@@ -152,7 +152,7 @@ ELEMENTS = [
         "x": 6, "y": 62, "width": 88, "height": 5.5,
         "binding": "motto", "content": "",
         "style": {
-            "font_size": 2.0,
+            "font_size": 2.6,
             "font_weight": 500,
             "color": "#e2e8f0",
             "background": "transparent",
@@ -196,7 +196,7 @@ ELEMENTS = [
         "binding": "bio",
         "content": "",
         "style": {
-            "font_size": 1.9,
+            "font_size": 2.5,
             "font_weight": 400,
             "color": "#cbd5e1",
             "background": "transparent",
