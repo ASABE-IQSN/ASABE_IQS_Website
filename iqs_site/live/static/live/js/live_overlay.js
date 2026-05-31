@@ -202,7 +202,8 @@ function startSSE() {
     if (pull_active) setStatus("live", "LIVE");
 
     // update page fields (telemetry speed is ft/s; HUD displays mph)
-    setField("speed", speed * 0.681818, 1);
+    // TEMP: speed scaled ×10 for now
+    setField("speed", speed * 0.681818 * 10, 1);
     setField("force", force, 0);
     setField("distance", distance, 1);
 
@@ -354,6 +355,10 @@ function _showSceneCard(data) {
   // Also expose top-level fields
   const allFields = { team_name: data.team_name, form_name: data.form_name, ...fields };
 
+  // Wrapping text blocks (e.g. bio) are auto-shrunk after insertion so the full
+  // text fits the fixed card box instead of being clipped.
+  const autoFitEls = [];
+
   for (const el of scene.elements) {
     const div = document.createElement('div');
     div.style.position = 'absolute';
@@ -379,11 +384,28 @@ function _showSceneCard(data) {
       div.style.fontWeight = s.font_weight || 400;
       div.style.color      = s.color || '#ffffff';
       div.style.textAlign  = s.text_align || 'left';
-      div.style.display    = 'flex';
-      div.style.alignItems = 'center';
       div.style.padding    = '0 4px';
       div.style.lineHeight = '1.3';
-      div.style.whiteSpace = 'nowrap';
+      if (s.font_style)     div.style.fontStyle = s.font_style;
+      if (s.text_transform) div.style.textTransform = s.text_transform;
+      if (s.letter_spacing != null) div.style.letterSpacing = s.letter_spacing + 'px';
+      if (s.white_space === 'normal') {
+        // Multi-line fields (e.g. bio) wrap and anchor to the top of the box.
+        div.style.whiteSpace = 'normal';
+        div.style.display    = 'block';
+        div.dataset.fitMin   = s.min_font_size != null ? s.min_font_size : 1.0;
+        autoFitEls.push(div);
+      } else {
+        // Single-line fields: clip overflow and center vertically. Map text_align
+        // onto the flex main axis so the text is truly centered/justified.
+        div.style.whiteSpace = 'nowrap';
+        div.style.display    = 'flex';
+        div.style.alignItems = 'center';
+        div.style.justifyContent =
+          s.text_align === 'center' ? 'center'
+          : s.text_align === 'right' ? 'flex-end'
+          : 'flex-start';
+      }
       div.textContent = value;
     } else if (el.type === 'image' && value) {
       const img = document.createElement('img');
@@ -393,6 +415,19 @@ function _showSceneCard(data) {
     }
 
     ocSceneCard.insertBefore(div, ocSceneCard.querySelector('.oc-progress'));
+  }
+
+  // Auto-fit wrapping text: shrink the font until the content fits its box.
+  // The card is visibility:hidden (not display:none) when this runs, so boxes
+  // already have real dimensions to measure against.
+  for (const div of autoFitEls) {
+    const minPx = (parseFloat(div.dataset.fitMin) || 1.0) / 100 * ch;
+    let fs = parseFloat(div.style.fontSize);
+    let guard = 0;
+    while (div.scrollHeight > div.clientHeight && fs > minPx && guard++ < 60) {
+      fs = Math.max(minPx, fs - 0.5);
+      div.style.fontSize = fs + 'px';
+    }
   }
 
   return true;

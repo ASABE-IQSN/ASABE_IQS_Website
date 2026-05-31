@@ -153,11 +153,24 @@ function renderAll(data) {
           : `<div class="layout-field"><span class="layout-role">${escHtml(role)}</span><span class="layout-val">${escHtml(val)}</span></div>`;
       }).join("");
 
+    // Reference-only fields (e.g. which events the driver is running). Shown
+    // here to help the operator but never sent to the on-air overlay.
+    const infoEntries = Object.entries(g.info || {});
+    const infoHtml = infoEntries.length
+      ? `<div class="layout-info" style="margin-top:.5rem;padding-top:.5rem;border-top:1px dashed rgba(148,163,184,.35);">
+           <div class="layout-info-note" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.04em;color:#94a3b8;margin-bottom:.25rem;">Reference only · not shown on overlay</div>
+           ${infoEntries.map(([role, val]) =>
+             `<div class="layout-field"><span class="layout-role">${escHtml(role)}</span><span class="layout-val">${escHtml(val)}</span></div>`
+           ).join("")}
+         </div>`
+      : "";
+
     card.innerHTML = `
       <div class="response-card-body">
         <div class="response-badge">${escHtml(g.form_name)} &mdash; ${escHtml(g.layout_name)}</div>
         <div class="response-question" style="margin-bottom:.5rem;">${escHtml(g.group_name)}</div>
         <div class="layout-fields">${fieldRows}</div>
+        ${infoHtml}
       </div>
       <button class="send-btn" title="Send layout to overlay">Send</button>
     `;

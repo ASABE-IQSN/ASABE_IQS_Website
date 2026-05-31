@@ -56,12 +56,19 @@
       padding: 16px 18px;
     }
 
-    /* Pull HUD sits in the bottom-left corner. */
+    /* Pull HUD sits in the bottom-left corner. Team name and hook each get
+       their own full-width row; speed / distance / force share a final row. */
     #pullHud {
       top: auto;
       bottom: 24px;
       left: 24px;
       width: min(420px, calc(100% - 48px));
+    }
+    #pullHud .meta {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    #pullHud .pull-wide {
+      grid-column: 1 / -1;
     }
 
     /* Durability HUD sits in the bottom-left corner. Top row holds team +
@@ -654,17 +661,12 @@
       </div>
 
       <div class="meta">
-        <div class="kv">
+        <div class="kv pull-wide">
           <div class="k">Team</div>
           <div class="v"><span data-field="team_name">TEAM</span> <span data-field="team_number">#</span></div>
         </div>
 
-        <div class="kv">
-          <div class="k">Distance</div>
-          <div class="v"><span data-field="distance">0.0</span> ft</div>
-        </div>
-
-        <div class="kv">
+        <div class="kv pull-wide">
           <div class="k">Hook</div>
           <div class="v"><span data-field="hook_name">HOOK</span></div>
         </div>
@@ -672,6 +674,11 @@
         <div class="kv">
           <div class="k">Speed</div>
           <div class="v"><span data-field="speed">0.0</span> mph</div>
+        </div>
+
+        <div class="kv">
+          <div class="k">Distance</div>
+          <div class="v"><span data-field="distance">0.0</span> ft</div>
         </div>
 
         <div class="kv">

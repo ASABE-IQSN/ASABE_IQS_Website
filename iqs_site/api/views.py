@@ -936,8 +936,19 @@ def overlay_active_responses(request):
     for fr in form_responses:
         form_name = fr.event_form.form.name
 
-        # Build answer lookup for this form response
-        answer_map = {qa.question_id: qa for qa in fr.answers.select_related("question")}
+        # Answers are anchored either to a flat form question or to a per-team
+        # group assignment. Group answers MUST be keyed by team_assignment_id —
+        # a single question (e.g. "Driver Name") is reused across every group of
+        # the form (Driver 1..5), so keying by question_id would collapse all of
+        # them onto whichever answer was iterated last.
+        answers = list(fr.answers.select_related("question"))
+        answers_by_assignment = {}
+        flat_answers = []
+        for qa in answers:
+            if qa.team_assignment_id:
+                answers_by_assignment[qa.team_assignment_id] = qa
+            else:
+                flat_answers.append(qa)
 
         # Get all team question assignments for this form's groups, with overlay config
         assignments = (
@@ -959,8 +970,9 @@ def overlay_active_responses(request):
             for gq in GroupQuestion.objects.filter(group_id__in=group_ids).values("group_id", "question_id", "overlay_role"):
                 role_map[(gq["group_id"], gq["question_id"])] = gq["overlay_role"]
 
-        # Track which question_ids are consumed by a layout group
-        layout_question_ids = set()
+        # Track which assignments are consumed by a layout group so their answers
+        # don't also surface as standalone individual cards.
+        consumed_assignment_ids = set()
 
         for group_id, group_asns in group_assignments.items():
             group = group_asns[0].group
@@ -969,19 +981,32 @@ def overlay_active_responses(request):
                 continue
 
             fields = {}
+            info = {}
             for asn in group_asns:
+                # Once a group is rendered as a combined card, every answer in it
+                # belongs to that card — even questions without an overlay role.
+                consumed_assignment_ids.add(asn.assignment_id)
                 role = role_map.get((group_id, asn.question_id), "")
                 if not role:
                     continue
-                qa = answer_map.get(asn.question_id)
-                if qa:
-                    if qa.image:
-                        fields[role] = request.build_absolute_uri(qa.image.url)
-                    elif qa.answer:
-                        fields[role] = qa.answer
-                layout_question_ids.add(asn.question_id)
+                qa = answers_by_assignment.get(asn.assignment_id)
+                if not qa:
+                    continue
+                if qa.image:
+                    val = request.build_absolute_uri(qa.image.url)
+                elif qa.answer:
+                    val = qa.answer
+                else:
+                    continue
+                # Roles prefixed "info_" are reference-only: shown in the producer
+                # preview to help operators, but never sent to the on-air overlay
+                # (sendLayoutCard transmits `fields`, not `info`).
+                if role.startswith("info_"):
+                    info[role[len("info_"):]] = val
+                else:
+                    fields[role] = val
 
-            if fields:
+            if fields or info:
                 layout_groups.append({
                     "group_id": group_id,
                     "group_name": group.name,
@@ -991,17 +1016,18 @@ def overlay_active_responses(request):
                     "layout_id": config.layout.layout_id,
                     "team_name": team.team_name,
                     "fields": fields,
+                    "info": info,
                 })
 
-        # Individual responses: answers not consumed by a layout group
-        for qid, qa in answer_map.items():
-            if qid in layout_question_ids:
+        # Individual responses: any answer not consumed by a layout group.
+        for qa in answers:
+            if qa.team_assignment_id and qa.team_assignment_id in consumed_assignment_ids:
                 continue
             if qa.answer or qa.image:
                 individual_responses.append({
                     "form_name": form_name,
                     "question": qa.question.question_text,
-                    "question_id": qid,
+                    "question_id": qa.question_id,
                     "answer": qa.answer,
                     "image_url": request.build_absolute_uri(qa.image.url) if qa.image else None,
                 })
