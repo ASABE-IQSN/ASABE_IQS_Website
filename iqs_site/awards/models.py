@@ -33,9 +33,10 @@ class AwardType(models.Model):
 
     @property
     def image_url(self):
-        # MEDIA_ROOT = /var/www/quarterscale/static, served by nginx at /static/
+        # Uploaded via default storage (MediaStorage → iqs-media bucket),
+        # served by nginx at /media/
         if self.image:
-            return f"/static/{self.image.name}"
+            return f"/media/{self.image.name}"
         return None
 
 

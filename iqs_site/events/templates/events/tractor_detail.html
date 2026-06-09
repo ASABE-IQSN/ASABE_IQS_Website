@@ -5,7 +5,7 @@
 {% block og_title %}{{ tractor.display_name|default:tractor.tractor_name|default:"Tractor" }} – IQS Connect{% endblock %}
 {% block meta_description %}{% if bio %}{{ bio.info|truncatechars:160 }}{% else %}{{ tractor.display_name|default:tractor.tractor_name|default:"Tractor" }} is an ASABE International Quarter Scale competition entry. View pull results, event history, and team info.{% endif %}{% endblock %}
 {% block og_description %}{% if bio %}{{ bio.info|truncatechars:160 }}{% else %}{{ tractor.display_name|default:tractor.tractor_name|default:"Tractor" }} is an ASABE IQS competition entry. View pull results, event history, and team info.{% endif %}{% endblock %}
-{% block og_image %}{% if tractor.primary_photo %}https://iqsconnect.org/static/{{ tractor.primary_photo }}{% else %}https://iqsconnect.org{% static 'events/images/ASABE-IQS-logo-white.png' %}{% endif %}{% endblock %}
+{% block og_image %}{% if tractor.primary_photo %}https://iqsconnect.org/media/{{ tractor.primary_photo.link }}{% else %}https://iqsconnect.org{% static 'events/images/ASABE-IQS-logo-white.png' %}{% endif %}{% endblock %}
 
 {% block extra_styles %}
   .breadcrumbs {
@@ -286,7 +286,7 @@
   {% if tractor.primary_photo and tractor.primary_photo.link %}
     <section style="margin-bottom: 1.5rem;">
       <div class="card" style="padding: 0; overflow: hidden;">
-        <img src="/static/{{ tractor.primary_photo.link }}"
+        <img src="/media/{{ tractor.primary_photo.link }}"
              alt="{{ tractor.display_name }}"
              style="width: 100%; max-height: 400px; object-fit: cover; display: block;">
         {% if tractor.primary_photo.caption %}
@@ -473,7 +473,7 @@
         <div class="tractor-photo-grid">
           {% for media in tractor_media %}
             <figure data-photo-index="{{ forloop.counter0 }}">
-              <img src="/static/{{media.link}}"
+              <img src="/media/{{media.link}}"
                    alt="{% if media.caption %}{{ media.caption }}{% else %}{{ tractor.tractor_name }}{% endif %}">
               {% if media.caption %}
                 <figcaption>{{ media.caption }}</figcaption>

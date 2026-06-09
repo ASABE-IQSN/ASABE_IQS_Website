@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}Sessions · {{ segment }} · {{ bin_label }}{% endblock %}
+
+{% block extra_styles %}
+.dashboard-header { display: flex; align-items: baseline; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
+.dashboard-header h1 { margin: 0; font-size: 1.3rem; font-weight: 700; color: #f3f6e7; }
+.dashboard-header .scope { font-family: monospace; color: #6687fc; }
+.dashboard-header .bin { color: #4ade80; }
+.back-link { font-size: 0.85rem; color: #6b7280; text-decoration: none; }
+.back-link:hover { color: #9ca3af; }
+.window-note { font-size: 0.78rem; color: #4b5563; margin-bottom: 1.5rem; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th {
+  text-align: left; color: #6b7280; font-weight: 600;
+  padding: 0.4rem 0.6rem; border-bottom: 1px solid #1f2937; white-space: nowrap;
+}
+th.num, td.num { text-align: right; }
+td { padding: 0.45rem 0.6rem; border-bottom: 1px solid #111827; color: #d1d5db; vertical-align: top; }
+tr:hover td { background: #0f172a; }
+.mono { font-family: monospace; font-size: 0.78rem; }
+a.link { color: #6687fc; text-decoration: none; }
+a.link:hover { text-decoration: underline; }
+.muted { color: #6b7280; }
+.anon { color: #f59e0b; }
+.time-val { color: #4ade80; white-space: nowrap; }
+.pill { font-size: 0.7rem; padding: 0.1rem 0.45rem; border-radius: 9999px; white-space: nowrap; }
+.pill.done { background: #14321f; color: #4ade80; }
+.pill.open { background: #3a2a14; color: #f59e0b; }
+.truncate { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.overflow-x { overflow-x: auto; }
+{% endblock %}
+
+{% block extra_head %}
+<script>
+(function () {
+  document.cookie = 'tz_offset=' + new Date().getTimezoneOffset() + '; path=/; SameSite=Lax';
+})();
+</script>
+{% endblock %}
+
+{% block content %}
+<a class="back-link" href="{% url 'stats:competition_overview' %}?prefix={{ segment|urlencode }}&week={{ week_start|date:'Y-m-d' }}{% if exclude_su %}&exclude_su=1{% endif %}">← Back to overview</a>
+
+<div class="dashboard-header" style="margin-top:0.5rem;">
+  <h1>Sessions in <span class="scope">{{ segment }}</span> · <span class="bin">{{ bin_label }}</span></h1>
+</div>
+
+<p class="window-note">
+  Week of {{ week_start|date:"N j" }} – {{ week_end|date:"N j, Y" }} ·
+  {{ session_count }} session{{ session_count|pluralize }}{% if capped %} (showing first 500){% endif %}
+  {% if exclude_su %} · superusers hidden{% endif %} ·
+  IP &amp; location are best-effort matches from the request log
+</p>
+
+<div class="overflow-x">
+<table>
+  <thead>
+    <tr>
+      <th>Started</th>
+      <th>User</th>
+      <th>IP</th>
+      <th>Location</th>
+      <th>Page</th>
+      <th class="num">Active</th>
+      <th>Last seen</th>
+      <th>Status</th>
+      <th>Referrer</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in sessions %}
+    <tr>
+      <td class="mono" style="white-space:nowrap;">{{ s.started_at|date:"M j, H:i:s" }}</td>
+      <td>
+        {% if s.user_id %}
+          <a class="link" href="{% url 'stats:user_activity' %}?user_id={{ s.user_id }}">{{ s.user__username }}</a>
+        {% else %}
+          <span class="anon">anonymous</span>
+        {% endif %}
+      </td>
+      <td class="mono">
+        {% if s.ip %}
+          <a class="link" href="{% url 'stats:ip_drill' %}?ip={{ s.ip|urlencode }}&date={{ week_start|date:'Y-m-d' }}">{{ s.ip }}</a>
+        {% else %}<span class="muted">—</span>{% endif %}
+      </td>
+      <td>{% if s.location %}{{ s.location }}{% else %}<span class="muted">—</span>{% endif %}</td>
+      <td>
+        <div class="mono"><a class="link" href="{% url 'stats:page_drill' %}?url={{ s.path|urlencode }}">{{ s.path }}</a></div>
+        {% if s.page_title %}<div class="muted truncate" title="{{ s.page_title }}">{{ s.page_title }}</div>{% endif %}
+      </td>
+      <td class="num time-val">{{ s.active_fmt }}</td>
+      <td class="mono muted" style="white-space:nowrap;">{{ s.last_seen_at|date:"M j, H:i:s" }}</td>
+      <td>
+        {% if s.is_complete %}<span class="pill done">complete</span>{% else %}<span class="pill open">open</span>{% endif %}
+      </td>
+      <td class="muted truncate" title="{{ s.referrer }}">{% if s.referrer %}{{ s.referrer }}{% else %}—{% endif %}</td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="9" style="text-align:center;color:#6b7280;padding:1.5rem;">No sessions in this bin.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}Competition Week Overview{% endblock %}
+
+{% block extra_styles %}
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.dashboard-header h1 {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #f3f6e7;
+}
+.back-link { font-size: 0.85rem; color: #6b7280; }
+.back-link:hover { color: #9ca3af; }
+
+.date-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+.date-nav a, .date-nav button {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #9ca3af;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  text-decoration: none;
+  cursor: pointer;
+}
+.date-nav a:hover, .date-nav button:hover { background: #1f2937; color: #f3f6e7; text-decoration: none; }
+.date-nav input[type="date"] {
+  background: #111827;
+  border: 1px solid #1f2937;
+  color: #f3f6e7;
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+}
+.su-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #9ca3af;
+  font-size: 0.82rem;
+  cursor: pointer;
+  user-select: none;
+}
+.su-toggle input { cursor: pointer; }
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.stat-card {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 0.75rem;
+  padding: 1rem 1.25rem;
+  text-align: center;
+}
+.stat-card .num { font-size: 2rem; font-weight: 700; color: #6687fc; line-height: 1; }
+.stat-card .num.small { font-size: 1.3rem; }
+.stat-card .label { font-size: 0.75rem; color: #9ca3af; margin-top: 0.35rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.stat-card .split { font-size: 0.72rem; color: #6b7280; margin-top: 0.4rem; }
+.stat-card .split .li { color: #4ade80; }
+.stat-card .split .anon { color: #f59e0b; }
+
+.section { margin-bottom: 2.5rem; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #1f2937;
+  padding-bottom: 0.5rem;
+}
+.section-header h2 { margin: 0; font-size: 1rem; font-weight: 600; color: #e5e7eb; }
+.legend { font-size: 0.75rem; color: #6b7280; margin-left: auto; }
+.legend .li { color: #4ade80; }
+.legend .anon { color: #f59e0b; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+th {
+  text-align: left; color: #6b7280; font-weight: 600;
+  padding: 0.4rem 0.6rem; border-bottom: 1px solid #1f2937;
+  white-space: nowrap;
+}
+th.num, td.num { text-align: right; }
+td { padding: 0.45rem 0.6rem; border-bottom: 1px solid #111827; color: #d1d5db; vertical-align: middle; }
+tr:hover td { background: #0f172a; }
+tfoot td { border-top: 2px solid #1f2937; font-weight: 700; color: #e5e7eb; }
+.mono { font-family: monospace; font-size: 0.82rem; color: #6687fc; }
+.sub { color: #6b7280; font-size: 0.75rem; }
+.li-val { color: #4ade80; }
+.anon-val { color: #f59e0b; }
+.time-val { color: #4ade80; white-space: nowrap; }
+
+.hist-cell { width: 150px; }
+.hist {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 34px;
+  width: 140px;
+}
+.hist .hbar {
+  display: block;
+  flex: 1;
+  background: #6687fc;
+  border-radius: 1px 1px 0 0;
+  min-height: 0;
+  transition: background 0.15s;
+}
+a.hbar { cursor: pointer; }
+.hist a.hbar:hover { background: #93acff; }
+.hist-axis {
+  display: flex;
+  justify-content: space-between;
+  width: 140px;
+  font-size: 0.6rem;
+  color: #4b5563;
+  margin-top: 2px;
+}
+
+.bar-cell { width: 140px; }
+.bar-bg { background: #1f2937; border-radius: 3px; height: 8px; overflow: hidden; display: flex; }
+.bar-li { background: #4ade80; height: 100%; }
+.bar-anon { background: #f59e0b; height: 100%; }
+
+.window-note { font-size: 0.78rem; color: #4b5563; margin-bottom: 1.5rem; }
+
+.breadcrumbs { display: flex; align-items: center; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 1.25rem; font-size: 0.85rem; }
+.breadcrumbs .crumb { font-family: monospace; }
+.breadcrumbs a.crumb { color: #6687fc; text-decoration: none; }
+.breadcrumbs a.crumb:hover { text-decoration: underline; }
+.breadcrumbs .crumb.current { color: #e5e7eb; font-weight: 600; }
+.breadcrumbs .crumb-sep { color: #374151; }
+
+.drill-link { color: #6687fc; text-decoration: none; }
+.drill-link:hover { text-decoration: underline; }
+.drill-link::after { content: ' ›'; color: #4b5563; }
+.leaf-seg { color: #9ca3af; }
+{% endblock %}
+
+{% block extra_head %}
+<script>
+(function () {
+  document.cookie = 'tz_offset=' + new Date().getTimezoneOffset() + '; path=/; SameSite=Lax';
+})();
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-header">
+  <div>
+    <a class="back-link" href="{% url 'stats:page_overview' %}">← Page Views</a>
+    <h1>Competition Week Overview{% if prefix %} <span style="color:#6687fc;font-family:monospace;font-size:1.1rem;">{{ prefix }}</span>{% endif %}</h1>
+  </div>
+  <form class="date-nav" method="get" action="">
+    <label class="su-toggle">
+      <input type="checkbox" name="exclude_su" value="1"
+             {% if exclude_su %}checked{% endif %} onchange="this.form.submit()">
+      Hide superusers
+    </label>
+    {% if prefix %}<input type="hidden" name="prefix" value="{{ prefix }}">{% endif %}
+    <a href="?week={{ prev_week|date:'Y-m-d' }}{% if exclude_su %}&exclude_su=1{% endif %}{% if prefix %}&prefix={{ prefix|urlencode }}{% endif %}" title="Previous week">&#8592;</a>
+    <input type="date" name="week" value="{{ week_start|date:'Y-m-d' }}"
+           onchange="this.form.submit()">
+    <a href="?week={{ next_week|date:'Y-m-d' }}{% if exclude_su %}&exclude_su=1{% endif %}{% if prefix %}&prefix={{ prefix|urlencode }}{% endif %}" title="Next week">&#8594;</a>
+  </form>
+</div>
+
+<div class="breadcrumbs">
+  {% for crumb in breadcrumbs %}
+    {% if forloop.last %}
+      <span class="crumb current">{{ crumb.label }}</span>
+    {% else %}
+      <a class="crumb" href="?week={{ week_start|date:'Y-m-d' }}{% if exclude_su %}&exclude_su=1{% endif %}{% if crumb.prefix %}&prefix={{ crumb.prefix|urlencode }}{% endif %}">{{ crumb.label }}</a>
+      <span class="crumb-sep">/</span>
+    {% endif %}
+  {% endfor %}
+</div>
+
+<p class="window-note">
+  Week of {{ week_start|date:"N j" }} – {{ week_end|date:"N j, Y" }} ·
+  views from request log · time from foreground tab sessions
+</p>
+
+<div class="summary-grid">
+  <div class="stat-card">
+    <div class="num">{{ totals.views_total }}</div>
+    <div class="label">Total Views</div>
+    <div class="split">
+      <span class="li">{{ totals.views_li }} in</span> ·
+      <span class="anon">{{ totals.views_anon }} out</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="num small">{{ totals.time_total_fmt }}</div>
+    <div class="label">Total Time</div>
+    <div class="split">
+      <span class="li">{{ totals.time_li_fmt }} in</span> ·
+      <span class="anon">{{ totals.time_anon_fmt }} out</span>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ totals.sess_total }}</div>
+    <div class="label">Page Sessions</div>
+  </div>
+  <div class="stat-card">
+    <div class="num">{{ rows|length }}</div>
+    <div class="label">Sections</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-header">
+    <h2>Traffic by Section</h2>
+    <span class="legend"><span class="li">■</span> logged in · <span class="anon">■</span> not logged in</span>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Section</th>
+        <th class="num">Views</th>
+        <th class="num"><span class="li-val">In</span></th>
+        <th class="num"><span class="anon-val">Out</span></th>
+        <th class="num">Total Time</th>
+        <th class="num"><span class="li-val">In</span></th>
+        <th class="num"><span class="anon-val">Out</span></th>
+        <th class="num">Sessions</th>
+        <th class="num">Avg Time</th>
+        <th>Time / session</th>
+        <th>Logged-in share</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td class="mono">
+          {% if row.has_children %}
+          <a class="drill-link" href="?prefix={{ row.segment|urlencode }}&week={{ week_start|date:'Y-m-d' }}{% if exclude_su %}&exclude_su=1{% endif %}">{{ row.segment }}</a>
+          {% else %}
+          <span class="leaf-seg">{{ row.segment }}</span>
+          {% endif %}
+        </td>
+        <td class="num">{{ row.views_total }}</td>
+        <td class="num li-val">{{ row.views_li }}</td>
+        <td class="num anon-val">{{ row.views_anon }}</td>
+        <td class="num time-val">{% if row.time_total %}{{ row.time_total_fmt }}{% else %}—{% endif %}</td>
+        <td class="num li-val">{% if row.time_li %}{{ row.time_li_fmt }}{% else %}—{% endif %}</td>
+        <td class="num anon-val">{% if row.time_anon %}{{ row.time_anon_fmt }}{% else %}—{% endif %}</td>
+        <td class="num sub">{{ row.sess_total }}</td>
+        <td class="num sub">{% if row.sess_total %}{{ row.avg_time_fmt }}{% else %}—{% endif %}</td>
+        <td class="hist-cell">
+          {% if row.sess_total %}
+          <div class="hist" title="Per-session active time ({{ row.sess_total }} sessions)">
+            {% for bin in row.hist_bins %}
+            {% if bin.count %}
+            <a class="hbar" style="height:{{ bin.pct }}%;"
+               title="{{ bin.label }}: {{ bin.count }} session{{ bin.count|pluralize }} — click to list"
+               href="{% url 'stats:competition_sessions' %}?segment={{ row.segment|urlencode }}&bin={{ bin.idx }}&week={{ week_start|date:'Y-m-d' }}{% if exclude_su %}&exclude_su=1{% endif %}"></a>
+            {% else %}
+            <div class="hbar empty" style="height:0;"></div>
+            {% endif %}
+            {% endfor %}
+          </div>
+          <div class="hist-axis"><span>0s</span><span>10m+</span></div>
+          {% else %}
+          <span class="sub">—</span>
+          {% endif %}
+        </td>
+        <td class="bar-cell">
+          <div class="bar-bg" title="{{ row.views_li }} logged in / {{ row.views_anon }} anonymous">
+            {% if row.views_total %}
+            <div class="bar-li" style="width:{% widthratio row.views_li row.views_total 100 %}%;"></div>
+            <div class="bar-anon" style="width:{% widthratio row.views_anon row.views_total 100 %}%;"></div>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="11" style="text-align:center;color:#6b7280;padding:1.5rem;">No traffic recorded for this week.</td></tr>
+      {% endfor %}
+    </tbody>
+    {% if rows %}
+    <tfoot>
+      <tr>
+        <td>Total</td>
+        <td class="num">{{ totals.views_total }}</td>
+        <td class="num li-val">{{ totals.views_li }}</td>
+        <td class="num anon-val">{{ totals.views_anon }}</td>
+        <td class="num time-val">{{ totals.time_total_fmt }}</td>
+        <td class="num li-val">{{ totals.time_li_fmt }}</td>
+        <td class="num anon-val">{{ totals.time_anon_fmt }}</td>
+        <td class="num">{{ totals.sess_total }}</td>
+        <td class="num"></td>
+        <td></td>
+        <td></td>
+      </tr>
+    </tfoot>
+    {% endif %}
+  </table>
+</div>
+{% endblock %}

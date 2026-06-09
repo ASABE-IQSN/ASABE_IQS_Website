@@ -117,6 +117,10 @@ tr.hidden-row { display: none; }
     <a class="back-link" href="{% url 'stats:daily_activity' %}">← Daily Activity</a>
     <h1>Page Views by URL</h1>
   </div>
+  <div style="margin-left:auto;">
+    <a href="{% url 'stats:competition_overview' %}"
+       style="background:#111827;border:1px solid #1f2937;color:#9ca3af;padding:0.35rem 0.75rem;border-radius:0.4rem;font-size:0.85rem;text-decoration:none;">Competition week →</a>
+  </div>
 </div>
 
 <div class="days-nav">

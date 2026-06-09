@@ -28,7 +28,7 @@
 
 
         {% for photo in images %}
-            <img src="{% static photo.media %}"alt="{{ photo.caption|default:team.team_name }}">
+            <img src="/media/{{ photo.media }}" alt="{{ photo.caption|default:team.team_name }}">
         {% endfor %}
 
   {% if not images %}

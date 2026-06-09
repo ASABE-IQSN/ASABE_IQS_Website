@@ -61,7 +61,7 @@
     <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem;">
       {% for photo in photos %}
         <div style="border: 1px solid #1f2937; border-radius: 0.5rem; overflow: hidden; background: #020617;">
-          <img src="/static/{{ photo.link }}" alt="{{ photo.caption|default:'Pull photo' }}" style="width: 100%; height: 200px; object-fit: cover; display: block;">
+          <img src="/media/{{ photo.link }}" alt="{{ photo.caption|default:'Pull photo' }}" style="width: 100%; height: 200px; object-fit: cover; display: block;">
           {% if photo.caption %}
             <div style="padding: 0.5rem 0.75rem; font-size: 0.85rem; color: #9ca3af;">{{ photo.caption }}</div>
           {% endif %}

@@ -10,7 +10,7 @@ from typing import Dict, List
 from django.contrib.admin.models import LogEntry
 from django.contrib.auth.decorators import user_passes_test
 from django.contrib.auth.models import User
-from django.db.models import Avg, Count, F, Max, Min, Sum
+from django.db.models import Avg, Count, F, Max, Min, Q, Sum
 from django.db.models.functions import ExtractYear, TruncDate
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
@@ -1763,6 +1763,336 @@ def _update_session(request, complete):
     if complete:
         session.is_complete = True
     session.save(update_fields=['last_seen_at', 'active_seconds', 'is_complete'])
+
+
+def _top_segment(url):
+    """Return the first path segment of a URL, e.g. '/team/123?x=1' -> '/team'.
+
+    The site root resolves to '/'. Query strings are stripped first so
+    '/event/?year=2025' and '/event/5' both bucket under '/event'.
+    """
+    path = url.split("?", 1)[0]
+    parts = [p for p in path.split("/") if p]
+    return "/" + parts[0] if parts else "/"
+
+
+def _segment_at_depth(url, depth):
+    """Return the first (depth+1) path segments of a URL as a grouping key.
+
+    depth=0 gives the top-level section ('/team'); depth=1 gives the next
+    level ('/live/pull'). A URL shorter than the depth groups under itself
+    (e.g. the '/live' index page stays '/live' when drilling into '/live').
+    """
+    path = url.split("?", 1)[0]
+    parts = [p for p in path.split("/") if p]
+    take = parts[:depth + 1]
+    return "/" + "/".join(take) if take else "/"
+
+
+# Upper bound (exclusive, seconds) and label for each session active-time bin.
+# Last bin's bound is None -> catch-all for the longest sessions.
+SESSION_TIME_BINS = [
+    (10, "0–10s"),
+    (30, "10–30s"),
+    (60, "30–60s"),
+    (120, "1–2m"),
+    (300, "2–5m"),
+    (600, "5–10m"),
+    (None, "10m+"),
+]
+
+
+def _session_time_bin(secs):
+    for i, (hi, _) in enumerate(SESSION_TIME_BINS):
+        if hi is None or secs < hi:
+            return i
+    return len(SESSION_TIME_BINS) - 1
+
+
+@user_passes_test(lambda u: u.is_staff)
+def competition_overview(request):
+    """
+    Weekly traffic overview grouped by URL section, each split into logged-in
+    vs anonymous visitors.
+
+    Drills down recursively via ?prefix=/live : with no prefix it groups by
+    top-level section (/team, /event, /live...); with a prefix it scopes to that
+    path and groups by the next segment under it (/live/pull, /live/durability).
+
+    View counts come from the `views` table (every Django request); engagement
+    time comes from PageSession.active_seconds (foreground tab time).
+    Pick any day with ?week=YYYY-MM-DD; the view snaps to that day's Monday.
+    """
+    tz_offset = _get_tz_offset(request)
+    date_str = request.GET.get("week") or request.GET.get("date")
+    try:
+        anchor = date.fromisoformat(date_str) if date_str else timezone.localdate()
+    except ValueError:
+        anchor = timezone.localdate()
+
+    week_start_date = anchor - timedelta(days=anchor.weekday())  # Monday
+    week_end_date = week_start_date + timedelta(days=6)          # Sunday (inclusive label)
+    prev_week = week_start_date - timedelta(days=7)
+    next_week = week_start_date + timedelta(days=7)
+
+    # Exclude superusers (staff running streams/overlays) from the data
+    exclude_su = request.GET.get("exclude_su") == "1"
+
+    # Drill-down prefix, e.g. "/live". Normalised to no trailing slash.
+    prefix = "/" + request.GET.get("prefix", "").strip().strip("/")
+    if prefix == "/":
+        prefix = ""
+    prefix_parts = [p for p in prefix.split("/") if p]
+    depth = len(prefix_parts)
+
+    # Breadcrumb trail: (label, prefix) from root down to the current level
+    breadcrumbs = [{"label": "All sections", "prefix": ""}]
+    for i in range(len(prefix_parts)):
+        crumb = "/" + "/".join(prefix_parts[: i + 1])
+        breadcrumbs.append({"label": crumb, "prefix": crumb})
+
+    # UTC bounds for the user's local week
+    day_start, _ = _get_day_bounds(week_start_date, tz_offset)
+    week_end = day_start + timedelta(days=7)
+
+    views_qs = PageView.objects.filter(time__gte=day_start, time__lt=week_end)
+    sessions_qs = PageSession.objects.filter(started_at__gte=day_start, started_at__lt=week_end)
+    # OBS broadcast overlays aren't real visitor traffic — drop them everywhere
+    views_qs = views_qs.exclude(url__startswith="/live/overlay")
+    sessions_qs = sessions_qs.exclude(path__startswith="/live/overlay")
+    if exclude_su:
+        views_qs = views_qs.exclude(user__is_superuser=True)
+        sessions_qs = sessions_qs.exclude(user__is_superuser=True)
+    # Scope to the drill-down prefix (the path itself, sub-paths, or with a query)
+    if prefix:
+        views_qs = views_qs.filter(
+            Q(url=prefix) | Q(url__startswith=prefix + "/") | Q(url__startswith=prefix + "?")
+        )
+        sessions_qs = sessions_qs.filter(
+            Q(path=prefix) | Q(path__startswith=prefix + "/") | Q(path__startswith=prefix + "?")
+        )
+
+    # --- View counts, split by authenticated vs anonymous ---
+    view_rows = (
+        views_qs
+        .values("url")
+        .annotate(
+            total=Count("view_id"),
+            logged_in=Count("view_id", filter=Q(user__isnull=False)),
+        )
+    )
+
+    # --- Engagement time + session counts, same split ---
+    session_rows = (
+        sessions_qs
+        .values("path")
+        .annotate(
+            sess_total=Count("session_id"),
+            sess_li=Count("session_id", filter=Q(user__isnull=False)),
+            time_total=Sum("active_seconds"),
+            time_li=Sum("active_seconds", filter=Q(user__isnull=False)),
+        )
+    )
+
+    buckets: dict = {}
+
+    def _bucket(seg):
+        return buckets.setdefault(seg, {
+            "segment": seg,
+            "views_total": 0, "views_li": 0,
+            "sess_total": 0, "sess_li": 0,
+            "time_total": 0, "time_li": 0,
+            "hist": [0] * len(SESSION_TIME_BINS),
+        })
+
+    # Track, per group, whether there's anything deeper to drill into. A group
+    # is a leaf only if every URL under it equals the group key (no sub-path).
+    has_children: dict = {}
+
+    def _note_depth(seg, url):
+        url_parts = [p for p in url.split("?", 1)[0].split("/") if p]
+        if len(url_parts) > depth + 1:
+            has_children[seg] = True
+        else:
+            has_children.setdefault(seg, False)
+
+    for r in view_rows:
+        seg = _segment_at_depth(r["url"], depth)
+        b = _bucket(seg)
+        b["views_total"] += r["total"]
+        b["views_li"] += r["logged_in"]
+        _note_depth(seg, r["url"])
+
+    for r in session_rows:
+        seg = _segment_at_depth(r["path"], depth)
+        b = _bucket(seg)
+        b["sess_total"] += r["sess_total"]
+        b["sess_li"] += r["sess_li"]
+        b["time_total"] += r["time_total"] or 0
+        b["time_li"] += r["time_li"] or 0
+        _note_depth(seg, r["path"])
+
+    # Per-session active-time distribution, bucketed by section (to spot skew)
+    for path, secs in sessions_qs.values_list("path", "active_seconds"):
+        seg = _segment_at_depth(path, depth)
+        _bucket(seg)["hist"][_session_time_bin(secs or 0)] += 1
+
+    rows = sorted(buckets.values(), key=lambda x: -x["views_total"])
+    for b in rows:
+        b["has_children"] = has_children.get(b["segment"], False)
+        hmax = max(b["hist"]) or 1
+        b["hist_bins"] = [
+            {"idx": i, "label": SESSION_TIME_BINS[i][1], "count": c,
+             "pct": max(8, int(c * 100 / hmax)) if c else 0}
+            for i, c in enumerate(b["hist"])
+        ]
+        b["views_anon"] = b["views_total"] - b["views_li"]
+        b["sess_anon"] = b["sess_total"] - b["sess_li"]
+        b["time_anon"] = b["time_total"] - b["time_li"]
+        b["time_total_fmt"] = _fmt_seconds(b["time_total"])
+        b["time_li_fmt"] = _fmt_seconds(b["time_li"])
+        b["time_anon_fmt"] = _fmt_seconds(b["time_anon"])
+        b["avg_time_fmt"] = _fmt_seconds(
+            b["time_total"] // b["sess_total"] if b["sess_total"] else 0
+        )
+
+    totals = {
+        "views_total": sum(b["views_total"] for b in rows),
+        "views_li": sum(b["views_li"] for b in rows),
+        "views_anon": sum(b["views_anon"] for b in rows),
+        "time_total": sum(b["time_total"] for b in rows),
+        "time_li": sum(b["time_li"] for b in rows),
+        "time_anon": sum(b["time_anon"] for b in rows),
+        "sess_total": sum(b["sess_total"] for b in rows),
+    }
+    totals["time_total_fmt"] = _fmt_seconds(totals["time_total"])
+    totals["time_li_fmt"] = _fmt_seconds(totals["time_li"])
+    totals["time_anon_fmt"] = _fmt_seconds(totals["time_anon"])
+    max_views = rows[0]["views_total"] if rows else 1
+
+    return render(request, "stats/competition_overview.html", {
+        "week_start": week_start_date,
+        "week_end": week_end_date,
+        "prev_week": prev_week,
+        "next_week": next_week,
+        "rows": rows,
+        "totals": totals,
+        "max_views": max_views or 1,
+        "exclude_su": exclude_su,
+        "prefix": prefix,
+        "breadcrumbs": breadcrumbs,
+    })
+
+
+@user_passes_test(lambda u: u.is_staff)
+def competition_sessions(request):
+    """
+    List individual page sessions for one section subtree + active-time bin.
+
+    Reached by clicking a histogram bar on competition_overview. Shows every
+    field stored on the session; IP is a best-effort correlation from the
+    request log (`views` table) since PageSession itself records no IP.
+    """
+    tz_offset = _get_tz_offset(request)
+    date_str = request.GET.get("week") or request.GET.get("date")
+    try:
+        anchor = date.fromisoformat(date_str) if date_str else timezone.localdate()
+    except ValueError:
+        anchor = timezone.localdate()
+    week_start_date = anchor - timedelta(days=anchor.weekday())
+    week_end_date = week_start_date + timedelta(days=6)
+    day_start, _ = _get_day_bounds(week_start_date, tz_offset)
+    week_end = day_start + timedelta(days=7)
+
+    exclude_su = request.GET.get("exclude_su") == "1"
+
+    # Section subtree (the group key from the overview, e.g. "/live/pull").
+    # The root group "/" means the home page exactly, not "everything".
+    segment = "/" + request.GET.get("segment", "").strip().strip("/")
+    is_root = segment == "/"
+
+    # Active-time bin index -> [lo, hi) seconds
+    try:
+        bin_idx = int(request.GET.get("bin", ""))
+    except (ValueError, TypeError):
+        bin_idx = -1
+    if not (0 <= bin_idx < len(SESSION_TIME_BINS)):
+        return redirect("stats:competition_overview")
+    lo = 0 if bin_idx == 0 else SESSION_TIME_BINS[bin_idx - 1][0]
+    hi = SESSION_TIME_BINS[bin_idx][0]
+    bin_label = SESSION_TIME_BINS[bin_idx][1]
+
+    sessions_qs = (PageSession.objects
+        .filter(started_at__gte=day_start, started_at__lt=week_end)
+        .exclude(path__startswith="/live/overlay"))
+    if exclude_su:
+        sessions_qs = sessions_qs.exclude(user__is_superuser=True)
+    if is_root:
+        sessions_qs = sessions_qs.filter(Q(path="/") | Q(path__startswith="/?"))
+    else:
+        sessions_qs = sessions_qs.filter(Q(path=segment) | Q(path__startswith=segment + "/"))
+    sessions_qs = sessions_qs.filter(active_seconds__gte=lo)
+    if hi is not None:
+        sessions_qs = sessions_qs.filter(active_seconds__lt=hi)
+
+    session_list = list(sessions_qs
+        .select_related("user")
+        .order_by("-active_seconds", "-started_at")
+        .values("session_id", "user_id", "user__username", "path", "page_title",
+                "referrer", "started_at", "last_seen_at", "active_seconds", "is_complete")[:500])
+
+    # Best-effort IP: match each session to a request-log row for the same page
+    # (and same user, if signed in) within the session's lifetime.
+    base_paths = {s["path"].split("?", 1)[0] for s in session_list}
+    view_index: dict = {}
+    if base_paths:
+        for v in (PageView.objects
+                  .filter(time__gte=day_start - timedelta(minutes=5), time__lt=week_end,
+                          url__in=base_paths)
+                  .values("user_id", "url", "ip", "time")):
+            key = (v["user_id"], v["url"].split("?", 1)[0])
+            view_index.setdefault(key, []).append((v["time"], v["ip"]))
+
+    for s in session_list:
+        s["active_fmt"] = _fmt_seconds(s["active_seconds"])
+        s["ip"] = ""
+        best = None
+        for t, ip in view_index.get((s["user_id"], s["path"].split("?", 1)[0]), []):
+            if s["started_at"] - timedelta(minutes=2) <= t <= s["last_seen_at"] + timedelta(minutes=2):
+                delta = abs((t - s["started_at"]).total_seconds())
+                if best is None or delta < best[0]:
+                    best = (delta, ip)
+        if best:
+            s["ip"] = best[1]
+
+    # Geo-annotate the IPs we found (cached; only hits the API for new ones)
+    geo_map = resolve_geo([s["ip"] for s in session_list if s["ip"]])
+    for s in session_list:
+        geo = geo_map.get(s["ip"], {})
+        if geo.get("is_private"):
+            s["location"] = "Private"
+        elif geo.get("city"):
+            parts = [geo["city"]]
+            if geo.get("region"):
+                parts.append(geo["region"])
+            parts.append(geo.get("country_code", ""))
+            s["location"] = ", ".join(p for p in parts if p)
+        elif geo.get("country"):
+            s["location"] = geo["country"]
+        else:
+            s["location"] = ""
+
+    return render(request, "stats/competition_sessions.html", {
+        "week_start": week_start_date,
+        "week_end": week_end_date,
+        "segment": segment or "/",
+        "bin_label": bin_label,
+        "bin_idx": bin_idx,
+        "exclude_su": exclude_su,
+        "sessions": session_list,
+        "session_count": len(session_list),
+        "capped": len(session_list) >= 500,
+    })
 
 
 @user_passes_test(lambda u: u.is_staff)

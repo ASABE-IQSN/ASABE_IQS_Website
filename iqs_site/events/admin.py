@@ -171,9 +171,9 @@ class EventTeamPhotoAdmin(admin.ModelAdmin):
         if not obj.photo_path:
             return "(no image)"
 
-        # photo_path is relative to /static, e.g. "team_photos/foo.jpg"
+        # photo_path is relative to the iqs-media bucket, e.g. "photos/foo.jpg"
         # Build the URL that will actually serve it
-        url = "http://iqsconnect.org/static/" + obj.photo_path.lstrip("/")#settings.STATIC_URL + obj.photo_path.lstrip("/")
+        url = "http://iqsconnect.org/media/" + obj.photo_path.lstrip("/")
 
         return format_html(
             '<img src="{}" style="max-width: 400px; max-height: 300px; border-radius: 8px; border: 1px solid #1f2937;" />',
@@ -415,7 +415,7 @@ class TractorMediaAdmin(admin.ModelAdmin):
         if obj.media_type == TractorMedia.MediaTypes.IMAGE:
             if not obj.link:
                 return "(no image)"
-            url = "http://iqsconnect.org/static/" + obj.link.lstrip("/")
+            url = "http://iqsconnect.org/media/" + obj.link.lstrip("/")
             return format_html(
                 '<img src="{}" style="max-width: 400px; max-height: 300px; border-radius: 8px;" />',
                 url,

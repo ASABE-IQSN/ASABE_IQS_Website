@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 def _build_download_url(zip_rel_path: str) -> str:
     rel = zip_rel_path.lstrip("/")
-    return f"/static/{rel}"
+    return f"/media/{rel}"
 
 
 @shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=3)

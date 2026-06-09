@@ -866,12 +866,11 @@ def upload_team_photo(request, event_id, team_id):
 
     filename = f"event{event_id}_team{team_id}_{safe_root}{ext}"
 
-    # We'll mirror your Flask behavior:
-    # Store under <project_root>/static/photos/<filename>
-    # and save "photos/<filename>" in photo_path so {% static photo.photo_path %} works.
+    # Store in the iqs-media bucket under photos/<filename> and save
+    # "photos/<filename>" in photo_path so /media/{{ photo_path }} serves it.
     storage = MediaStorage()
     storage.save(f"photos/{filename}", file)
-    # Path relative to /static
+    # Path relative to /media (iqs-media bucket)
     rel_path = f"photos/{filename}"
 
     # Create DB row; approved=False so you can moderate later if you want
@@ -1787,7 +1786,7 @@ def all_photos(request):
 
     for photo in tractor_photos:
         all_photos_list.append({
-            "src": f"/static/{photo.link}",
+            "src": f"/media/{photo.link}",
             "caption": photo.caption or "",
             "source_type": "Tractor",
             "source_name": photo.tractor.tractor_name if photo.tractor else "Unknown Tractor",
@@ -1805,7 +1804,7 @@ def all_photos(request):
     for photo in performance_photos:
         event_type_name = dict(PerformanceEventMedia.EventTypes.choices).get(photo.performance_event_type, "Unknown")
         all_photos_list.append({
-            "src": f"/static/{photo.link}",
+            "src": f"/media/{photo.link}",
             "caption": photo.caption or "",
             "source_type": "Performance Event",
             "source_name": f"{event_type_name} Event",
