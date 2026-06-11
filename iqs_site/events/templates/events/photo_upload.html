@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}Upload a Photo — IQS Connect{% endblock %}
+
+{% block extra_styles %}
+.upload-page {
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.upload-header {
+  margin-bottom: 2rem;
+}
+
+.upload-header h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #f3f6e7;
+  margin-bottom: 0.5rem;
+}
+
+.upload-header p {
+  color: #9ca3af;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.upload-card {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 1rem;
+  padding: 1.75rem;
+}
+
+.upload-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.upload-form label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #9ca3af;
+  margin-bottom: 0.35rem;
+  display: block;
+}
+
+.upload-form select,
+.upload-form input[type="file"],
+.upload-form input[type="text"] {
+  width: 100%;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 0.5rem;
+  color: #f3f6e7;
+  font-size: 0.875rem;
+  padding: 0.55rem 0.75rem;
+  box-sizing: border-box;
+}
+
+.upload-form select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.upload-form button {
+  align-self: flex-start;
+  padding: 0.5rem 1.5rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #6687FC, #0ea5e9);
+  color: #0b1120;
+  border: none;
+  cursor: pointer;
+}
+
+.upload-form button:hover { opacity: 0.9; }
+.upload-form button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.upload-hint {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 0.3rem;
+}
+
+.upload-msg {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  margin-bottom: 1.25rem;
+}
+
+.upload-msg.success {
+  background: #052e16;
+  border: 1px solid #166534;
+  color: #86efac;
+}
+
+.upload-msg.error {
+  background: #1c0a0a;
+  border: 1px solid #7f1d1d;
+  color: #fca5a5;
+}
+{% endblock %}
+
+{% block content %}
+<div class="upload-page">
+
+  <div class="upload-header">
+    <h1>Upload a Photo</h1>
+    <p>
+      Pick the kind of photo, choose what it belongs to, and upload. You can only
+      upload to teams you're a member of. Photos appear once they're approved.
+    </p>
+  </div>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="upload-msg {% if message.tags %}{{ message.tags }}{% endif %}">{{ message }}</div>
+    {% endfor %}
+  {% endif %}
+
+  <div class="upload-card">
+    <form class="upload-form" method="post"
+          action="{% url 'events:photo_upload' %}" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <div>
+        <label for="photo_type">Photo type</label>
+        <select id="photo_type" name="photo_type" required>
+          <option value="">— Select a type —</option>
+          {% for value, label in photo_types %}
+            <option value="{{ value }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div>
+        <label for="target_id">What is this a photo of?</label>
+        <select id="target_id" name="target_id" required disabled>
+          <option value="">— Select a type first —</option>
+        </select>
+        <div class="upload-hint" id="target_hint"></div>
+      </div>
+
+      <div>
+        <label for="photo">Photo file</label>
+        <input type="file" id="photo" name="photo"
+               accept=".png,.jpg,.jpeg,.gif,.webp" required>
+        <div class="upload-hint">Accepted: png, jpg, jpeg, gif, webp.</div>
+      </div>
+
+      <div>
+        <label for="caption">Caption (optional)</label>
+        <input type="text" id="caption" name="caption" maxlength="255"
+               placeholder="e.g. Final assembly, 2024 competition">
+      </div>
+
+      <button type="submit" id="submit_btn" disabled>Upload Photo</button>
+    </form>
+  </div>
+</div>
+
+<script>
+(function () {
+  const typeSelect = document.getElementById("photo_type");
+  const targetSelect = document.getElementById("target_id");
+  const hint = document.getElementById("target_hint");
+  const submitBtn = document.getElementById("submit_btn");
+  const targetsUrl = "{% url 'events:photo_upload_targets' %}";
+
+  function resetTarget(message) {
+    targetSelect.innerHTML = '<option value="">' + message + '</option>';
+    targetSelect.disabled = true;
+    submitBtn.disabled = true;
+  }
+
+  typeSelect.addEventListener("change", function () {
+    const ptype = typeSelect.value;
+    hint.textContent = "";
+    if (!ptype) {
+      resetTarget("— Select a type first —");
+      return;
+    }
+    resetTarget("Loading…");
+
+    fetch(targetsUrl + "?type=" + encodeURIComponent(ptype), {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        const targets = data.targets || [];
+        if (!targets.length) {
+          resetTarget("— Nothing available for your teams —");
+          hint.textContent =
+            "You can only upload to teams you belong to. Request access from your team page if this looks wrong.";
+          return;
+        }
+        targetSelect.innerHTML = '<option value="">— Select —</option>';
+        targets.forEach((t) => {
+          const opt = document.createElement("option");
+          opt.value = t.value;
+          opt.textContent = t.label;
+          targetSelect.appendChild(opt);
+        });
+        targetSelect.disabled = false;
+      })
+      .catch(() => {
+        resetTarget("— Could not load options —");
+      });
+  });
+
+  targetSelect.addEventListener("change", function () {
+    submitBtn.disabled = !targetSelect.value;
+  });
+})();
+</script>
+{% endblock %}

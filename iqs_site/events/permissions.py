@@ -1,6 +1,41 @@
+import re
+
 from django.http import HttpResponseForbidden
 from users.models import UserProfile
 from django.conf import settings
+
+def editable_team_ids(user):
+    """
+    Return the set of team_ids this user may upload content for.
+
+    Returns None to mean "all teams" (admins / can_edit_any_team), or a
+    (possibly empty) set of team_ids for regular members. Mirrors the rules
+    in can_edit_team(): team membership via the team_<id>_<name> group, plus
+    the alumni's own team.
+    """
+    if not user.is_authenticated:
+        return set()
+
+    if (user.is_superuser
+            or user.groups.filter(name="Admin").exists()
+            or user.has_perm("events.can_edit_any_team")):
+        return None
+
+    ids = set()
+
+    profile = getattr(user, "profile", None)
+    if (profile is not None
+            and getattr(profile, "team_id", None)
+            and profile.role == UserProfile.Role.ALUMNI):
+        ids.add(profile.team_id)
+
+    for group_name in user.groups.values_list("name", flat=True):
+        match = re.match(r"^team_(\d+)_", group_name)
+        if match:
+            ids.add(int(match.group(1)))
+
+    return ids
+
 
 def can_edit_team(user, team):
     """

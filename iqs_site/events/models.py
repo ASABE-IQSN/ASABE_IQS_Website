@@ -776,6 +776,10 @@ class ManeuverabilityRun(models.Model):
         default="system",
     )
 
+    # Official maneuverability score (100-pt total). Analogous to
+    # Pull.final_distance / DurabilityRun.total_laps for this event type.
+    score = models.FloatField(blank=True, null=True)
+
     class Meta:
         managed = False
         db_table = "maneuverability_runs"

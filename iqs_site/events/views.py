@@ -39,7 +39,7 @@ from .models import DurabilityRun, DurabilityData, ManeuverabilityRun, Performan
 from .models import ScoreCategoryInstance, ScoreCategoryScore, ScoreSubCategoryScore, ScoreSubCategoryInstance, ScoreCategory
 from .models import Tractor, TractorInfo
 from .forms import TractorProfileEditForm
-from .permissions import can_edit_tractor
+from .permissions import can_edit_tractor, editable_team_ids
 from .tractorinfo_utils import TRACTOR_INFO_MAP
 from .tasks import generate_pull_export_zip
 
@@ -1824,6 +1824,221 @@ def all_photos(request):
     return render(request, "events/photo_all.html", context)
     
 
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Centralized photo upload
+#
+# A single page where a logged-in user picks a photo type (tractor, team-event,
+# pull, durability, maneuverability), selects the relevant target (scoped to
+# teams they can edit), and uploads. Permissions are re-checked server-side
+# before any record is created.
+# ─────────────────────────────────────────────────────────────────────────
+
+PHOTO_UPLOAD_TYPES = [
+    ("tractor", "Tractor photo"),
+    ("team_event", "Team / event photo"),
+    ("pull", "Pull photo"),
+    ("durability", "Durability run photo"),
+    ("maneuverability", "Maneuverability run photo"),
+]
+
+
+def _save_uploaded_photo(photo_file, prefix):
+    """Sanitize, store the image in the iqs-media bucket, return its rel path."""
+    name_root, ext = os.path.splitext(photo_file.name)
+    ext = ext.lower()
+    safe_root = "".join(c for c in name_root if c.isalnum() or c in ("-", "_")) or "photo"
+    rel_path = f"photos/{prefix}_{safe_root}{ext}"
+    MediaStorage().save(rel_path, photo_file)
+    return rel_path
+
+
+@login_required
+@require_GET
+def photo_upload_targets(request):
+    """
+    JSON list of upload targets for a given photo type, scoped to the teams the
+    current user is allowed to edit. Used to populate the dependent dropdown.
+    """
+    ptype = request.GET.get("type", "")
+    team_ids = editable_team_ids(request.user)  # None => all teams
+
+    # Non-admin with no team memberships has nothing to upload to.
+    if team_ids is not None and not team_ids:
+        return JsonResponse({"targets": []})
+
+    def scoped(qs, field="team_id"):
+        if team_ids is None:
+            return qs
+        return qs.filter(**{f"{field}__in": team_ids})
+
+    targets = []
+
+    if ptype == "tractor":
+        qs = scoped(
+            Tractor.objects.select_related("original_team"),
+            field="original_team_id",
+        ).order_by("-year", "tractor_name")
+        targets = [
+            {"value": t.tractor_id, "label": f"{t.display_name or t.tractor_id} ({t.year})"}
+            for t in qs
+        ]
+
+    elif ptype == "team_event":
+        qs = scoped(
+            EventTeam.objects.select_related("event", "team")
+        ).order_by("-event_id")
+        targets = [
+            {"value": et.event_team_id,
+             "label": f"{et.team.team_name} @ {et.event.event_name}"}
+            for et in qs if et.team and et.event
+        ]
+
+    elif ptype == "pull":
+        qs = scoped(
+            Pull.objects.select_related("team", "event").order_by("-pull_id")
+        )[:500]
+        targets = [
+            {"value": p.pull_id,
+             "label": f"Pull {p.pull_id} — {p.team.team_name}"
+                      + (f" @ {p.event.event_name}" if p.event else "")}
+            for p in qs
+        ]
+
+    elif ptype == "durability":
+        qs = scoped(
+            DurabilityRun.objects.select_related("team", "event")
+            .order_by("-durability_run_id")
+        )[:500]
+        targets = [
+            {"value": r.durability_run_id,
+             "label": f"Durability #{r.durability_run_id} — {r.team.team_name}"
+                      + (f" @ {r.event.event_name}" if r.event else "")}
+            for r in qs
+        ]
+
+    elif ptype == "maneuverability":
+        qs = scoped(
+            ManeuverabilityRun.objects.select_related("team", "event")
+            .order_by("-maneuverability_run_id")
+        )[:500]
+        targets = [
+            {"value": r.maneuverability_run_id,
+             "label": f"Maneuverability #{r.maneuverability_run_id} — {r.team.team_name}"
+                      + (f" @ {r.event.event_name}" if r.event else "")}
+            for r in qs
+        ]
+
+    else:
+        return JsonResponse({"error": "Unknown photo type."}, status=400)
+
+    return JsonResponse({"targets": targets})
+
+
+def _create_photo_record(request, ptype, target_id, rel_path, caption, ip):
+    """Create the right DB record for an uploaded photo. Raises PermissionDenied."""
+    caption = caption or None
+
+    if ptype == "tractor":
+        tractor = get_object_or_404(Tractor, pk=target_id)
+        if not can_edit_tractor(request.user, tractor):
+            raise PermissionDenied
+        TractorMedia.objects.create(
+            tractor=tractor,
+            media_type=TractorMedia.MediaTypes.IMAGE,
+            link=rel_path,
+            caption=caption,
+            uploaded_by=request.user,
+            submitted_from_ip=ip,
+            approved=True,
+        )
+        return
+
+    if ptype == "team_event":
+        event_team = get_object_or_404(
+            EventTeam.objects.select_related("team", "event"), pk=target_id
+        )
+        if not can_edit_team(request.user, event_team.team):
+            raise PermissionDenied
+        EventTeamPhoto.objects.create(
+            event_team=event_team,
+            photo_path=rel_path,
+            caption=caption,
+            submitted_from_ip=ip,
+            approved=True,
+        )
+        return
+
+    if ptype in ("pull", "durability", "maneuverability"):
+        if ptype == "pull":
+            obj = get_object_or_404(Pull.objects.select_related("team"), pk=target_id)
+            team, event_type, event_id = obj.team, PerformanceEventMedia.EventTypes.PULL, obj.pull_id
+        elif ptype == "durability":
+            obj = get_object_or_404(DurabilityRun.objects.select_related("team"), pk=target_id)
+            team, event_type, event_id = obj.team, PerformanceEventMedia.EventTypes.DURABILITY, obj.durability_run_id
+        else:
+            obj = get_object_or_404(ManeuverabilityRun.objects.select_related("team"), pk=target_id)
+            team, event_type, event_id = obj.team, PerformanceEventMedia.EventTypes.MANEUVERABILITY, obj.maneuverability_run_id
+
+        if not can_edit_team(request.user, team):
+            raise PermissionDenied
+        PerformanceEventMedia.objects.create(
+            performance_event_type=event_type,
+            performance_event_id=event_id,
+            media_type=PerformanceEventMedia.MediaTypes.IMAGE,
+            link=rel_path,
+            caption=caption,
+            uploaded_by=request.user,
+            submitted_from_ip=ip,
+            approved=True,
+        )
+        return
+
+    raise Http404("Unknown photo type.")
+
+
+@login_required
+def photo_upload(request):
+    """Centralized photo upload page (GET shows form, POST handles upload)."""
+    if request.method == "POST":
+        ptype = request.POST.get("photo_type", "")
+        target_id = request.POST.get("target_id", "")
+        caption = (request.POST.get("caption") or "").strip()
+        photo_file = request.FILES.get("photo")
+
+        valid_types = {key for key, _ in PHOTO_UPLOAD_TYPES}
+        if ptype not in valid_types:
+            messages.error(request, "Please choose a valid photo type.")
+        elif not target_id:
+            messages.error(request, "Please select what this photo is of.")
+        elif not photo_file or not photo_file.name:
+            messages.error(request, "Please choose a photo to upload.")
+        elif not allowed_file(photo_file.name):
+            messages.error(request, "Invalid file type. Use png, jpg, jpeg, gif, or webp.")
+        else:
+            xff = request.META.get("HTTP_X_FORWARDED_FOR")
+            ip = xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")
+
+            # Build a filename prefix matching the existing per-type conventions.
+            prefix = {
+                "tractor": "tractor",
+                "team_event": "team_event",
+                "pull": "pull",
+                "durability": "durability",
+                "maneuverability": "maneuverability",
+            }[ptype]
+            rel_path = _save_uploaded_photo(photo_file, f"{prefix}{target_id}")
+            _create_photo_record(request, ptype, target_id, rel_path, caption, ip)
+            messages.success(request, "Photo uploaded successfully!")
+            return redirect("events:photo_upload")
+
+        return redirect("events:photo_upload")
+
+    return render(request, "events/photo_upload.html", {
+        "photo_types": PHOTO_UPLOAD_TYPES,
+        "active_page": None,
+    })
 
 
 ALLOWED_REPORT_EXTENSIONS = {"pdf"}

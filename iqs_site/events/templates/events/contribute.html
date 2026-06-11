@@ -257,11 +257,12 @@
       <div class="step-body">
         <div class="step-title">Add photos</div>
         <div class="step-desc">
-          Photos can be uploaded directly from event pages and run detail pages.
-          Visit the event your team competed in, open your team's entry for that event,
-          and use the upload button to add photos from the competition.
+          Use the centralized photo uploader: pick the photo type (tractor,
+          team/event, pull, durability, or maneuverability), choose what it
+          belongs to, and upload. You can also still upload directly from event
+          and run detail pages.
         </div>
-        <a href="{% url 'events:event_list' %}" class="step-action secondary">Browse Events</a>
+        <a href="{% url 'events:photo_upload' %}" class="step-action">Upload a Photo</a>
       </div>
     </div>
 

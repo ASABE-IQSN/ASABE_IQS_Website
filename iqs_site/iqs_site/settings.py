@@ -107,6 +107,7 @@ INSTALLED_APPS = [
     "awards",
     "compforms",
     "engagement",
+    "recording",
     "storages",
 ]
 
