@@ -137,11 +137,22 @@ def landing(request):
         for p in slideshow_photos
     ]
 
+    # Approved photos used to build the tiled background collage on the home
+    # page (rendered behind a dark overlay). Just the paths — thumbnails are
+    # generated lazily in the template via sorl-thumbnail.
+    background_photos = list(
+        EventTeamPhoto.objects
+        .filter(approved=True)
+        .order_by("?")
+        .values_list("photo_path", flat=True)[:30]
+    )
+
     return render(request, "landing.html", {
         "next_event": next_event,
         "active_event": active_event,
         "active_page": "landing",
         "slideshow_photos": slideshow_data,
+        "background_photos": background_photos,
     })
 
 

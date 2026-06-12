@@ -109,6 +109,7 @@ INSTALLED_APPS = [
     "engagement",
     "recording",
     "storages",
+    "sorl.thumbnail",
 ]
 
 MIDDLEWARE = [
@@ -428,6 +429,22 @@ STORAGES = {
         "BACKEND": "iqs_site.storage.StaticStorage",
     },
 }
+
+# ── sorl-thumbnail ────────────────────────────────────────────────────
+# Generated thumbnails are written to the default (SeaweedFS/iqs-media)
+# storage. We use Redis as the key-value store so we don't have to add a
+# table to the shared MySQL database (which is also used by the Flask API).
+from urllib.parse import urlparse as _urlparse
+
+_thumb_redis = _urlparse(REDIS_URL)
+THUMBNAIL_KVSTORE = "sorl.thumbnail.kvstores.redis_kvstore.KVStore"
+THUMBNAIL_REDIS_HOST = _thumb_redis.hostname or "redis"
+THUMBNAIL_REDIS_PORT = _thumb_redis.port or 6379
+THUMBNAIL_REDIS_DB = int((_thumb_redis.path or "/0").lstrip("/") or "0")
+THUMBNAIL_REDIS_PASSWORD = _thumb_redis.password or ""
+# Don't break the page if a source image is missing/corrupt; sorl logs the
+# error and the tile is simply skipped instead of raising.
+THUMBNAIL_DEBUG = False
 
 INTERNAL_REPORT_TOKEN = os.environ.get("INTERNAL_REPORT_TOKEN", "")
 ZEROGPT_API_KEY = os.environ.get("ZEROGPT_API_KEY", "")

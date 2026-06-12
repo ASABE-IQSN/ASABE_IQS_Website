@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load thumbnail %}
 
 {% block title %}IQS Connect{% endblock %}
 {% block og_title %}IQS Connect – International Quarter Scale Competition{% endblock %}
@@ -9,6 +10,38 @@
 {% block extra_styles %}
   main {
     padding: 2rem 1.5rem;
+  }
+
+  /* Tiled team-photo collage behind a dark overlay (home page background) */
+  .bg-collage,
+  .bg-overlay {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .bg-collage {
+    z-index: -2;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-auto-rows: 200px;
+    gap: 4px;
+    overflow: hidden;
+  }
+
+  .bg-collage img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    filter: grayscale(25%);
+  }
+
+  /* Dark overlay so foreground text/cards stay readable, while still letting
+     the team photos show through. */
+  .bg-overlay {
+    z-index: -1;
+    background: linear-gradient(180deg, rgba(2, 6, 23, 0.55), rgba(2, 6, 23, 0.7));
   }
 
   /* Landing page uses its own layout — lift the default 1000px wrap */
@@ -372,6 +405,20 @@
 {% endblock %}
 
 {% block content %}
+  {% if background_photos %}
+  <div class="bg-collage" aria-hidden="true">
+    {% comment %} Loop the photo set twice so the grid fills large viewports. {% endcomment %}
+    {% for _ in "12" %}
+      {% for path in background_photos %}
+        {% thumbnail path "300x300" crop="center" as im %}
+          <img src="{{ im.url }}" alt="" loading="lazy">
+        {% endthumbnail %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+  <div class="bg-overlay" aria-hidden="true"></div>
+  {% endif %}
+
   <div class="landing-stack">
     <div class="landing-body">
       <div class="landing-left">
