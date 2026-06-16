@@ -1,6 +1,6 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
   <title>{% block title %}International Quarter Scale{% endblock %}</title>
@@ -15,14 +15,126 @@
   <meta property="og:image" content="{% block og_image %}https://iqsconnect.org{% static 'events/images/ASABE-IQS-logo-white.png' %}{% endblock %}">
   <meta name="twitter:card" content="summary_large_image">
 
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,200..800;1,6..72,200..800&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Work+Sans:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+
+  <script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "on-secondary-fixed": "#001453",
+            "tertiary-fixed": "#ffddb5",
+            "on-tertiary-fixed": "#2a1800",
+            "on-surface": "#1b1c1c",
+            "surface-container-highest": "#e5e2e1",
+            "on-primary-container": "#7490c3",
+            "on-primary": "#ffffff",
+            "outline": "#747780",
+            "on-primary-fixed-variant": "#284775",
+            "error": "#ba1a1a",
+            "surface-bright": "#fcf9f8",
+            "primary-container": "#002855",
+            "on-error-container": "#93000a",
+            "surface-alt": "#F5F7F9",
+            "surface-container-lowest": "#ffffff",
+            "outline-variant": "#c4c6d0",
+            "surface-container": "#f0eded",
+            "surface-variant": "#e5e2e1",
+            "on-secondary-container": "#fffbff",
+            "surface-tint": "#415f8f",
+            "royal-accent": "#2D5AF0",
+            "on-tertiary": "#ffffff",
+            "tertiary-fixed-dim": "#feb959",
+            "inverse-primary": "#aac7fd",
+            "secondary": "#154be2",
+            "tertiary-container": "#3b2400",
+            "primary": "#001430",
+            "warning-gold": "#F0AD4E",
+            "secondary-container": "#3c66fc",
+            "inverse-on-surface": "#f3f0ef",
+            "surface-dim": "#dcd9d9",
+            "error-container": "#ffdad6",
+            "background": "#fcf9f8",
+            "on-background": "#1b1c1c",
+            "primary-fixed": "#d6e3ff",
+            "on-primary-fixed": "#001b3d",
+            "on-tertiary-fixed-variant": "#643f00",
+            "navy-deep": "#002855",
+            "primary-fixed-dim": "#aac7fd",
+            "secondary-fixed": "#dde1ff",
+            "tertiary": "#201100",
+            "surface-container-low": "#f6f3f2",
+            "secondary-fixed-dim": "#b8c4ff",
+            "on-surface-variant": "#43474f",
+            "on-error": "#ffffff",
+            "on-secondary": "#ffffff",
+            "on-tertiary-container": "#c08428",
+            "inverse-surface": "#303030",
+            "surface": "#fcf9f8",
+            "on-secondary-fixed-variant": "#0037b9",
+            "surface-container-high": "#eae7e7"
+          },
+          borderRadius: {
+            "DEFAULT": "0.125rem",
+            "lg": "0.25rem",
+            "xl": "0.5rem",
+            "full": "0.75rem"
+          },
+          spacing: {
+            "margin-mobile": "16px",
+            "unit": "4px",
+            "gutter": "24px",
+            "section-gap": "80px",
+            "component-gap": "16px",
+            "margin-desktop": "64px"
+          },
+          fontFamily: {
+            "headline-md": ["Newsreader"],
+            "headline-sm": ["Newsreader"],
+            "body-lg": ["Open Sans"],
+            "button-text": ["Work Sans"],
+            "label-caps": ["Work Sans"],
+            "headline-lg-mobile": ["Newsreader"],
+            "headline-lg": ["Newsreader"],
+            "body-md": ["Open Sans"],
+            "body-sm": ["Open Sans"],
+            "display-hero": ["Newsreader"]
+          },
+          fontSize: {
+            "headline-md": ["24px", {"lineHeight": "32px", "fontWeight": "600"}],
+            "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+            "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+            "button-text": ["14px", {"lineHeight": "20px", "fontWeight": "600"}],
+            "label-caps": ["12px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+            "headline-lg-mobile": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+            "headline-lg": ["32px", {"lineHeight": "40px", "fontWeight": "600"}],
+            "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+            "body-sm": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+            "display-hero": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    }
+
     body {
       margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #020617;
-      color: #f3f6e7;
+      font-family: 'Open Sans', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #fcf9f8;
+      color: #1b1c1c;
     }
-    a { color: #6687fc; text-decoration: none; }
+
+    a { color: #2D5AF0; text-decoration: none; }
     a:hover { text-decoration: underline; }
 
     .page {
@@ -31,114 +143,45 @@
       flex-direction: column;
     }
 
-    .site-logo {
-      max-height: 80px;
-      max-width: 120%;
-      height: auto;
-      width: auto;
-    }
-
-    .asabe-logo {
-      max-height: 40px;
-      max-width: 120%;
-      height: auto;
-      width: auto;
-    }
-
-    header {
-      padding: 1rem 1.5rem;
-      border-bottom: 1px solid #111827;
-      background: #020617;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .logo {
-      font-weight: 700;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      font-size: 0.9rem;
-      color: #9ca3af;
-    }
-
-    .nav-links a {
-      margin-left: 1rem;
-      font-size: 1.0rem;
-      color: #9ca3af;
-      flex: 1;                /* ← this is the key */
-      text-align: center;
-      padding: 0.75rem 0.5rem;
-      font-weight: 500;
-      text-decoration: none;
-      transition: background 0.15s ease;
-      align-items: flex-start;
-    }
-
-    .nav-links a.active {
-      color: #e5e7eb;
-      font-weight: 600;
-    }
-
     main {
       flex: 1;
-      padding: 1.5rem;
     }
 
+    /* Inner pages get a centered column; the landing page overrides this. */
     .wrap {
-      max-width: 1000px;
+      max-width: 1200px;
       margin: 0 auto;
+      padding: 2rem 64px;
+    }
+
+    @media (max-width: 768px) {
+      .wrap { padding: 1.5rem 16px; }
     }
 
     .empty {
       font-size: 0.9rem;
-      color: #9ca3af;
+      color: #43474f;
     }
 
-    footer {
-      padding: 1rem 1.5rem;
-      border-top: 1px solid #111827;
-      font-size: 0.8rem;
-      color: #6b7280;
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
+    /* Logout button styled to sit inside the light nav */
+    .logout-button {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: #001430;
+      font-family: 'Work Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 0;
     }
-
-    .announcement-card {
-      max-width: 900px;
-      margin: 0 auto 1.5rem;
-      padding: 1rem 1.25rem;
-      border-radius: 1rem;
-      background: linear-gradient(135deg, #020617, #020617) padding-box,
-                  linear-gradient(135deg, #6687FC, #0ea5e9) border-box;
-      border: 1px solid transparent;
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .announcement-text {
-      font-size: 0.95rem;
-      color: #F3F6E7;
-      line-height: 1.4;
-    }
-
-  .announcement-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-shrink: 0;
-  }
+    .logout-button:hover { color: #2D5AF0; }
 
     {% block extra_styles %}{% endblock %}
   </style>
 
   {% block extra_head %}{% endblock %}
 </head>
-<body>
+<body class="bg-background text-on-background font-body-md selection:bg-royal-accent selection:text-white">
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-Y1M9QRZMRZ"></script>
     <script>
@@ -164,45 +207,41 @@
     </script>
 
 <div class="page">
-  <header>
-    <!-- <div class="logo">International Quarter Scale</div> -->
-    <a href="https://asabe.org/iqs">
-      <img
-        src="{% static 'events/images/ASABE-IQS-logo-white.png' %}"
-        alt="International Quarter Scale"
-        class="site-logo"
-        >
-     </a>
-    <nav class="nav-links">
-      <a href="{% url 'events:landing' %}"
-         class="{% if active_page == 'landing' %}active{% endif %}">
-        Home
-      </a>
-      <a href="{% url 'events:event_list' %}"
-         class="{% if active_page == 'events' %}active{% endif %}">
-        Events
-      </a>
-      <a href="{% url 'events:team_list' %}"
-         class="{% if active_page == 'teams' %}active{% endif %}">
-        Teams
-      </a>
-      <a href="{% url 'events:tractor_list' %}"
-         class="{% if active_page == 'tractors' %}active{% endif %}">
-        Tractors
+  <!-- TopAppBar -->
+  <header id="site-header" class="top-0 sticky z-50 bg-surface border-b border-outline-variant transition-all">
+    <div class="max-w-[1200px] mx-auto px-margin-mobile md:px-margin-desktop flex justify-between items-center w-full h-20">
+      <a href="{% url 'events:landing' %}" class="flex items-center gap-3 group">
+        <span class="material-symbols-outlined text-primary text-3xl">agriculture</span>
+        <span class="flex flex-col leading-none">
+          <span class="font-headline-md text-headline-sm text-primary group-hover:text-royal-accent transition-colors">IQS Connect</span>
+          <span class="font-label-caps text-[10px] tracking-widest uppercase text-on-surface-variant hidden sm:block">International Quarter Scale</span>
+        </span>
       </a>
 
-      
-      <!-- {% if user.is_authenticated %}
-      <a href="{% url 'users:account' %}">My Account</a>
-        <form action="{% url 'logout' %}" method="post" style="display:inline;">
-          {% csrf_token %}
-          <button type="submit" class="logout-button">Logout</button>
-        </form>
-    {% else %}
-      <a href="{% url 'login' %}">Login</a>
-    {% endif %} -->
+      <nav class="hidden md:flex gap-8 items-center">
+        <a href="{% url 'events:landing' %}"
+           class="font-button-text text-button-text transition-colors {% if active_page == 'landing' %}text-royal-accent border-b-2 border-royal-accent pb-1{% else %}text-primary hover:text-royal-accent{% endif %}">Home</a>
+        <a href="{% url 'events:event_list' %}"
+           class="font-button-text text-button-text transition-colors {% if active_page == 'events' %}text-royal-accent border-b-2 border-royal-accent pb-1{% else %}text-primary hover:text-royal-accent{% endif %}">Events</a>
+        <a href="{% url 'events:team_list' %}"
+           class="font-button-text text-button-text transition-colors {% if active_page == 'teams' %}text-royal-accent border-b-2 border-royal-accent pb-1{% else %}text-primary hover:text-royal-accent{% endif %}">Teams</a>
+        <a href="{% url 'events:tractor_list' %}"
+           class="font-button-text text-button-text transition-colors {% if active_page == 'tractors' %}text-royal-accent border-b-2 border-royal-accent pb-1{% else %}text-primary hover:text-royal-accent{% endif %}">Tractors</a>
+        <span id="auth-slot" class="flex items-center gap-6" style="display:none;"></span>
+      </nav>
 
-    <span id="auth-slot" style="display:none;"></span>
+      <button id="mobile-menu-toggle" class="md:hidden text-primary" aria-label="Toggle navigation">
+        <span class="material-symbols-outlined">menu</span>
+      </button>
+    </div>
+
+    <!-- Mobile nav -->
+    <nav id="mobile-nav" class="hidden md:hidden border-t border-outline-variant bg-surface px-margin-mobile py-4 flex-col gap-1">
+      <a href="{% url 'events:landing' %}" class="block py-3 font-button-text text-button-text {% if active_page == 'landing' %}text-royal-accent{% else %}text-primary{% endif %}">Home</a>
+      <a href="{% url 'events:event_list' %}" class="block py-3 font-button-text text-button-text {% if active_page == 'events' %}text-royal-accent{% else %}text-primary{% endif %}">Events</a>
+      <a href="{% url 'events:team_list' %}" class="block py-3 font-button-text text-button-text {% if active_page == 'teams' %}text-royal-accent{% else %}text-primary{% endif %}">Teams</a>
+      <a href="{% url 'events:tractor_list' %}" class="block py-3 font-button-text text-button-text {% if active_page == 'tractors' %}text-royal-accent{% else %}text-primary{% endif %}">Tractors</a>
+      <span id="auth-slot-mobile" class="block py-3"></span>
     </nav>
   </header>
 
@@ -212,21 +251,74 @@
     </div>
   </main>
 
-  <footer>
-    <a href="https://asabe.org/">
-      <img
-        src="{% static 'events/images/ASABE_Logo_White.png' %}"
-        alt="ASABE"
-        class="asabe-logo"
-      >
-    </a>
-    
-    &copy; 2026 International Quarter Scale Competition •
-    <a href="{% url 'events:privacy' %}">Privacy Policy</a>
+  <!-- Footer -->
+  <footer class="bg-primary text-on-primary">
+    <div class="w-full py-section-gap px-margin-mobile md:px-margin-desktop max-w-[1200px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-gutter">
+      <div>
+        <a href="https://asabe.org/iqs">
+          <img alt="ASABE IQS Logo" class="h-12 w-auto mb-8 opacity-90" src="{% static 'events/images/ASABE-IQS-logo-white.png' %}"/>
+        </a>
+        <p class="font-body-sm text-body-sm text-outline-variant max-w-md">
+          The International 1/4 Scale Tractor Student Design Competition is a premier student design event managed by ASABE, preparing the next generation of technical leaders.
+        </p>
+      </div>
+      <div class="grid grid-cols-2 gap-8">
+        <div>
+          <h5 class="font-label-caps text-label-caps text-warning-gold uppercase mb-6 tracking-widest">Competition</h5>
+          <nav class="flex flex-col gap-4">
+            <a class="text-outline-variant hover:text-on-primary transition-colors font-body-sm text-body-sm" href="{% url 'events:event_list' %}">Events</a>
+            <a class="text-outline-variant hover:text-on-primary transition-colors font-body-sm text-body-sm" href="{% url 'events:team_list' %}">Teams</a>
+            <a class="text-outline-variant hover:text-on-primary transition-colors font-body-sm text-body-sm" href="{% url 'events:tractor_list' %}">Tractors</a>
+            <a class="text-outline-variant hover:text-on-primary transition-colors font-body-sm text-body-sm" href="{% url 'events:photos' %}">Photos</a>
+          </nav>
+        </div>
+        <div>
+          <h5 class="font-label-caps text-label-caps text-warning-gold uppercase mb-6 tracking-widest">Organization</h5>
+          <nav class="flex flex-col gap-4">
+            <a class="text-outline-variant hover:text-on-primary transition-colors font-body-sm text-body-sm" href="https://asabe.org/iqs">About ASABE IQS</a>
+            <a class="text-outline-variant hover:text-on-primary transition-colors font-body-sm text-body-sm" href="https://asabe.org/">ASABE</a>
+            <a class="text-outline-variant hover:text-on-primary transition-colors font-body-sm text-body-sm" href="{% url 'events:contribute' %}">Update Your Team</a>
+            <a class="text-outline-variant hover:text-on-primary transition-colors font-body-sm text-body-sm" href="{% url 'events:privacy' %}">Privacy Policy</a>
+          </nav>
+        </div>
+      </div>
+    </div>
+    <div class="w-full py-8 border-t border-white/10 px-margin-mobile md:px-margin-desktop max-w-[1200px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+      <p class="font-body-sm text-body-sm text-outline-variant">
+        &copy; 2026 ASABE International 1/4 Scale Tractor Student Design Competition.
+      </p>
+      <a href="https://asabe.org/">
+        <img alt="ASABE" class="h-8 w-auto opacity-90" src="{% static 'events/images/ASABE_Logo_White.png' %}"/>
+      </a>
+    </div>
   </footer>
 </div>
 
 {% block extra_scripts %}{% endblock %}
+
+<script>
+  // Sticky header shadow on scroll
+  window.addEventListener('scroll', () => {
+    const header = document.getElementById('site-header');
+    if (!header) return;
+    if (window.scrollY > 50) {
+      header.classList.add('shadow-md', 'bg-surface/95', 'backdrop-blur-sm');
+    } else {
+      header.classList.remove('shadow-md', 'bg-surface/95', 'backdrop-blur-sm');
+    }
+  });
+
+  // Mobile menu toggle
+  (function () {
+    const toggle = document.getElementById('mobile-menu-toggle');
+    const nav = document.getElementById('mobile-nav');
+    if (!toggle || !nav) return;
+    toggle.addEventListener('click', () => {
+      const hidden = nav.classList.toggle('hidden');
+      nav.classList.toggle('flex', !hidden);
+    });
+  })();
+</script>
 
 <script>
 (function () {
@@ -319,36 +411,41 @@
     .catch(function () { /* fail silently */ });
 })();
 </script>
-</body>
-</html>
 
 <script>
 (async function () {
   const slot = document.getElementById("auth-slot");
+  const slotMobile = document.getElementById("auth-slot-mobile");
   if (!slot) return;
 
   try {
     const r = await fetch("{% url 'users:auth_status' %}", { credentials: "same-origin" });
     const data = await r.json();
 
+    let markup;
     if (data.authenticated) {
-      slot.innerHTML = `
-        <a href="${data.accountUrl}"class="{% if active_page == 'my account' %}active{% endif %}">My Account
-           </a>
+      markup = `
+        <a href="${data.accountUrl}" class="font-button-text text-button-text text-primary hover:text-royal-accent transition-colors">My Account</a>
         <form action="${data.logoutUrl}" method="post" style="display:inline;">
           <input type="hidden" name="csrfmiddlewaretoken" value="${data.csrfToken}">
           <button type="submit" class="logout-button">Logout</button>
         </form>
       `;
     } else {
-      slot.innerHTML = `<a href="${data.loginUrl}">Login</a>`;
+      markup = `<a href="${data.loginUrl}" class="bg-primary text-on-primary px-6 py-2 rounded-lg font-button-text text-button-text hover:bg-navy-deep transition-all">Login</a>`;
     }
 
-    slot.style.display = "inline";
+    slot.innerHTML = markup;
+    slot.style.display = "flex";
+    if (slotMobile) slotMobile.innerHTML = markup;
   } catch (e) {
     // Fail gracefully: show Login if the check fails
-    slot.innerHTML = `<a href="{% url 'login' %}">Login</a>`;
-    slot.style.display = "inline";
+    const fallback = `<a href="{% url 'login' %}" class="font-button-text text-button-text text-primary hover:text-royal-accent">Login</a>`;
+    slot.innerHTML = fallback;
+    slot.style.display = "flex";
+    if (slotMobile) slotMobile.innerHTML = fallback;
   }
 })();
 </script>
+</body>
+</html>

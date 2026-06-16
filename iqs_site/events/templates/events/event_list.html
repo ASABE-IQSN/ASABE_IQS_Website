@@ -2,141 +2,94 @@
 
 {% block title %}Events – International Quarter Scale{% endblock %}
 
-{% block extra_styles %}
-  .event-card {
-    background: #0d132d;
-    border-radius: 0.9rem;
-    border: 1px solid #1f2937;
-    padding: 1.25rem 1.5rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .event-card h2 {
-    margin: 0 0 0.25rem;
-    font-size: 1.35rem;
-  }
-
-  .event-meta {
-    color: #f3f6e7;
-    font-size: 0.85rem;
-    margin-bottom: 0.75rem;
-  }
-
-  h1 {
-    margin-bottom: 1.5rem;
-    font-size: 1.8rem;
-  }
-
-  h3 {
-    margin-top: 0.8rem;
-    margin-bottom: 0.4rem;
-    font-size: 1.0rem;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #020617;
-    border-radius: 0.75rem;
-    overflow: hidden;
-  }
-
-  th, td {
-    padding: 0.55rem 0.75rem;
-    border-bottom: 1px solid #1f2937;
-    font-size: 0.9rem;
-    text-align: left;
-  }
-
-  th {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: #9ca3af;
-    background: #030712;
-  }
-
-  tr:last-child td {
-    border-bottom: none;
-  }
-
-  tbody tr:nth-child(even) {
-    background: #020617;
-  }
-
-  .class-tables {
-    display: flex;
-    gap: 1rem;
-    padding: 0.75rem 0.5rem;
-    margin-top: 0.75rem;
-    flex-direction: column;
-    flex-wrap: wrap;
-  }
-
-  .class-table {
-    <!-- display: flex; -->
-    flex: 1 1 0;
-    min-width: 0;
-  }
-{% endblock %}
-
 {% block content %}
-  <h1>Events</h1>
-
-  {% for event in events %}
-    <section class="event-card">
-      <h2>
-        <a href="{% url 'events:event_detail' event_id=event.event_id %}">
-          {{ event.event_name }}
-        </a>
-      </h2>
-
-      {% if event.event_datetime %}
-        <div class="event-meta">
-          {{ event.event_datetime|date:"F Y" }}
-        </div>
-      {% endif %}
-
-      {# We assume the view attaches a `class_leaderboards` list to each event #}
-      {% if event.class_leaderboards %}
-        <div class="class-tables">
-          {% for leaderboard in event.class_leaderboards %}
-            <div class="class-table">
-              <h3>{{ leaderboard.team_class.name }} – Top 3</h3>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Team</th>
-                    <th>Team #</th>
-                    <th>Total Score</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for et in leaderboard.entries %}
-                    <tr>
-                      <td>
-                        <a href="{% url 'events:team_event_detail' event_id=event.event_id team_id=et.team_id %}">
-                          {{ et.team.team_name }}
-                        </a>
-                      </td>
-                      <td>{{ et.team.team_number }}</td>
-                      <td>{{ et.total_score|default:"N/A" }}</td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          {% endfor %}
-        </div>
-      {% else %}
-        <p class="empty">
-          {% if top_classes %}
-            No teams for this event yet.
-          {% else %}
-            No team classes defined yet.
-          {% endif %}
-        </p>
-      {% endif %}
+  <div class="max-w-4xl mx-auto">
+    <!-- Hero -->
+    <section class="mb-12 text-center">
+      <h1 class="font-headline-lg text-headline-lg text-navy-deep mb-2">Events Directory</h1>
+      <p class="font-body-md text-body-md text-on-surface-variant max-w-xl mx-auto">
+        Results and standings from the International Quarter Scale Competition — past and present.
+      </p>
     </section>
-  {% endfor %}
+
+    {% if events %}
+    <div class="space-y-8">
+      {% for event in events %}
+      <article class="bg-surface-container-lowest border border-outline-variant rounded-lg shadow-sm overflow-hidden transition-transform hover:-translate-y-0.5 hover:shadow-md {% if not forloop.first %}border-l-4 border-l-navy-deep{% endif %}">
+
+        {% if forloop.first %}
+        <!-- Featured (most recent) event -->
+        <div class="bg-navy-deep px-6 py-5">
+          {% if event.event_datetime %}
+          <span class="bg-royal-accent text-white font-label-caps text-label-caps px-3 py-1 rounded-full uppercase">{{ event.event_datetime|date:"F Y" }}</span>
+          {% endif %}
+          <h2 class="font-headline-md text-headline-md mt-2">
+            <a class="text-white hover:text-warning-gold transition-colors" href="{% url 'events:event_detail' event_id=event.event_id %}">{{ event.event_name }}</a>
+          </h2>
+        </div>
+        {% else %}
+        <div class="flex justify-between items-start px-6 pt-5">
+          <div>
+            {% if event.event_datetime %}
+            <span class="font-label-caps text-label-caps text-on-surface-variant uppercase">{{ event.event_datetime|date:"F Y" }}</span>
+            {% endif %}
+            <h2 class="font-headline-md text-headline-md text-navy-deep">
+              <a class="text-navy-deep hover:text-royal-accent transition-colors" href="{% url 'events:event_detail' event_id=event.event_id %}">{{ event.event_name }}</a>
+            </h2>
+          </div>
+          <span class="material-symbols-outlined text-outline">history</span>
+        </div>
+        {% endif %}
+
+        <div class="p-6 space-y-6">
+          {% if event.class_leaderboards %}
+            {% for leaderboard in event.class_leaderboards %}
+            <div>
+              <h3 class="font-headline-sm text-headline-sm {% if forloop.first %}text-royal-accent{% else %}text-on-surface{% endif %} border-b border-outline-variant pb-1 mb-3 flex items-center gap-2">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">{% if forloop.first %}stars{% else %}groups{% endif %}</span>
+                {{ leaderboard.team_class.name }} – Top 3
+              </h3>
+              <div class="overflow-x-auto">
+                <table class="w-full text-left">
+                  <thead class="font-label-caps text-label-caps text-on-surface-variant border-b border-outline-variant">
+                    <tr>
+                      <th class="py-2">TEAM</th>
+                      <th class="py-2 text-right">#</th>
+                      <th class="py-2 text-right">SCORE</th>
+                    </tr>
+                  </thead>
+                  <tbody class="font-body-sm text-body-sm">
+                    {% for et in leaderboard.entries %}
+                    <tr class="border-b border-surface-container last:border-0">
+                      <td class="py-3 font-semibold">
+                        <a class="text-navy-deep hover:text-royal-accent transition-colors" href="{% url 'events:team_event_detail' event_id=event.event_id team_id=et.team_id %}">{{ et.team.team_name }}</a>
+                      </td>
+                      <td class="py-3 text-right text-on-surface-variant">{{ et.team.team_number }}</td>
+                      <td class="py-3 text-right font-bold text-navy-deep">{{ et.total_score|default:"N/A" }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            {% endfor %}
+
+            <a href="{% url 'events:event_detail' event_id=event.event_id %}"
+               class="w-full py-2 font-button-text text-button-text text-royal-accent border border-royal-accent rounded hover:bg-royal-accent hover:text-white transition-all flex items-center justify-center gap-2 no-underline hover:no-underline">
+              View Full Rankings
+              <span class="material-symbols-outlined text-base">arrow_forward</span>
+            </a>
+          {% else %}
+            <p class="font-body-sm text-body-sm text-on-surface-variant italic">
+              {% if top_classes %}No teams for this event yet.{% else %}No team classes defined yet.{% endif %}
+            </p>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-center font-body-md text-body-md text-on-surface-variant italic">No events to display yet.</p>
+    {% endif %}
+  </div>
 {% endblock %}

@@ -5,421 +5,308 @@
 {% block meta_description %}Results and team entries for {{ event.event_name }}. View pull results, durability, maneuverability, and full team standings from this ASABE IQS competition.{% endblock %}
 {% block og_description %}Results and team entries for {{ event.event_name }}. View pull results, durability, maneuverability, and full team standings from this ASABE IQS competition.{% endblock %}
 
-{% block extra_styles %}
-  .hero {
-    margin-bottom: 1.5rem;
-    padding: 1rem 1.25rem;
-    border-radius: 0.9rem;
-    background: #0f172a;
-    border: 1px solid #1f2937;
-  }
-
-  .hero h1 {
-    margin: 0 0 0.4rem;
-    font-size: 1.6rem;
-  }
-
-  .hero-meta {
-    font-size: 0.9rem;
-    color: #9ca3af;
-  }
-
-  h2 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
-    font-size: 1.2rem;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #020617;
-    border-radius: 0.75rem;
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-  }
-
-  th, td {
-    padding: 0.55rem 0.75rem;
-    border-bottom: 1px solid #1f2937;
-    font-size: 0.9rem;
-    text-align: left;
-  }
-
-  th {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: #9ca3af;
-    background: #030712;
-  }
-
-  tr:last-child td {
-    border-bottom: none;
-  }
-
-  tbody tr:nth-child(even) {
-    background: #020617;
-  }
-
-  .empty {
-    font-size: 0.9rem;
-    color: #9ca3af;
-    margin-bottom: 1rem;
-  }
-
-  .hook-section {
-    margin-bottom: 1.5rem;
-    padding: 1rem 1.25rem;
-    border-radius: 0.9rem;
-    background: #0b1120;
-    border: 1px solid #1f2937;
-  }
-
-  .hook-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .hook-header h3 {
-    margin: 0;
-    font-size: 1.05rem;
-  }
-
-  .hook-winner {
-    font-size: 0.85rem;
-    color: #9ca3af;
-    text-align: right;
-  }
-
-  .hook-winner span {
-    font-weight: 600;
-    color: #020617;
-  }
-
-  /* Rankings grid for per-class leaderboards */
-  .rankings-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
-    margin-bottom: 1.5rem;
-  }
-
-  @media (min-width: 900px) {
-    .rankings-grid {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
-  }
-
-  .rankings-card {
-    padding: 1rem 1.25rem;
-    border-radius: 0.9rem;
-    background: #0b1120;
-    border: 1px solid #1f2937;
-  }
-
-  .rankings-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.75rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .rankings-card-header h3 {
-    margin: 0;
-    font-size: 1.05rem;
-  }
-
-  .class-badge {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    padding: 0.15rem 0.6rem;
-    border-radius: 999px;
-    border: 1px solid #1f2937;
-    background: #020617;
-    color: #9ca3af;
-    white-space: nowrap;
-  }
-{% endblock %}
-
 {% block content %}
-  <!-- Event hero -->
-  <section class="hero">
-    <h1>{{ event.event_name }}</h1>
-    <div class="hero-meta">
-      {% if event.event_datetime %}
-        <div>
-          Date &amp; time:
-          {{ event.event_datetime|date:"F d, Y h:i A" }}
+  <!-- Event hero banner -->
+  <section class="bg-navy-deep rounded-xl shadow-sm overflow-hidden mb-8">
+    <div class="px-6 md:px-8 py-8 relative">
+      <div class="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-royal-accent via-transparent to-transparent"></div>
+      <div class="relative z-10">
+        <span class="font-label-caps text-label-caps tracking-widest text-warning-gold uppercase mb-2 block">IQS Competition</span>
+        <h1 class="font-headline-lg text-headline-lg text-white mb-4">{{ event.event_name }}</h1>
+        <div class="flex flex-wrap gap-3">
+          {% if event.techin_released %}
+          <a href="{% url 'tech_in:overview' event_id=event.event_id %}"
+             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-button-text text-button-text bg-white/10 text-white hover:bg-white/20 transition-all no-underline hover:no-underline">
+            <span class="material-symbols-outlined text-base">checklist</span> Tech In
+          </a>
+          {% endif %}
+          <a href="{% url 'awards:awards_by_event' event.event_id %}"
+             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-button-text text-button-text bg-white/10 text-white hover:bg-white/20 transition-all no-underline hover:no-underline">
+            <span class="material-symbols-outlined text-base">emoji_events</span> Awards
+          </a>
+          {% if user.is_staff %}
+          <a href="{% url 'awards:manage_event_awards' event.event_id %}"
+             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg font-button-text text-button-text bg-royal-accent text-white hover:bg-blue-700 transition-all no-underline hover:no-underline">
+            <span class="material-symbols-outlined text-base">settings</span> Manage Awards
+          </a>
+          {% endif %}
         </div>
-      {% endif %}
-      <div>
-        Total teams in this event:
-        <strong>{{ event_teams|length }}</strong>
-      </div>
-      <div>
-        Total hooks:
-        <strong>{{ event_hooks|length }}</strong>
       </div>
     </div>
-    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.5rem;">
-      {% if event.techin_released %}
-      <a href="{% url 'tech_in:overview' event_id=event.event_id %}"
-         style="padding: 0.35rem 0.85rem; border-radius: 999px; border: 1px solid #1f2937; background: #111827; color: #f3f6e7; font-size: 0.85rem; text-decoration: none;">
-        Tech In Progress
-      </a>
-      {% endif %}
-      <a href="{% url 'awards:awards_by_event' event.event_id %}"
-         style="padding: 0.35rem 0.85rem; border-radius: 999px; border: 1px solid #1f2937; background: #111827; color: #f3f6e7; font-size: 0.85rem; text-decoration: none;">
-        Awards
-      </a>
-      {% if user.is_staff %}
-      <a href="{% url 'awards:manage_event_awards' event.event_id %}"
-         style="padding: 0.35rem 0.85rem; border-radius: 999px; border: 1px solid #6687fc; background: #111827; color: #6687fc; font-size: 0.85rem; text-decoration: none;">
-        Manage Awards
-      </a>
-      {% endif %}
+  </section>
+
+  <!-- Key event stats -->
+  <section class="grid grid-cols-1 md:grid-cols-3 gap-gutter mb-10">
+    <div class="flex items-center gap-4 bg-white p-4 rounded-xl border border-outline-variant shadow-sm">
+      <div class="bg-navy-deep/10 p-3 rounded-lg">
+        <span class="material-symbols-outlined text-navy-deep">calendar_today</span>
+      </div>
+      <div>
+        <p class="font-label-caps text-label-caps text-on-surface-variant">EVENT DATE</p>
+        <p class="font-headline-sm text-headline-sm text-navy-deep">{% if event.event_datetime %}{{ event.event_datetime|date:"M d, Y" }}{% else %}TBD{% endif %}</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 bg-white p-4 rounded-xl border border-outline-variant shadow-sm">
+      <div class="bg-navy-deep/10 p-3 rounded-lg">
+        <span class="material-symbols-outlined text-navy-deep">groups</span>
+      </div>
+      <div>
+        <p class="font-label-caps text-label-caps text-on-surface-variant">TOTAL TEAMS</p>
+        <p class="font-headline-sm text-headline-sm text-navy-deep">{{ event_teams|length }} Registered</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-4 bg-white p-4 rounded-xl border border-outline-variant shadow-sm">
+      <div class="bg-navy-deep/10 p-3 rounded-lg">
+        <span class="material-symbols-outlined text-navy-deep">anchor</span>
+      </div>
+      <div>
+        <p class="font-label-caps text-label-caps text-on-surface-variant">COMPETITION HOOKS</p>
+        <p class="font-headline-sm text-headline-sm text-navy-deep">{{ event_hooks|length }} Hooks</p>
+      </div>
     </div>
   </section>
 
   <!-- Rankings by class -->
-  <section>
-    <h2>Rankings by class</h2>
+  <section class="mb-10">
+    <div class="mb-6 border-b border-outline-variant pb-2 flex items-center gap-4">
+      <h2 class="font-headline-lg text-headline-lg text-navy-deep">Rankings by Class</h2>
+      <div class="h-1 flex-grow bg-outline-variant opacity-20"></div>
+    </div>
 
     {% if rankings_by_class %}
-      <div class="rankings-grid">
-        {# rankings_by_class is a dict: {class_name: [EventTeam, ...]} #}
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-gutter">
         {% for class_name, entries in rankings_by_class.items %}
-          <div class="rankings-card">
-            <div class="rankings-card-header">
-              <h3>{{ class_name }}</h3>
-              <span class="class-badge">{{ class_name }}</span>
+          <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+            <div class="bg-surface-alt px-6 py-4 border-b border-outline-variant flex justify-between items-center">
+              <h3 class="font-headline-md text-headline-md text-navy-deep">{{ class_name }}</h3>
+              <span class="bg-royal-accent/10 text-royal-accent font-label-caps text-[10px] px-2 py-1 rounded-full uppercase">{{ class_name }}</span>
             </div>
-
             {% if entries %}
-              <table>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse">
                 <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>Team</th>
-                    <th>Team #</th>
-                    <th>Total Score</th>
+                  <tr class="bg-surface-container-low border-b border-outline-variant">
+                    <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">RANK</th>
+                    <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">TEAM</th>
+                    <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">#</th>
+                    <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">SCORE</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody class="divide-y divide-outline-variant font-body-sm text-on-surface">
                   {% for et in entries %}
-                    <tr>
-                      <td>{{ forloop.counter }}</td>
-                      <td>
-                        <a href="{% url 'events:team_event_detail' event_id=event.event_id team_id=et.team_id %}">
-                          {{ et.team.team_name }}
-                        </a>
-                      </td>
-                      <td>{{ et.team.team_number }}</td>
-                      <td>{{ et.total_score|default_if_none:"N/A" }}</td>
-                    </tr>
+                  <tr class="hover:bg-surface-alt transition-colors">
+                    <td class="px-6 py-4 font-bold text-navy-deep">{{ forloop.counter }}</td>
+                    <td class="px-6 py-4">
+                      <a class="text-navy-deep hover:text-royal-accent transition-colors" href="{% url 'events:team_event_detail' event_id=event.event_id team_id=et.team_id %}">{{ et.team.team_name }}</a>
+                    </td>
+                    <td class="px-6 py-4 text-on-surface-variant">{{ et.team.team_number }}</td>
+                    <td class="px-6 py-4 text-right font-semibold">{{ et.total_score|default_if_none:"N/A" }}</td>
+                  </tr>
                   {% endfor %}
                 </tbody>
               </table>
+            </div>
             {% else %}
-              <p class="empty">No teams in this class for this event.</p>
+              <p class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant italic">No teams in this class for this event.</p>
             {% endif %}
           </div>
         {% endfor %}
       </div>
     {% elif event_teams %}
-      {# Fallback: single leaderboard if you don't pass rankings_by_class #}
-      <table>
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Team</th>
-            <th>Team #</th>
-            <th>Total Score</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for et in event_teams %}
-            <tr>
-              <td>{{ forloop.counter }}</td>
-              <td>
-                <a href="{% url 'events:team_event_detail' event_id=event.event_id team_id=et.team_id %}">
-                  {{ et.team.team_name }}
-                </a>
-              </td>
-              <td>{{ et.team.team_number }}</td>
-              <td>{{ et.total_score|default_if_none:"N/A" }}</td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-surface-container-low border-b border-outline-variant">
+                <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">RANK</th>
+                <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">TEAM</th>
+                <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">#</th>
+                <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">SCORE</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-variant font-body-sm text-on-surface">
+              {% for et in event_teams %}
+              <tr class="hover:bg-surface-alt transition-colors">
+                <td class="px-6 py-4 font-bold text-navy-deep">{{ forloop.counter }}</td>
+                <td class="px-6 py-4">
+                  <a class="text-navy-deep hover:text-royal-accent transition-colors" href="{% url 'events:team_event_detail' event_id=event.event_id team_id=et.team_id %}">{{ et.team.team_name }}</a>
+                </td>
+                <td class="px-6 py-4 text-on-surface-variant">{{ et.team.team_number }}</td>
+                <td class="px-6 py-4 text-right font-semibold">{{ et.total_score|default_if_none:"N/A" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
     {% else %}
-      <p class="empty">No rankings available for this event yet.</p>
+      <p class="font-body-md text-body-md text-on-surface-variant italic">No rankings available for this event yet.</p>
     {% endif %}
   </section>
 
   <!-- Hook results -->
-  <section>
-    <h2>Hook results</h2>
+  <section class="mb-10">
+    <div class="mb-6 border-b border-outline-variant pb-2 flex items-center gap-4">
+      <h2 class="font-headline-lg text-headline-lg text-navy-deep">Hook Results</h2>
+      <div class="h-1 flex-grow bg-outline-variant opacity-20"></div>
+    </div>
 
     {% if event_hooks %}
-      {% for hook in event_hooks %}
-        <div class="hook-section">
-          <div class="hook-header">
-            <h3>
-              {% if hook.hook_name %}
-                {{ hook.hook_name }}
-              {% else %}
-                Hook {{ hook.hook_id }}
-              {% endif %}
-            </h3>
-
-            <div class="hook-winner">
+      <div class="space-y-6">
+        {% for hook in event_hooks %}
+        <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+          <div class="bg-navy-deep text-white px-6 py-4 flex flex-wrap justify-between items-center gap-2">
+            <div class="flex items-center gap-3">
+              <span class="material-symbols-outlined">trending_up</span>
+              <h3 class="font-headline-sm text-headline-sm">{% if hook.hook_name %}{{ hook.hook_name }}{% else %}Hook {{ hook.hook_id }}{% endif %}</h3>
+            </div>
+            <div class="font-body-sm text-body-sm text-primary-fixed-dim">
               {% if hook.best_pull %}
-                Best pull:
-                <span>{{ hook.best_pull.team.team_name }}</span>
-                – {{ hook.best_pull.final_distance|default_if_none:"N/A" }}
+                Best pull: <span class="text-warning-gold font-semibold">{{ hook.best_pull.team.team_name }}</span> – {{ hook.best_pull.final_distance|default_if_none:"N/A" }}
               {% else %}
                 No pulls yet.
               {% endif %}
             </div>
           </div>
-
           {% if hook.pull_entries %}
-            <table>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse">
               <thead>
-                <tr>
-                  <th>Team</th>
-                  <th>Team #</th>
-                  <th>Final Distance</th>
-                  <th>Details</th>
+                <tr class="bg-surface-container-low border-b border-outline-variant">
+                  <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">TEAM</th>
+                  <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">#</th>
+                  <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">FINAL DISTANCE</th>
+                  <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">DETAILS</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody class="divide-y divide-outline-variant font-body-sm text-on-surface">
                 {% for pull in hook.pull_entries %}
-                  <tr>
-                    <td>{{ pull.team.team_name }}</td>
-                    <td>{{ pull.team.team_number }}</td>
-                    <td>{{ pull.final_distance|default_if_none:"N/A" }}</td>
-                    <td>
-                      <a href="{% url 'events:pull_detail' pull_id=pull.pull_id %}">
-                        View pull
-                      </a>
-                    </td>
-                  </tr>
+                <tr class="hover:bg-surface-alt transition-colors">
+                  <td class="px-6 py-4 font-semibold text-navy-deep">{{ pull.team.team_name }}</td>
+                  <td class="px-6 py-4 text-on-surface-variant">{{ pull.team.team_number }}</td>
+                  <td class="px-6 py-4">{{ pull.final_distance|default_if_none:"N/A" }}</td>
+                  <td class="px-6 py-4 text-right">
+                    <a class="text-royal-accent hover:underline" href="{% url 'events:pull_detail' pull_id=pull.pull_id %}">View pull</a>
+                  </td>
+                </tr>
                 {% endfor %}
               </tbody>
             </table>
+          </div>
           {% else %}
-            <p class="empty">No pulls for this hook yet.</p>
+            <p class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant italic">No pulls for this hook yet.</p>
           {% endif %}
         </div>
-      {% endfor %}
+        {% endfor %}
+      </div>
     {% else %}
-      <p class="empty">No hooks defined for this event.</p>
+      <p class="font-body-md text-body-md text-on-surface-variant italic">No hooks defined for this event.</p>
     {% endif %}
   </section>
-  <section>
-    <h2>Durability Runs</h2>
 
-    {% if durability_runs %}
-      <table>
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Team</th>
-            <th>Team #</th>
-            <th>Tractor</th>
-            <th>Laps</th>
-            <th>State</th>
-            <th>Detail</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for run in durability_runs %}
-            <tr>
-              <td>{{ forloop.counter }}</td>
-              <td>{{ run.team.team_name }}</td>
-              <td>{{ run.team.team_number }}</td>
-              <td>{{ run.tractor.tractor_name|default:"—" }}</td>
-              <td>{{ run.total_laps|default:"—" }}</td>
-              <td>{{ run.state }}</td>
-              <td>
-                <a href="{% url 'events:durability_run_detail' run.durability_run_id %}">
-                  View run
-                </a>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p class="empty">No durability runs recorded for this event.</p>
-    {% endif %}
-  </section>
-  <section>
-    <h2>Maneuverability Runs</h2>
-
-    {% if maneuverability_runs %}
-      <table>
-        <thead>
-          <tr>
-            <th>Run Order</th>
-            <th>Team</th>
-            <th>Team #</th>
-            <th>State</th>
-            <th>Detail</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for run in maneuverability_runs %}
-            <tr>
-              <td>{{ run.run_order }}</td>
-              <td>{{ run.team.team_name }}</td>
-              <td>{{ run.team.team_number }}</td>
-              <td>{{ run.state }}</td>
-              <td>
-                <a href="{% url 'events:maneuverability_run_detail' run.maneuverability_run_id %}">
-                  View run
-                </a>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p class="empty">No maneuverability runs recorded for this event.</p>
-    {% endif %}
-  </section>
-  <section class="grid">
-    <!-- Left: comparison vs top 3 -->
-    <div class="card">
-      <h3>Event Schedule</h3>
-      {% if schedule_items %}
-        <table>
+  <!-- Durability + Maneuverability -->
+  <section class="mb-10 grid grid-cols-1 lg:grid-cols-2 gap-gutter">
+    <!-- Durability -->
+    <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+      <div class="bg-surface-alt px-6 py-4 border-b border-outline-variant flex items-center gap-3">
+        <span class="material-symbols-outlined text-navy-deep">speed</span>
+        <h2 class="font-headline-md text-headline-md text-navy-deep">Durability Runs</h2>
+      </div>
+      {% if durability_runs %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
           <thead>
-            <tr>
-              <th>Schedule Item</th>
-              <th>Time</th>
+            <tr class="bg-surface-container-low border-b border-outline-variant">
+              <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">RANK</th>
+              <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">TEAM</th>
+              <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">#</th>
+              <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">TRACTOR</th>
+              <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">LAPS</th>
+              <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">DETAIL</th>
             </tr>
           </thead>
-          <tbody>
-            {% for si in schedule_items %}
-              <tr>
-                <td>{{ si.name }}</td>
-                <td>{{ si.datetime }}</td>
-              </tr>
+          <tbody class="divide-y divide-outline-variant font-body-sm text-on-surface">
+            {% for run in durability_runs %}
+            <tr class="hover:bg-surface-alt transition-colors">
+              <td class="px-6 py-4 font-bold text-navy-deep">{{ forloop.counter }}</td>
+              <td class="px-6 py-4 font-semibold text-navy-deep">{{ run.team.team_name }}</td>
+              <td class="px-6 py-4 text-on-surface-variant">{{ run.team.team_number }}</td>
+              <td class="px-6 py-4">{{ run.tractor.tractor_name|default:"—" }}</td>
+              <td class="px-6 py-4">{{ run.total_laps|default:"—" }}</td>
+              <td class="px-6 py-4 text-right">
+                <a class="text-royal-accent hover:underline" href="{% url 'events:durability_run_detail' run.durability_run_id %}">View run</a>
+              </td>
+            </tr>
             {% endfor %}
           </tbody>
         </table>
+      </div>
       {% else %}
-        <p class="empty">No schedule available.</p>
+        <p class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant italic">No durability runs recorded for this event.</p>
       {% endif %}
     </div>
-</section>
+
+    <!-- Maneuverability -->
+    <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+      <div class="bg-surface-alt px-6 py-4 border-b border-outline-variant flex items-center gap-3">
+        <span class="material-symbols-outlined text-navy-deep">turn_sharp_right</span>
+        <h2 class="font-headline-md text-headline-md text-navy-deep">Maneuverability Runs</h2>
+      </div>
+      {% if maneuverability_runs %}
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-surface-container-low border-b border-outline-variant">
+              <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">RUN ORDER</th>
+              <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">TEAM</th>
+              <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant">#</th>
+              <th class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant text-right">DETAIL</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant font-body-sm text-on-surface">
+            {% for run in maneuverability_runs %}
+            <tr class="hover:bg-surface-alt transition-colors">
+              <td class="px-6 py-4 font-bold text-navy-deep">{{ run.run_order }}</td>
+              <td class="px-6 py-4 font-semibold text-navy-deep">{{ run.team.team_name }}</td>
+              <td class="px-6 py-4 text-on-surface-variant">{{ run.team.team_number }}</td>
+              <td class="px-6 py-4 text-right">
+                <a class="text-royal-accent hover:underline" href="{% url 'events:maneuverability_run_detail' run.maneuverability_run_id %}">View run</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+        <p class="px-6 py-4 font-body-sm text-body-sm text-on-surface-variant italic">No maneuverability runs recorded for this event.</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- Event schedule -->
+  <section class="mb-10">
+    <div class="bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden">
+      <div class="bg-surface-alt px-6 py-4 border-b border-outline-variant flex items-center gap-3">
+        <span class="material-symbols-outlined text-navy-deep">calendar_month</span>
+        <h2 class="font-headline-md text-headline-md text-navy-deep">Event Schedule</h2>
+      </div>
+      <div class="p-6">
+        {% if schedule_items %}
+        <div class="relative border-l-2 border-outline-variant ml-3 space-y-6">
+          {% for si in schedule_items %}
+          <div class="relative pl-8">
+            <div class="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-navy-deep border-4 border-white shadow-sm"></div>
+            <div class="flex flex-col">
+              <span class="font-label-caps text-label-caps text-royal-accent">{{ si.datetime }}</span>
+              <h3 class="font-body-md font-semibold text-navy-deep">{{ si.name }}</h3>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+          <p class="font-body-sm text-body-sm text-on-surface-variant italic">No schedule available.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
 {% endblock %}
