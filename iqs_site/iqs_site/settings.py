@@ -65,6 +65,7 @@ ALLOWED_HOSTS = env_list(
         "testing.internationalquarterscale.com",
         "localhost",
         "127.0.0.1",
+        "testing.iqsconnect.org"
     ],
 )
 #ALLOWED_HOSTS=["192.168.3.100","127.0.0.1"]
