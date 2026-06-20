@@ -272,6 +272,18 @@ def overlay(request):
 
 
 @staff_member_required
+def live_monitor(request):
+    """Staff-only preview of the video stream — plays the HLS feed and shows
+    live publisher status from the rtmp /stat endpoint, so you can confirm an
+    ingest is actually arriving and being distributed."""
+    context = {
+        "video_url": settings.VIDEOURL.rstrip("/"),
+        "default_stream": request.GET.get("stream", "main"),
+    }
+    return render(request, "live_monitor.html", context)
+
+
+@staff_member_required
 def overlay_producer(request):
     context = {
         "api_url": settings.APIURL,

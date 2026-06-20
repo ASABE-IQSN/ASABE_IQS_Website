@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Stream Monitor – IQS{% endblock %}
+
+{% block extra_styles %}
+  .mon { max-width: 1000px; margin: 0 auto; color: #e5e7eb; }
+  .mon h1 { font-size: 1.3rem; margin: 0 0 1rem; color: #e5e7eb; }
+  .mon .controls { display: flex; gap: .5rem; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+  .mon input[type=text] {
+    background: #0f172a; border: 1px solid #1f2937; color: #e5e7eb;
+    padding: .5rem .6rem; border-radius: 6px; font-size: .95rem; min-width: 180px;
+  }
+  .mon button {
+    background: #1d4ed8; border: 0; color: #fff; padding: .55rem .9rem;
+    border-radius: 6px; font-size: .9rem; cursor: pointer;
+  }
+  .mon button:hover { background: #2563eb; }
+  .badge {
+    display: inline-flex; align-items: center; gap: .4rem; font-size: .8rem;
+    font-weight: 600; padding: .3rem .6rem; border-radius: 999px;
+    text-transform: uppercase; letter-spacing: .05em;
+  }
+  .badge .dot { width: .6rem; height: .6rem; border-radius: 50%; }
+  .badge.live    { background: #064e3b; color: #6ee7b7; }
+  .badge.live    .dot { background: #34d399; box-shadow: 0 0 6px #34d399; }
+  .badge.offline { background: #3f1d1d; color: #fca5a5; }
+  .badge.offline .dot { background: #f87171; }
+  .badge.wait    { background: #422006; color: #fcd34d; }
+  .badge.wait    .dot { background: #fbbf24; }
+  .mon video { width: 100%; background: #000; border-radius: 8px; aspect-ratio: 16/9; }
+  .mon .panel { background: #0b1220; border: 1px solid #1f2937; border-radius: 8px;
+                padding: .8rem 1rem; margin-top: 1rem; font-size: .85rem; }
+  .mon .panel h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .05em;
+                   color: #9ca3af; margin: 0 0 .6rem; }
+  .mon table { width: 100%; border-collapse: collapse; }
+  .mon th, .mon td { text-align: left; padding: .35rem .5rem; border-bottom: 1px solid #111827; }
+  .mon th { color: #9ca3af; font-weight: 600; }
+  .mon code { color: #93c5fd; background: #0f172a; padding: .1rem .35rem; border-radius: 4px; }
+  .mon .muted { color: #6b7280; }
+{% endblock %}
+
+{% block content %}
+<div class="mon">
+  <h1>Stream Monitor</h1>
+
+  <div class="controls">
+    <label for="streamKey" class="muted">Stream key</label>
+    <input type="text" id="streamKey" value="{{ default_stream }}" autocomplete="off">
+    <button id="loadBtn">Load</button>
+    <span id="badge" class="badge wait"><span class="dot"></span><span id="badgeText">Waiting</span></span>
+  </div>
+
+  <video id="player" controls muted playsinline></video>
+
+  <div class="panel">
+    <h2>Ingest status (rtmp /stat)</h2>
+    <div id="statBody"><span class="muted">Loading…</span></div>
+    <p class="muted" style="margin-top:.7rem">
+      Push to <code id="pushUrl"></code> &nbsp;·&nbsp;
+      HLS at <code id="hlsUrl"></code>
+    </p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+<script>
+(function () {
+  var VIDEO_BASE = "{{ video_url }}";
+  var RTMP_HOST  = VIDEO_BASE.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+
+  var player   = document.getElementById("player");
+  var keyInput = document.getElementById("streamKey");
+  var badge    = document.getElementById("badge");
+  var badgeTxt = document.getElementById("badgeText");
+  var statBody = document.getElementById("statBody");
+  var hls = null, statTimer = null, gotData = false;
+
+  function setBadge(state, text) {
+    badge.className = "badge " + state;
+    badgeTxt.textContent = text;
+  }
+
+  function hlsUrl(key) { return VIDEO_BASE + "/hls/" + encodeURIComponent(key) + "/index.m3u8"; }
+
+  function load(key) {
+    gotData = false;
+    document.getElementById("pushUrl").textContent = "rtmp://" + RTMP_HOST + "/live/" + key;
+    document.getElementById("hlsUrl").textContent  = hlsUrl(key);
+    setBadge("wait", "Connecting");
+
+    if (hls) { hls.destroy(); hls = null; }
+    var url = hlsUrl(key);
+
+    if (window.Hls && Hls.isSupported()) {
+      hls = new Hls({ liveSyncDurationCount: 3, manifestLoadingMaxRetry: 8 });
+      hls.loadSource(url);
+      hls.attachMedia(player);
+      hls.on(Hls.Events.FRAG_BUFFERED, function () { gotData = true; setBadge("live", "Live"); });
+      hls.on(Hls.Events.ERROR, function (e, data) {
+        if (data.fatal && !gotData) setBadge("offline", "Offline");
+      });
+      player.play().catch(function(){});
+    } else if (player.canPlayType("application/vnd.apple.mpegurl")) {
+      // Safari native HLS
+      player.src = url;
+      player.addEventListener("playing", function () { gotData = true; setBadge("live", "Live"); });
+      player.addEventListener("error", function () { if (!gotData) setBadge("offline", "Offline"); });
+      player.play().catch(function(){});
+    } else {
+      setBadge("offline", "HLS unsupported");
+    }
+  }
+
+  // Poll rtmp /stat for the live publisher table (best-effort; needs CORS).
+  function pollStat() {
+    fetch(VIDEO_BASE + "/stat", { cache: "no-store" })
+      .then(function (r) { return r.text(); })
+      .then(function (xml) {
+        var doc = new DOMParser().parseFromString(xml, "text/xml");
+        var rows = [];
+        var apps = doc.getElementsByTagName("application");
+        for (var i = 0; i < apps.length; i++) {
+          var nameEl = apps[i].getElementsByTagName("name")[0];
+          if (!nameEl || nameEl.textContent !== "live") continue;
+          var streams = apps[i].getElementsByTagName("stream");
+          for (var j = 0; j < streams.length; j++) {
+            var s = streams[j];
+            var get = function (t) {
+              var el = s.getElementsByTagName(t)[0];
+              return el ? el.textContent : "";
+            };
+            // a stream is publishing if it has a <publishing/> flag
+            var publishing = s.getElementsByTagName("publishing").length > 0;
+            rows.push({
+              name: get("name"),
+              kbps: Math.round((parseInt(get("bw_in"), 10) || 0) / 1000),
+              clients: get("nclients"),
+              publishing: publishing,
+            });
+          }
+        }
+        renderStat(rows);
+      })
+      .catch(function () {
+        statBody.innerHTML = '<span class="muted">/stat unreachable (CORS or service down).</span>';
+      });
+  }
+
+  function renderStat(rows) {
+    if (!rows.length) {
+      statBody.innerHTML = '<span class="muted">No active streams on the <code>live</code> app.</span>';
+      return;
+    }
+    var html = '<table><thead><tr><th>Stream</th><th>Publishing</th><th>Bitrate</th><th>Clients</th></tr></thead><tbody>';
+    rows.forEach(function (r) {
+      html += '<tr><td><code>' + r.name + '</code></td>' +
+              '<td>' + (r.publishing ? '✅' : '—') + '</td>' +
+              '<td>' + r.kbps + ' kbps</td>' +
+              '<td>' + r.clients + '</td></tr>';
+    });
+    statBody.innerHTML = html + '</tbody></table>';
+  }
+
+  document.getElementById("loadBtn").addEventListener("click", function () {
+    load(keyInput.value.trim() || "main");
+  });
+  keyInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") load(keyInput.value.trim() || "main");
+  });
+
+  load(keyInput.value.trim() || "main");
+  pollStat();
+  statTimer = setInterval(pollStat, 5000);
+})();
+</script>
+{% endblock %}

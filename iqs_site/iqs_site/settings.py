@@ -409,6 +409,11 @@ TECHIN_TEAM_DICT_PATH = os.environ.get(
 
 APIURL=os.environ["APIURL"]
 
+# Base URL of the video ingest/distribution service (the nginx-rtmp instance,
+# fronted at video.iqsconnect.org). Override for local dev to point at the dev
+# video container, e.g. http://localhost:9008
+VIDEOURL = os.environ.get("VIDEOURL", "https://video.iqsconnect.org")
+
 # ── SeaweedFS / S3-compatible storage ────────────────────────────────
 SEAWEEDFS_S3_ENDPOINT = os.environ.get("SEAWEEDFS_S3_ENDPOINT", "http://seaweedfs-filer:8333")
 AWS_ACCESS_KEY_ID = os.environ.get("SEAWEEDFS_ACCESS_KEY", "iqs_access_key")
