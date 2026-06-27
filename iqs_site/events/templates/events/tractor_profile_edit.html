@@ -54,6 +54,17 @@
           </div>
         </div>
 
+        <!-- STEP File Upload Section -->
+        <div style="margin-top: 0.5rem;">
+          <label><strong>Upload CAD Model (STEP file)</strong></label><br>
+          <input type="file" id="step_file" name="step_file" accept=".step,.stp"
+                 style="padding: 0.4rem; border: 1px solid #1f2937; border-radius: 0.5rem; background: #020617; color: #F3F6E7; font-size: 0.9rem; width: 100%; margin-bottom: 0.5rem;">
+          <div style="font-size:0.8rem; color:#9ca3af; margin-top: 0.3rem;">
+            Upload a STEP (.step or .stp) CAD file of your tractor. A rendered image will be automatically
+            generated and added to your photo gallery. Supported formats: STEP, STP.
+          </div>
+        </div>
+
         <!-- Primary Photo Selection -->
         {% if existing_photos %}
           <div style="margin-top: 1rem;">

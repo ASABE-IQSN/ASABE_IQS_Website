@@ -45,6 +45,7 @@ from .tasks import generate_pull_export_zip
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 ALLOWED_SCORE_SHEET_EXTENSIONS = {"pdf", "png", "jpg", "jpeg"}
+ALLOWED_STEP_EXTENSIONS = {"step", "stp"}
 
 
 def _extract_pull_export_filters(data):
@@ -1603,14 +1604,14 @@ def tractor_profile_edit(request, tractor_id: int):
                     )
                 tractor.save()
 
+            # Get client IP (used for both photo and STEP uploads)
+            xff = request.META.get("HTTP_X_FORWARDED_FOR")
+            ip = xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")
+
             # Handle photo upload if present
             photo_file = request.FILES.get("photo")
             if photo_file and photo_file.name:
                 approved = can_edit_tractor(request.user, tractor)
-
-                # Get client IP
-                xff = request.META.get("HTTP_X_FORWARDED_FOR")
-                ip = xff.split(",")[0].strip() if xff else request.META.get("REMOTE_ADDR")
 
                 filename = photo_file.name
                 photo_caption = request.POST.get("photo_caption", "").strip()
@@ -1650,6 +1651,39 @@ def tractor_profile_edit(request, tractor_id: int):
                     messages.success(request, "Photo uploaded successfully!")
                 else:
                     messages.error(request, "Invalid file type. Please upload an image (png, jpg, jpeg, gif, webp).")
+
+            # Handle STEP file upload if present
+            step_file = request.FILES.get("step_file")
+            if step_file and step_file.name:
+                ext = step_file.name.rsplit(".", 1)[-1].lower() if "." in step_file.name else ""
+                if ext in ALLOWED_STEP_EXTENSIONS:
+                    safe_name = f"tractor{tractor_id}_model.{ext}"
+                    storage = MediaStorage()
+                    step_key = f"step_files/{safe_name}"
+                    storage.save(step_key, step_file)
+
+                    step_media = TractorMedia.objects.create(
+                        tractor=tractor,
+                        media_type=TractorMedia.MediaTypes.STEP_MODEL,
+                        link=step_key,
+                        caption="STEP model",
+                        uploaded_by=request.user,
+                        submitted_from_ip=ip,
+                        approved=True,
+                    )
+                    EditLog.objects.create(
+                        user=request.user,
+                        entity_type="tractor_step_file",
+                        tractor=tractor,
+                        field_name="step_upload",
+                        old_value=None,
+                        new_value=step_key,
+                    )
+                    from .tasks import render_step_file
+                    render_step_file.delay(step_media.media_id)
+                    messages.success(request, "STEP file uploaded — a rendered image will appear in your photos shortly.")
+                else:
+                    messages.error(request, "Invalid file type. Please upload a .step or .stp file.")
 
             messages.success(request, "Tractor profile updated.")
             return redirect("events:tractor_detail", tractor.tractor_id)

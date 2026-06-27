@@ -385,3 +385,44 @@ def recompute_pull_etas(self, hook_id: int) -> dict:
         _publish_pull_schedule(hook, pulls)
 
     return result
+
+
+@shared_task(bind=True, autoretry_for=(Exception,), retry_backoff=True, max_retries=2)
+def render_step_file(self, media_id: int) -> dict:
+    """Download a STEP TractorMedia record, render it to PNG, save as a new IMAGE record."""
+    import uuid as uuid_lib
+    import cadquery as cq
+    import cairosvg
+    from django.core.files.base import ContentFile
+    from iqs_site.storage import MediaStorage
+    from .models import TractorMedia
+
+    step_media = TractorMedia.objects.get(pk=media_id)
+    storage = MediaStorage()
+
+    with tempfile.TemporaryDirectory(prefix=f"step_render_{media_id}_") as tmp:
+        tmp_path = Path(tmp)
+        step_path = tmp_path / "model.step"
+        with storage.open(step_media.link) as f:
+            step_path.write_bytes(f.read())
+
+        shape = cq.importers.importStep(str(step_path))
+        svg_str = cq.exporters.toString(shape, cq.exporters.ExportTypes.SVG)
+        png_bytes = cairosvg.svg2png(bytestring=svg_str.encode(), output_width=1200)
+
+    uid = uuid_lib.uuid4().hex[:8]
+    png_key = f"photos/tractor{step_media.tractor_id}_step_render_{uid}.png"
+    storage.save(png_key, ContentFile(png_bytes))
+
+    TractorMedia.objects.create(
+        tractor=step_media.tractor,
+        media_type=TractorMedia.MediaTypes.IMAGE,
+        link=png_key,
+        caption="CAD model render",
+        uploaded_by=step_media.uploaded_by,
+        submitted_from_ip=None,
+        approved=True,
+    )
+
+    logger.info("Step render complete: media_id=%s → %s", media_id, png_key)
+    return {"media_id": media_id, "png_key": png_key}

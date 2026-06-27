@@ -422,6 +422,8 @@ class TractorMediaAdmin(admin.ModelAdmin):
             )
         elif obj.media_type == TractorMedia.MediaTypes.YOUTUBE_VIDEO:
             return format_html('<a href="{}" target="_blank">View Video</a>', obj.link)
+        elif obj.media_type == TractorMedia.MediaTypes.STEP_MODEL:
+            return format_html('<a href="/media/{}" target="_blank">Download STEP</a>', obj.link)
         return "(unknown media type)"
 
     media_preview.short_description = "Preview"

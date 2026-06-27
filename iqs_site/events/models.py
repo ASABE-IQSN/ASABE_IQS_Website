@@ -324,6 +324,7 @@ class TractorMedia(models.Model):
     class MediaTypes(models.IntegerChoices):
         YOUTUBE_VIDEO = 1
         IMAGE = 2
+        STEP_MODEL = 3
 
     media_type = models.IntegerField(choices=MediaTypes.choices, blank=True, null=True)
     link = models.CharField(max_length=255, blank=True, null=True)  # URL or file path
