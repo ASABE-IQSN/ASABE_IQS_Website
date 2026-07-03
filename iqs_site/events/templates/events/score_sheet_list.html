@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Score Sheet Submissions — IQS Connect{% endblock %}
+
+{% block extra_styles %}
+  .page-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  .page-header h1 { margin: 0; }
+
+  .stats-bar {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    background: #0b1120;
+    border: 1px solid #1f2937;
+    border-radius: 0.9rem;
+    padding: 0.7rem 1.2rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.88rem;
+  }
+
+  .stat-item { display: flex; flex-direction: column; gap: 0.1rem; }
+
+  .stat-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+  }
+
+  .stat-value { font-size: 1rem; font-weight: 600; color: #f3f6e7; }
+
+  .sheet-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+
+  .sheet-table th {
+    text-align: left;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #6b7280;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #1f2937;
+  }
+
+  .sheet-table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid #1f2937;
+    color: #e5e7eb;
+    vertical-align: top;
+  }
+
+  .sheet-table tr:hover td { background: rgba(102,135,252,0.05); }
+
+  .sheet-note {
+    color: #9ca3af;
+    font-size: 0.82rem;
+    max-width: 320px;
+    white-space: pre-wrap;
+  }
+
+  .btn-sm {
+    background: #6687fc;
+    border: 1px solid #6687fc;
+    color: #020617;
+    border-radius: 999px;
+    padding: 0.25rem 0.7rem;
+    font-weight: 600;
+    text-decoration: none;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  .empty-state {
+    color: #6b7280;
+    font-size: 0.9rem;
+    padding: 2rem 0;
+    text-align: center;
+  }
+{% endblock %}
+
+{% block content %}
+  <div class="page-header">
+    <h1>Score Sheet Submissions</h1>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-item">
+      <span class="stat-label">Total submitted</span>
+      <span class="stat-value">{{ submissions|length }}</span>
+    </div>
+  </div>
+
+  {% if submissions %}
+    <div style="overflow-x:auto;">
+      <table class="sheet-table">
+        <thead>
+          <tr>
+            <th>Submitted</th>
+            <th>Filename</th>
+            <th>Note</th>
+            <th>IP</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for submission in submissions %}
+            <tr>
+              <td style="white-space:nowrap;">{{ submission.submitted_at|date:"M j, Y g:i A" }}</td>
+              <td>{{ submission.original_filename }}</td>
+              <td class="sheet-note">{{ submission.note|default:"—" }}</td>
+              <td style="white-space:nowrap;color:#6b7280;">{{ submission.submitted_from_ip|default:"—" }}</td>
+              <td style="white-space:nowrap;">
+                <a class="btn-sm" href="{% url 'events:score_sheet_download' submission.submission_id %}" target="_blank">View / Download &darr;</a>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  {% else %}
+    <p class="empty-state">No score sheets have been submitted yet.</p>
+  {% endif %}
+{% endblock %}

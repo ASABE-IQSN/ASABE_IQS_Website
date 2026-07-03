@@ -293,6 +293,40 @@ def upload_score_sheet(request):
 
     return redirect(reverse("events:contribute") + "?uploaded=1")
 
+
+def score_sheet_list(request):
+    if not (request.user.is_authenticated and request.user.is_staff):
+        raise Http404()
+
+    submissions = ScoreSheetSubmission.objects.order_by("-submitted_at")
+
+    return render(request, "events/score_sheet_list.html", {
+        "active_page": None,
+        "submissions": submissions,
+    })
+
+
+def score_sheet_download(request, submission_id):
+    if not (request.user.is_authenticated and request.user.is_staff):
+        raise Http404()
+
+    submission = get_object_or_404(ScoreSheetSubmission, pk=submission_id)
+
+    if settings.DEBUG:
+        from iqs_site.storage import ReportStorage
+        storage = ReportStorage()
+        with storage.open(submission.file_path, "rb") as f:
+            data = f.read()
+        response = HttpResponse(data, content_type="application/octet-stream")
+        response["Content-Disposition"] = f'inline; filename="{submission.original_filename}"'
+        return response
+
+    response = HttpResponse(content_type="application/octet-stream")
+    response["X-Accel-Redirect"] = f"/_reports/{submission.file_path}"
+    response["Content-Disposition"] = f'inline; filename="{submission.original_filename}"'
+    return response
+
+
 @cache_page(300)
 def privacy(request):
     return render(request, "events/privacy.html", {
