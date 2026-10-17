@@ -8,102 +8,6 @@
 {% block og_image %}{% if tractor.primary_photo %}https://iqsconnect.org/media/{{ tractor.primary_photo.link }}{% else %}https://iqsconnect.org{% static 'events/images/ASABE-IQS-logo-white.png' %}{% endif %}{% endblock %}
 
 {% block extra_styles %}
-  .breadcrumbs {
-    font-size: 0.8rem;
-    color: #9ca3af;
-    margin-bottom: 0.75rem;
-  }
-
-  .breadcrumbs a {
-    color: #9ca3af;
-  }
-
-  .breadcrumbs span {
-    margin: 0 0.25rem;
-  }
-
-  .hero {
-    margin-bottom: 1.5rem;
-    padding: 1rem 1.25rem;
-    border-radius: 0.9rem;
-    background: #0f172a;
-    border: 1px solid #1f2937;
-  }
-
-  .hero h1 {
-    margin: 0 0 0.3rem;
-    font-size: 1.6rem;
-  }
-
-  .hero-meta {
-    font-size: 0.95rem;
-    color: #9ca3af;
-    line-height: 1.5;
-  }
-
-  h2 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
-    font-size: 1.3rem;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #020617;
-    border-radius: 0.75rem;
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-  }
-
-  th, td {
-    padding: 0.55rem 0.75rem;
-    border-bottom: 1px solid #1f2937;
-    font-size: 0.9rem;
-    text-align: left;
-  }
-
-  th {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: #9ca3af;
-    background: #030712;
-  }
-
-  tr:last-child td {
-    border-bottom: none;
-  }
-
-  tbody tr:nth-child(even) {
-    background: #0b1220;
-  }
-
-  .empty {
-    font-size: 0.9rem;
-    color: #9ca3af;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr);
-    gap: 1.25rem;
-    margin-top: 1rem;
-  }
-
-  .card {
-    padding: 1rem 1.25rem;
-    border-radius: 0.9rem;
-    background: #0b1120;
-    border: 1px solid #1f2937;
-  }
-
-  .card h3 {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-    font-size: 1.05rem;
-  }
-
   /* Tractor photos grid */
   .tractor-photo-grid {
     display: flex;
@@ -121,19 +25,19 @@
   .tractor-photo-grid img {
     width: 100%;
     border-radius: 0.5rem;
-    border: 1px solid #1f2937;
+    border: 1px solid #c4c6d0;
     display: block;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
   .tractor-photo-grid img:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+    box-shadow: 0 10px 25px rgba(0, 40, 85, 0.15);
   }
 
   .tractor-photo-grid figcaption {
     font-size: 0.8rem;
-    color: #9ca3af;
+    color: #43474f;
     margin-top: 0.25rem;
     line-height: 1.3;
   }
@@ -142,7 +46,7 @@
   .lightbox-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(0, 20, 48, 0.92);
     display: none;
     align-items: center;
     justify-content: center;
@@ -179,13 +83,13 @@
     justify-content: center;
     object-fit: contain;
     border-radius: 0.75rem;
-    border: 1px solid #1f2937;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+    border: 1px solid #c4c6d0;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
   }
 
   .lightbox-caption {
     font-size: 0.9rem;
-    color: #F3F6E7;
+    color: #ffffff;
     text-align: center;
     max-width: 70ch;
   }
@@ -194,34 +98,34 @@
     position: absolute;
     top: -0.5rem;
     right: -0.5rem;
-    background: #111827;
+    background: #ffffff;
     border-radius: 999px;
     width: 32px;
     height: 32px;
-    border: 1px solid #374151;
+    border: 1px solid #c4c6d0;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     font-size: 1rem;
-    color: #F3F6E7;
+    color: #001430;
   }
 
   .lightbox-arrow {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    background: #111827;
+    background: #ffffff;
     border-radius: 999px;
     width: 36px;
     height: 36px;
-    border: 1px solid #374151;
+    border: 1px solid #c4c6d0;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     font-size: 1.1rem;
-    color: #F3F6E7;
+    color: #001430;
   }
 
   .lightbox-arrow.left {
@@ -240,57 +144,46 @@
       right: 0.5rem;
     }
   }
-
-  .profile-nudge {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.75rem 1.1rem;
-    margin-bottom: 1.5rem;
-    background: #0f172a;
-    border: 1px solid #334155;
-    border-radius: 0.75rem;
-    font-size: 0.85rem;
-    flex-wrap: wrap;
-  }
-
-  .nudge-text { color: #9ca3af; }
-  .nudge-text strong { color: #f3f6e7; }
-
-  .nudge-link {
-    white-space: nowrap;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #6687fc;
-    text-decoration: none;
-  }
-
-  .nudge-link:hover { text-decoration: underline; }
 {% endblock %}
 
 {% block content %}
 
-  <div class="breadcrumbs">
-    <a href="{% url 'events:tractor_list' %}">Tractors</a>
-    <span>
-        {% if tractor.tractor_name %}
-            {{ tractor.tractor_name }}
-        {% else %}
-            Tractor {{ tractor.tractor_id }}
-        {% endif %}
+  <!-- Breadcrumbs -->
+  <div class="font-body-sm text-body-sm text-on-surface-variant mb-4">
+    <a href="{% url 'events:tractor_list' %}" class="hover:text-royal-accent">Tractors</a>
+    {% if tractor.original_team %}
+      <span class="mx-1">&rsaquo;</span>
+      <a href="{% url 'events:team_detail' tractor.original_team.team_id %}" class="hover:text-royal-accent">{{ tractor.original_team.team_name }}</a>
+    {% endif %}
+    <span class="mx-1">&rsaquo;</span>
+    <span>{% if tractor.tractor_name %}{{ tractor.tractor_name }}{% else %}Tractor {{ tractor.tractor_id }}{% endif %}</span>
+  </div>
+
+  <!-- Badge row -->
+  <div class="flex items-center gap-2 flex-wrap mb-4">
+    {% if tractor.original_team %}
+      <span class="px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-caps text-label-caps tracking-wider">
+        {{ tractor.original_team.team_name }}
+      </span>
+      {% if tractor.original_team.team_class %}
+        <span class="px-2 py-0.5 rounded-full bg-royal-accent/10 text-royal-accent font-label-caps text-label-caps tracking-wider">
+          {{ tractor.original_team.team_class.name }}
+        </span>
+      {% endif %}
+    {% endif %}
+    <span class="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant font-label-caps text-label-caps">
+      ID: #{{ tractor.tractor_id }}
     </span>
   </div>
 
   <!-- Hero Image Section -->
   {% if tractor.primary_photo and tractor.primary_photo.link %}
-    <section style="margin-bottom: 1.5rem;">
-      <div class="card" style="padding: 0; overflow: hidden;">
-        <img src="/media/{{ tractor.primary_photo.link }}"
-             alt="{{ tractor.display_name }}"
-             style="width: 100%; max-height: 400px; object-fit: cover; display: block;">
+    <section class="mb-4">
+      <div class="relative w-full rounded-xl overflow-hidden shadow-sm bg-surface-container-highest aspect-[16/10]">
+        <img src="/media/{{ tractor.primary_photo.link }}" alt="{{ tractor.display_name }}" class="w-full h-full object-cover">
         {% if tractor.primary_photo.caption %}
-          <p style="margin: 0; padding: 0.75rem 1.25rem; font-size: 0.9rem; color: #9ca3af; text-align: center; background: #0b1120;">
+          <div class="absolute inset-0 bg-gradient-to-t from-navy-deep/80 via-transparent to-transparent"></div>
+          <p class="absolute bottom-3 left-3 right-3 font-body-sm text-body-sm text-white drop-shadow-sm">
             {{ tractor.primary_photo.caption }}
           </p>
         {% endif %}
@@ -298,167 +191,178 @@
     </section>
   {% endif %}
 
-  <section class="hero">
-    <h1>
-      {% if tractor.display_name %}
-        {{ tractor.display_name }}
+  <!-- Title -->
+  <section class="mb-4">
+    <div class="flex items-baseline justify-between flex-wrap gap-2">
+      <h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-navy-deep">
+        {% if tractor.display_name %}{{ tractor.display_name }}{% else %}Tractor {{ tractor.tractor_id }}{% endif %}
+      </h1>
+      {% if tractor.year %}
+        <span class="text-royal-accent font-button-text text-button-text font-bold">{{ tractor.year }}</span>
+      {% endif %}
+    </div>
+    {% if tractor.original_team %}
+      <p class="font-body-md text-body-md text-on-surface-variant mt-1">
+        Originally built by {{ tractor.original_team.team_name }}
+      </p>
+    {% endif %}
+  </section>
+
+  <!-- Stat strip -->
+  <section class="grid grid-cols-3 gap-2 mb-6">
+    <div class="p-3 rounded-lg bg-surface-container-low flex flex-col">
+      <span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Best Pull</span>
+      {% if best_pull %}
+        <span class="font-headline-sm text-headline-sm text-royal-accent font-bold mt-0.5">{{ best_pull.final_distance }} <span class="font-body-sm text-body-sm text-on-surface">ft</span></span>
       {% else %}
-        Tractor {{ tractor.tractor_id }}
+        <span class="font-headline-sm text-headline-sm text-on-surface-variant font-bold mt-0.5">&mdash;</span>
       {% endif %}
-    </h1>
-    <div class="hero-meta">
-      <div><strong>ID:</strong> {{ tractor.tractor_id }}</div>
-      <!-- <div><strong>Events:</strong> {{ tractor.tractor_events|length }}</div>
-      <div><strong>Teams:</strong> {{ teams|length }}</div> -->
-      {% if bio %}
-      <div>{{bio.info}}</div>
-      {% endif %}
-      {% if website %}
-      <div><a href="https://{{website.info|cut:'https://'|cut:'http://'}}">{{website.info}}</a></div>
-      {% endif %}
+    </div>
+    <div class="p-3 rounded-lg bg-surface-container-low flex flex-col">
+      <span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Pulls</span>
+      <span class="font-headline-sm text-headline-sm text-navy-deep font-bold mt-0.5">{{ pulls_count }}</span>
+    </div>
+    <div class="p-3 rounded-lg bg-surface-container-low flex flex-col">
+      <span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Events</span>
+      <span class="font-headline-sm text-headline-sm text-navy-deep font-bold mt-0.5">{{ events_count }}</span>
     </div>
   </section>
 
+  {% if best_pull %}
+    <section class="mb-6">
+      <div class="bg-primary-container text-on-primary rounded-xl p-4 shadow-sm">
+        <div class="flex items-start gap-3">
+          <div class="w-10 h-10 rounded-full bg-royal-accent flex items-center justify-center shrink-0">
+            <span class="material-symbols-outlined text-white text-[22px]">workspace_premium</span>
+          </div>
+          <div class="flex flex-col min-w-0">
+            <span class="font-label-caps text-label-caps text-primary-fixed uppercase tracking-wider">Best Recorded Pull</span>
+            <h3 class="font-headline-sm text-headline-sm leading-snug mt-0.5 text-white">
+              {{ best_pull.final_distance }} ft
+              {% if best_pull.hook %}&middot; {% if best_pull.hook.hook_name %}{{ best_pull.hook.hook_name }}{% else %}Hook {{ best_pull.hook_id }}{% endif %}{% endif %}
+            </h3>
+            {% if best_pull.event %}
+              <a href="{% url 'events:event_detail' event_id=best_pull.event_id %}" class="font-body-sm text-body-sm text-primary-fixed mt-1 hover:underline">
+                {{ best_pull.event.event_name }}
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </section>
+  {% endif %}
+
+  {% if bio or website %}
+    <section class="mb-6 font-body-md text-body-md text-on-surface-variant">
+      {% if bio %}<p>{{ bio.info }}</p>{% endif %}
+      {% if website %}
+        <a href="https://{{ website.info|cut:'https://'|cut:'http://' }}" class="text-royal-accent hover:underline">{{ website.info }}</a>
+      {% endif %}
+    </section>
+  {% endif %}
+
   {% if not bio %}
-  <div class="profile-nudge">
-    <div class="nudge-text">
-      <strong>This tractor's profile is incomplete.</strong>
-      Are you a team member who built or drove this tractor? Log in to add a bio, specs, and photos.
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6 p-4 bg-surface-container-low border border-outline-variant rounded-lg font-body-sm text-body-sm">
+      <p class="text-on-surface-variant">
+        <strong class="text-navy-deep">This tractor's profile is incomplete.</strong>
+        Are you a team member who built or drove this tractor? Log in to add a bio, specs, and photos.
+      </p>
+      <a href="{% url 'events:contribute' %}" class="font-button-text text-button-text text-royal-accent whitespace-nowrap hover:underline">Learn how &rarr;</a>
     </div>
-    <a href="{% url 'events:contribute' %}" class="nudge-link">Learn how &rarr;</a>
-  </div>
+  {% endif %}
+
+  {% if tractor.original_team %}
+    <section class="mb-6">
+      <a href="{% url 'events:team_detail' tractor.original_team.team_id %}"
+         class="w-full py-3 px-4 rounded-lg bg-royal-accent text-white font-button-text text-button-text font-semibold flex items-center justify-between hover:bg-navy-deep transition-colors shadow-sm">
+        <span class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-[20px]">school</span>
+          View {{ tractor.original_team.team_name }} Team Profile
+        </span>
+        <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
+      </a>
+    </section>
   {% endif %}
 
   <!-- Pulls -->
-  <section>
-    <h2>Pulls</h2>
+  <section class="mb-6">
+    <h2 class="font-headline-sm text-headline-sm text-navy-deep mb-3">Pulls</h2>
     {% if pulls %}
-      <table>
-        <thead>
-          <tr>
-            <th>Event</th>
-            <th>Team</th>
-            <th>Hook</th>
-            <th>Final Distance</th>
-            <th>Pull</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in pulls %}
-            <tr>
-              <td>
-                {% if p.event %}
-                  <a href="{% url 'events:event_detail' event_id=p.event_id %}">
-                    {{ p.event.event_name }}
-                  </a>
-                {% else %}
-                  N/A
-                {% endif %}
-              </td>
-              <td>
-                <a href="{% url 'events:team_event_detail' event_id=p.event_id team_id=p.team_id %}">
-                  {{ p.team.team_name }}
+      <div class="space-y-2">
+        {% for p in pulls %}
+          <div class="bg-surface-container-low p-3 rounded-lg flex items-center justify-between gap-3 flex-wrap">
+            <div class="min-w-0">
+              {% if p.event %}
+                <a href="{% url 'events:event_detail' event_id=p.event_id %}" class="font-body-md text-body-md text-navy-deep font-semibold hover:text-royal-accent">
+                  {{ p.event.event_name }}
                 </a>
-              </td>
-              <td>
-                {% if p.hook %}
-                  {% if p.hook.hook_name %}
-                    {{ p.hook.hook_name }}
-                  {% else %}
-                    Hook {{ p.hook_id }}
-                  {% endif %}
-                {% else %}
-                  {{ p.hook_id|default:"N/A" }}
-                {% endif %}
-              </td>
-              <td>{{ p.final_distance|default:"N/A" }}</td>
-              <td>
-                <a href="{% url 'events:pull_detail' pull_id=p.pull_id %}">
-                  Charts / Data
-                </a>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+              {% else %}
+                <span class="font-body-md text-body-md text-navy-deep font-semibold">N/A</span>
+              {% endif %}
+              <div class="font-body-sm text-body-sm text-on-surface-variant">
+                <a href="{% url 'events:team_event_detail' event_id=p.event_id team_id=p.team_id %}" class="hover:text-royal-accent">{{ p.team.team_name }}</a>
+                &middot;
+                {% if p.hook %}{% if p.hook.hook_name %}{{ p.hook.hook_name }}{% else %}Hook {{ p.hook_id }}{% endif %}{% else %}{{ p.hook_id|default:"N/A" }}{% endif %}
+              </div>
+            </div>
+            <div class="flex items-center gap-3 shrink-0">
+              <span class="font-headline-sm text-headline-sm text-navy-deep">{{ p.final_distance|default:"N/A" }}{% if p.final_distance %} ft{% endif %}</span>
+              <a href="{% url 'events:pull_detail' pull_id=p.pull_id %}"
+                 class="font-label-caps text-label-caps text-on-surface-variant border border-outline-variant px-3 py-1 rounded-full hover:border-royal-accent hover:text-royal-accent transition-colors">
+                Charts
+              </a>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
     {% else %}
       <p class="empty">No pulls recorded for this tractor.</p>
     {% endif %}
   </section>
 
   <!-- Events & Teams summary -->
-  <section class="grid">
-    <div class="card">
-      <h3>Events</h3>
+  <section class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+    <div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4">
+      <h3 class="font-headline-sm text-headline-sm text-navy-deep mb-2">Events</h3>
       {% if events %}
-        <table>
-          <thead>
-            <tr>
-              <th>Event</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for e in events %}
-              <tr>
-                <td>
-                  <a href="{% url 'events:event_detail' event_id=e.event_id %}">
-                    {{ e.event_name }}
-                  </a>
-                </td>
-                <td>
-                  {% if e.event_datetime %}
-                    {{ e.event_datetime|date:"F Y" }}
-                  {% else %}
-                    N/A
-                  {% endif %}
-                </td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        <div class="space-y-2">
+          {% for e in events %}
+            <a href="{% url 'events:event_detail' event_id=e.event_id %}"
+               class="block bg-surface-container-low p-3 rounded-lg flex items-center justify-between border border-transparent hover:border-outline-variant transition-all">
+              <span class="font-body-md text-body-md text-navy-deep font-semibold">{{ e.event_name }}</span>
+              <span class="font-label-caps text-label-caps text-on-surface-variant">{% if e.event_datetime %}{{ e.event_datetime|date:"F Y" }}{% else %}N/A{% endif %}</span>
+            </a>
+          {% endfor %}
+        </div>
       {% else %}
         <p class="empty">No events recorded for this tractor.</p>
       {% endif %}
     </div>
 
-    <div class="card">
-      <h3>Teams &amp; Years Used</h3>
+    <div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4">
+      <h3 class="font-headline-sm text-headline-sm text-navy-deep mb-2">Teams &amp; Years Used</h3>
       {% if usages %}
-        <table>
-          <thead>
-            <tr>
-              <th>Team</th>
-              <th>Event</th>
-              <th>Year</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for u in usages %}
-              <tr>
-                <td>
-                  {% if u.team %}
-                    <a href="{% url 'events:team_event_detail' team_id=u.team.team_id event_id=u.event.event_id%}">
-                      {{ u.team.team_name }}
-                    </a>
-                  {% else %}
-                    N/A
-                  {% endif %}
-                </td>
-                <td>
-                  {% if u.event %}
-                    <a href="{% url 'events:event_detail' event_id=u.event.event_id %}">
-                      {{ u.event.event_name }}
-                    </a>
-                  {% else %}
-                    N/A
-                  {% endif %}
-                </td>
-                <td>{{ u.year|default:"N/A" }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+        <div class="space-y-2">
+          {% for u in usages %}
+            <div class="bg-surface-container-low p-3 rounded-lg flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                {% if u.team %}
+                  <a href="{% url 'events:team_event_detail' team_id=u.team.team_id event_id=u.event.event_id %}" class="font-body-md text-body-md text-navy-deep font-semibold hover:text-royal-accent">
+                    {{ u.team.team_name }}
+                  </a>
+                {% else %}
+                  <span class="font-body-md text-body-md text-navy-deep font-semibold">N/A</span>
+                {% endif %}
+                {% if u.event %}
+                  <div class="font-body-sm text-body-sm text-on-surface-variant">
+                    <a href="{% url 'events:event_detail' event_id=u.event.event_id %}" class="hover:text-royal-accent">{{ u.event.event_name }}</a>
+                  </div>
+                {% endif %}
+              </div>
+              <span class="font-label-caps text-label-caps text-on-surface-variant shrink-0">{{ u.year|default:"N/A" }}</span>
+            </div>
+          {% endfor %}
+        </div>
       {% else %}
         <p class="empty">No team usage recorded for this tractor.</p>
       {% endif %}
@@ -466,51 +370,47 @@
   </section>
 
   {% if tractor_media %}
-    <section style="margin-top: 1.5rem;">
-      <div class="card">
-        <h3>Tractor Photos</h3>
+    <section class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 md:p-6 mb-6">
+      <h3 class="font-headline-sm text-headline-sm text-navy-deep mb-1">Tractor Photos</h3>
 
-        <div class="tractor-photo-grid">
-          {% for media in tractor_media %}
-            <figure data-photo-index="{{ forloop.counter0 }}">
-              <img src="/media/{{media.link}}"
-                   alt="{% if media.caption %}{{ media.caption }}{% else %}{{ tractor.tractor_name }}{% endif %}">
-              {% if media.caption %}
-                <figcaption>{{ media.caption }}</figcaption>
-              {% endif %}
-            </figure>
-          {% endfor %}
-        </div>
+      <div class="tractor-photo-grid">
+        {% for media in tractor_media %}
+          <figure data-photo-index="{{ forloop.counter0 }}">
+            <img src="/media/{{media.link}}"
+                 alt="{% if media.caption %}{{ media.caption }}{% else %}{{ tractor.tractor_name }}{% endif %}">
+            {% if media.caption %}
+              <figcaption>{{ media.caption }}</figcaption>
+            {% endif %}
+          </figure>
+        {% endfor %}
       </div>
     </section>
   {% endif %}
 
   {% if tractor_photos %}
-    <section style="margin-top: 1.5rem;">
-      <div class="card">
-        <h3>Tractor Photos from Events</h3>
+    <section class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 md:p-6 mb-6">
+      <h3 class="font-headline-sm text-headline-sm text-navy-deep mb-1">Tractor Photos from Events</h3>
 
-        <div class="tractor-photo-grid" id="eventPhotosGrid">
-          {% for photo in tractor_photos %}
-            <figure data-photo-index="{{ forloop.counter0 }}" data-photo-section="event">
-              <img src="/media/{{photo.photo_path}}"
-                   alt="{% if photo.caption %}{{ photo.caption }}{% else %}{{ tractor.tractor_name }}{% endif %}">
-              <figcaption>
-                {% if photo.caption %}
-                  {{ photo.caption }}<br>
-                {% endif %}
-                {% if photo.event_team and photo.event_team.event %}
-                  <span>
-                    {{ photo.event_team.event.event_name }}
-                    {% if photo.event_team.event.event_datetime %}
-                      – {{ photo.event_team.event.event_datetime|date:"M Y" }}
-                    {% endif %}
-                  </span>
-                {% endif %}
-              </figcaption>
-            </figure>
-          {% endfor %}
-        </div>
+      <div class="tractor-photo-grid" id="eventPhotosGrid">
+        {% for photo in tractor_photos %}
+          <figure data-photo-index="{{ forloop.counter0 }}" data-photo-section="event">
+            <img src="/media/{{photo.photo_path}}"
+                 alt="{% if photo.caption %}{{ photo.caption }}{% else %}{{ tractor.tractor_name }}{% endif %}">
+            <figcaption>
+              {% if photo.caption %}
+                {{ photo.caption }}<br>
+              {% endif %}
+              {% if photo.event_team and photo.event_team.event %}
+                <span>
+                  {{ photo.event_team.event.event_name }}
+                  {% if photo.event_team.event.event_datetime %}
+                    – {{ photo.event_team.event.event_datetime|date:"M Y" }}
+                  {% endif %}
+                </span>
+              {% endif %}
+            </figcaption>
+          </figure>
+        {% endfor %}
       </div>
     </section>
   {% endif %}
@@ -540,9 +440,9 @@
     </div>
   {% endif %}
 
-  <div style="margin-top: 0.6rem;">
+  <div class="mb-6">
     <a href="{% url 'events:tractor_profile_edit' tractor.tractor_id %}"
-       style="display:inline-block; padding:0.35rem 0.9rem; border-radius:999px; border:1px solid #1f2937; background:#111827; color:#F3F6E7; text-decoration:none;">
+       class="inline-block px-4 py-1.5 rounded-full border border-outline-variant bg-surface-container-lowest text-navy-deep font-button-text text-button-text hover:border-royal-accent hover:text-royal-accent transition-colors">
       Edit tractor profile
     </a>
   </div>

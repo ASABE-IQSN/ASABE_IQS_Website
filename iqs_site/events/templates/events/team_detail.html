@@ -30,143 +30,34 @@
   .photo-grid img {
     width: 100%;
     border-radius: 0.5rem;
-    border: 1px solid #1f2937;
+    border: 1px solid #c4c6d0;
     display: block;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
   .photo-grid img:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+    box-shadow: 0 10px 25px rgba(0, 40, 85, 0.15);
   }
 
   .photo-grid figcaption {
     font-size: 0.8rem;
-    color: #9ca3af;
+    color: #43474f;
     margin-top: 0.25rem;
     line-height: 1.3;
   }
 
-  .breadcrumbs {
-    font-size: 0.8rem;
-    color: #9ca3af;
-    margin-bottom: 0.75rem;
-  }
-
-  .breadcrumbs a {
-    color: #9ca3af;
-  }
-
-  .breadcrumbs span {
-    margin: 0 0.25rem;
-  }
-
-  .hero {
-    margin-bottom: 1.5rem;
-    padding: 1rem 1.25rem;
-    border-radius: 0.9rem;
-    background: #0f172a;
-    border: 1px solid #1f2937;
-    display: flex;
-    gap: 1rem;
+  .social-link {
+    display: inline-flex;
     align-items: center;
+    gap: 0.4rem;
   }
 
-  .hero-image {
-    width: 200px;
-    height: 200px;
-    border-radius: 0.9rem;
-    overflow: hidden;
-    flex-shrink: 0;
-    background: #020617;
-    border: 1px solid #1f2937;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    color: #6b7280;
-  }
-
-  .hero-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .hero-main {
-    flex: 1;
-  }
-
-  .hero-main h1 {
-    margin: 0 0 0.3rem;
-    font-size: 1.6rem;
-  }
-
-  .hero-meta {
-    font-size: 0.95rem;
-    color: #9ca3af;
-    line-height: 1.5;
-  }
-
-  .hero-bio {
-    margin-top: 0.6rem;
-    font-size: 0.9rem;
-    color: #020617;
-  }
-
-  h2 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
-    font-size: 1.3rem;
-  }
-
-  .card {
-    padding: 1rem 1.25rem;
-    border-radius: 0.9rem;
-    background: #0b1120;
-    border: 1px solid #1f2937;
-  }
-
-  .card h3 {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-    font-size: 1.05rem;
-  }
-
-  ul.event-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-  }
-
-  ul.event-list li {
-    padding: 0.4rem 0;
-    border-bottom: 1px solid #1f2937;
-    font-size: 0.9rem;
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
-    align-items: baseline;
-  }
-
-  ul.event-list li:last-child {
-    border-bottom: none;
-  }
-
-  .event-name {
-    flex: 1;
-  }
-
-  .empty {
-    font-size: 0.9rem;
-    color: #9ca3af;
-  }
-
-  /* Lightbox styles (same as team page) */
+  /* Lightbox styles */
   .lightbox-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(0, 20, 48, 0.92);
     display: none;
     align-items: center;
     justify-content: center;
@@ -179,7 +70,6 @@
 
   .lightbox-inner {
     position: relative;
-    <!-- object-fit: cover; -->
     max-width: 100vw;
     max-height: 95vh;
     height: 90vh;
@@ -193,12 +83,7 @@
   .lightbox-image-wrapper {
     max-width: 90vw;
     max-height: 90vh;
-    <!-- height: 100%; -->
-    <!-- padding: 5px; -->
     display: flex;
-    <!-- align-items: center;
-    justify-content: center;
-    object-fit: contain; -->
   }
 
   .lightbox-image-wrapper img {
@@ -208,15 +93,14 @@
     align-items: center;
     justify-content: center;
     object-fit: contain;
-    <!-- max-height: 100%; -->
     border-radius: 0.75rem;
-    border: 1px solid #1f2937;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+    border: 1px solid #c4c6d0;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
   }
 
   .lightbox-caption {
     font-size: 0.9rem;
-    color: #F3F6E7;
+    color: #ffffff;
     text-align: center;
     max-width: 70ch;
   }
@@ -225,34 +109,34 @@
     position: absolute;
     top: -0.5rem;
     right: -0.5rem;
-    background: #111827;
+    background: #ffffff;
     border-radius: 999px;
     width: 32px;
     height: 32px;
-    border: 1px solid #374151;
+    border: 1px solid #c4c6d0;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     font-size: 1rem;
-    color: #F3F6E7;
+    color: #001430;
   }
 
   .lightbox-arrow {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    background: #111827;
+    background: #ffffff;
     border-radius: 999px;
     width: 36px;
     height: 36px;
-    border: 1px solid #374151;
+    border: 1px solid #c4c6d0;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     font-size: 1.1rem;
-    color: #F3F6E7;
+    color: #001430;
   }
 
   .lightbox-arrow.left {
@@ -270,222 +154,245 @@
     .lightbox-arrow.right {
       right: 0.5rem;
     }
-
-    .hero {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .hero-image {
-      width: 100%;
-      height: 200px;
-    }
   }
-
-  .profile-nudge {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.75rem 1.1rem;
-    margin-bottom: 1.5rem;
-    background: #0f172a;
-    border: 1px solid #334155;
-    border-radius: 0.75rem;
-    font-size: 0.85rem;
-    flex-wrap: wrap;
-  }
-
-  .nudge-text { color: #9ca3af; }
-  .nudge-text strong { color: #f3f6e7; }
-
-  .nudge-link {
-    white-space: nowrap;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: #6687fc;
-    text-decoration: none;
-  }
-
-  .nudge-link:hover { text-decoration: underline; }
 {% endblock %}
 
 {% block content %}
-
   <!-- Breadcrumbs -->
-  <div class="breadcrumbs">
-    <a href="{% url 'events:team_list' %}">Teams</a>
-    <span>›</span>
+  <div class="font-body-sm text-body-sm text-on-surface-variant mb-4">
+    <a href="{% url 'events:team_list' %}" class="hover:text-royal-accent">Teams</a>
+    <span class="mx-1">&rsaquo;</span>
     <span>{{ team.team_name }}</span>
   </div>
 
   <!-- Hero -->
-  <section class="hero">
-    <div class="hero-image">
-      {% if hero_photo %}
-        <img src="/media/{{hero_photo.photo_path}}"
-             alt="{{ team.team_name }}">
-      {% else %}
-        No image
-      {% endif %}
-    </div>
-
-    <div class="hero-main">
-      <h1>{{ team.team_name }}</h1>
-      {% if nickname %}
-      <strong>{{ nickname.info }}</strong>
-      {% endif %}
-      <div class="hero-meta">
-        <div><strong>Team #:</strong> {{ team.team_number }}</div>
+  <section class="bg-surface-container-low rounded-lg p-4 md:p-6 mb-4">
+    <div class="flex items-start gap-3.5">
+      <div class="shrink-0 w-16 h-16 rounded-xl bg-gradient-to-br from-navy-deep to-primary shadow-sm flex items-center justify-center">
+        <span class="font-button-text font-bold text-xl text-white leading-none">{{ team.team_abbreviation|slice:":3"|upper }}</span>
       </div>
-      {% if instagram %}
-      
-      <a href="https://instagram.com/{{ instagram.info }}"
-        target="_blank"
-        class="instagram-link">
-        <i class="fa-brands fa-instagram"></i>
-        @{{instagram.info}}
-      </a>
-      
-      {% endif %}
-      {% if facebook %}
-      <br>
-      <a href="https://facebook.com/{{facebook.info}}"
-        target="_blank"
-        class="social-link facebook">
-        <i class="fa-brands fa-facebook"></i>
-        /{{facebook.info}}
-      </a>
-      
-      {% endif %}
-
-      {% if linkedin %}
-      <br>
-      <a href={{linkedin.info}}
-        target="_blank"
-        class="social-link linkedin">
-        <i class="fa-brands fa-linkedin"></i>
-        LinkedIn
-      </a>
-
-      {% endif %}
-      {% if youtube %}
-      <br>
-      <a href=https://youtube.com/{{youtube.info}}
-        target="_blank"
-        class="social-link youtube">
-        <i class="fa-brands fa-youtube"></i>
-        {{ youtube.info }}
-      </a>
-
-      {% endif %}
-      {% if website %}
-      <br>
-      <a href="https://{{website.info|cut:'https://'|cut:'http://'}}">
-        {{ website.info }}</a>
-
-      {% endif %}
-
-      <div class="hero-bio">
-        {% if bio %}
-        <span style="color:#9ca3af;">{{ bio.info }}</span>
-
-        {% else %}
-          <span style="color:#9ca3af;">Team bio coming soon.</span>
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-navy-deep text-white font-label-caps text-label-caps">
+            Team #{{ team.team_number }}
+          </span>
+          {% if team.team_class %}
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant font-label-caps text-label-caps">
+              {{ team.team_class.name }}
+            </span>
+          {% endif %}
+        </div>
+        <h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-navy-deep mt-1 leading-tight">
+          {{ team.team_name }}
+        </h1>
+        {% if nickname %}
+          <p class="font-body-sm text-body-sm text-royal-accent font-semibold mt-0.5">{{ nickname.info }}</p>
         {% endif %}
       </div>
+    </div>
+
+    {% if instagram or facebook or linkedin or youtube or website %}
+      <div class="mt-3.5 flex flex-wrap items-center gap-2">
+        {% if instagram %}
+          <a href="https://instagram.com/{{ instagram.info }}" target="_blank"
+             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-highest hover:bg-surface-container-high text-on-surface font-button-text text-[13px] transition-colors">
+            <i class="fa-brands fa-instagram text-royal-accent"></i> @{{ instagram.info }}
+          </a>
+        {% endif %}
+        {% if facebook %}
+          <a href="https://facebook.com/{{ facebook.info }}" target="_blank"
+             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-highest hover:bg-surface-container-high text-on-surface font-button-text text-[13px] transition-colors">
+            <i class="fa-brands fa-facebook text-royal-accent"></i> /{{ facebook.info }}
+          </a>
+        {% endif %}
+        {% if linkedin %}
+          <a href="{{ linkedin.info }}" target="_blank"
+             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-highest hover:bg-surface-container-high text-on-surface font-button-text text-[13px] transition-colors">
+            <i class="fa-brands fa-linkedin text-royal-accent"></i> LinkedIn
+          </a>
+        {% endif %}
+        {% if youtube %}
+          <a href="https://youtube.com/{{ youtube.info }}" target="_blank"
+             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-surface-container-highest hover:bg-surface-container-high text-on-surface font-button-text text-[13px] transition-colors">
+            <i class="fa-brands fa-youtube text-royal-accent"></i> {{ youtube.info }}
+          </a>
+        {% endif %}
+        {% if website %}
+          <a href="https://{{ website.info|cut:'https://'|cut:'http://' }}" target="_blank"
+             class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary-container text-on-secondary font-button-text text-[13px] transition-colors">
+            <span class="material-symbols-outlined text-[16px]">language</span> Website
+          </a>
+        {% endif %}
+      </div>
+    {% endif %}
+
+    <p class="font-body-md text-body-md text-on-surface-variant mt-3.5">
+      {% if bio %}{{ bio.info }}{% else %}Team bio coming soon.{% endif %}
+    </p>
+  </section>
+
+  {% if hero_photo %}
+    <section class="mb-4">
+      <div class="relative w-full rounded-xl overflow-hidden shadow-sm bg-navy-deep">
+        <img src="/media/{{ hero_photo.photo_path }}" alt="{{ team.team_name }}" class="w-full h-56 object-cover object-center">
+        {% if hero_photo.caption %}
+          <div class="absolute inset-0 bg-gradient-to-t from-navy-deep/90 via-navy-deep/10 to-transparent"></div>
+          <div class="absolute bottom-3 inset-x-3">
+            <p class="font-body-sm text-body-sm text-white drop-shadow-sm">{{ hero_photo.caption }}</p>
+          </div>
+        {% endif %}
+      </div>
+    </section>
+  {% endif %}
+
+  <!-- Quick stats -->
+  <section class="grid grid-cols-3 gap-2 mb-6">
+    <div class="p-3 rounded-lg bg-surface-container-low flex flex-col">
+      <span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Events</span>
+      <span class="font-headline-md text-headline-md text-navy-deep font-bold mt-0.5">{{ event_teams.count }}</span>
+    </div>
+    <div class="p-3 rounded-lg bg-surface-container-low flex flex-col">
+      <span class="font-label-caps text-label-caps text-on-surface-variant uppercase">1st Place Wins</span>
+      <span class="font-headline-md text-headline-md text-royal-accent font-bold mt-0.5">{{ first_place_count }}</span>
+    </div>
+    <div class="p-3 rounded-lg bg-surface-container-low flex flex-col">
+      <span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Tractors Fielded</span>
+      <span class="font-headline-md text-headline-md text-navy-deep font-bold mt-0.5">{{ team_tractors.count }}</span>
     </div>
   </section>
 
   {% if not bio %}
-  <div class="profile-nudge">
-    <div class="nudge-text">
-      <strong>This team's profile is incomplete.</strong>
-      Are you a member of {{ team.team_name }}? Log in to add a bio, social links, and photos.
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6 p-4 bg-surface-container-low border border-outline-variant rounded-lg font-body-sm text-body-sm">
+      <p class="text-on-surface-variant">
+        <strong class="text-navy-deep">This team's profile is incomplete.</strong>
+        Are you a member of {{ team.team_name }}? Log in to add a bio, social links, and photos.
+      </p>
+      <a href="{% url 'events:contribute' %}" class="font-button-text text-button-text text-royal-accent whitespace-nowrap hover:underline">Learn how &rarr;</a>
     </div>
-    <a href="{% url 'events:contribute' %}" class="nudge-link">Learn how &rarr;</a>
-  </div>
+  {% endif %}
+
+  {% if team_awards %}
+    <section class="mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          <span class="material-symbols-outlined text-warning-gold text-[20px]" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+          <h2 class="font-headline-sm text-headline-sm text-navy-deep">Awards</h2>
+        </div>
+        <span class="font-label-caps text-label-caps text-on-surface-variant font-bold">{{ team_awards|length }} Total</span>
+      </div>
+      <div class="flex flex-col gap-2">
+        {% for award in team_awards %}
+          <div class="p-3 rounded-lg bg-surface-container-low flex items-start justify-between gap-3">
+            <div class="flex items-start gap-2.5 min-w-0">
+              {% if award.team_photo_path %}
+                <img src="/media/{{ award.team_photo_path }}" alt="{{ team.team_name }}" class="w-9 h-9 rounded-lg object-cover shrink-0 mt-0.5">
+              {% else %}
+                <div class="w-9 h-9 rounded-lg bg-warning-gold/20 flex items-center justify-center shrink-0 text-navy-deep mt-0.5 text-lg">🏆</div>
+              {% endif %}
+              <div class="min-w-0">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <a href="{% url 'awards:award_type_history' award.award_type.award_type_id %}"
+                     class="font-button-text font-bold text-on-surface text-[14px] hover:text-royal-accent">
+                    {{ award.award_type.short_name }}
+                  </a>
+                  {% if award.placement %}
+                    {% if award.placement == 1 %}
+                      <span class="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 font-label-caps text-[10px] font-bold">{{ award.get_placement_display }}</span>
+                    {% elif award.placement == 2 %}
+                      <span class="px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface-variant font-label-caps text-[10px] font-bold">{{ award.get_placement_display }}</span>
+                    {% else %}
+                      <span class="px-1.5 py-0.2 rounded bg-orange-100 text-orange-800 font-label-caps text-[10px] font-bold">{{ award.get_placement_display }}</span>
+                    {% endif %}
+                  {% endif %}
+                  {% if award.award_type.team_class %}
+                    <span class="px-1.5 py-0.2 rounded bg-surface-container-highest text-navy-deep font-label-caps text-[10px]">{{ award.award_type.team_class.name }}</span>
+                  {% endif %}
+                </div>
+                <a href="{% url 'events:team_event_detail' award.event_team.event_id team.team_id %}"
+                   class="font-body-sm text-body-sm text-on-surface-variant mt-0.5 block hover:text-royal-accent">
+                  {{ award.event_team.event.event_name }}
+                </a>
+                {% if award.notes %}
+                  <span class="font-body-sm text-[12px] text-on-surface-variant italic">{{ award.notes }}</span>
+                {% endif %}
+              </div>
+            </div>
+            {% if award.event_team.event.event_datetime %}
+              <span class="shrink-0 px-2 py-0.5 rounded bg-surface-container-highest text-navy-deep font-label-caps text-label-caps font-bold">
+                {{ award.event_team.event.event_datetime|date:"Y" }}
+              </span>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    </section>
+  {% endif %}
+
+  {% if team_tractors %}
+    <section class="mb-6">
+      <h2 class="font-headline-sm text-headline-sm text-navy-deep mb-1">Tractors</h2>
+      <p class="font-body-sm text-body-sm text-on-surface-variant mb-3">Machines fielded by this team over the years.</p>
+      <div class="grid grid-cols-1 gap-3">
+        {% for tractor in team_tractors %}
+          <a href="{% url 'events:tractor_detail' tractor_id=tractor.tractor_id %}"
+             class="p-3 rounded-xl bg-surface-container-low flex items-center gap-3 hover:bg-surface-container transition-colors">
+            <div class="w-24 h-20 rounded-lg overflow-hidden shrink-0 bg-surface-container-highest relative flex items-center justify-center">
+              {% if tractor.primary_photo and tractor.primary_photo.link %}
+                <img src="/media/{{ tractor.primary_photo.link }}" alt="{{ tractor.tractor_name }}" class="w-full h-full object-cover">
+              {% else %}
+                <span class="material-symbols-outlined text-3xl text-on-surface-variant/30">agriculture</span>
+              {% endif %}
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between gap-2">
+                <h4 class="font-headline-sm text-[17px] text-navy-deep truncate">{{ tractor.tractor_name|default:"Unnamed Tractor" }}</h4>
+                {% if tractor.year %}
+                  <span class="px-2 py-0.5 rounded-full bg-primary-fixed text-on-primary-fixed font-label-caps text-[11px] font-semibold shrink-0">{{ tractor.year }}</span>
+                {% endif %}
+              </div>
+            </div>
+          </a>
+        {% endfor %}
+      </div>
+    </section>
   {% endif %}
 
   <!-- Events -->
-  <section style="margin-top: 1.5rem;">
-    <div class="card">
-      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.5rem;">
-        <h3 style="margin:0;">Events</h3>
+  <section class="mb-6">
+    <div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 md:p-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="font-headline-sm text-headline-sm text-navy-deep">Competition History</h2>
         <a href="{% url 'events:team_score_history' team.team_id %}"
-           style="font-size:0.8rem; color:#9ca3af; text-decoration:none; border:1px solid #1f2937; padding:0.2rem 0.6rem; border-radius:999px;">
+           class="font-label-caps text-label-caps text-on-surface-variant border border-outline-variant px-3 py-1 rounded-full hover:border-royal-accent hover:text-royal-accent transition-colors">
           Score History &rarr;
         </a>
       </div>
       {% if event_teams %}
-        <ul class="event-list">
+        <div class="space-y-2">
           {% for et in event_teams %}
-            <li>
-              <div class="event-name">
-                <a href="{% url 'events:team_event_detail' et.event_id team.team_id %}">
-                  {{ et.event.event_name }}
-                </a>
-                {% if et.event.event_datetime %}
-                  <div style="font-size: 0.8rem; color: #9ca3af;">
-                    {{ et.event.event_datetime|date:"F Y" }}
-                  </div>
-                {% endif %}
-              </div>
-            </li>
+            <a href="{% url 'events:team_event_detail' et.event_id team.team_id %}"
+               class="block bg-surface-container-low p-3 rounded-lg flex items-center justify-between border border-transparent hover:border-outline-variant transition-all">
+              <span class="font-body-md text-body-md text-navy-deep font-semibold">{{ et.event.event_name }}</span>
+              {% if et.event.event_datetime %}
+                <span class="font-label-caps text-label-caps text-on-surface-variant">{{ et.event.event_datetime|date:"F Y" }}</span>
+              {% endif %}
+            </a>
           {% endfor %}
-        </ul>
+        </div>
       {% else %}
         <p class="empty">No events recorded for this team.</p>
       {% endif %}
     </div>
   </section>
 
-  {% if team_awards %}
-  <section style="margin-top: 1.5rem;">
-    <h2 style="margin-bottom: 0.75rem;">Awards</h2>
-    <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-      {% for award in team_awards %}
-        <div style="background: #0b1120; border: 1px solid #1f2937; border-radius: 0.9rem; padding: 1rem; display: flex; flex-direction: column; align-items: center; text-align: center; width: 150px; gap: 0.5rem;">
-          {% if award.team_photo_path %}
-            <img src="/media/{{ award.team_photo_path }}" alt="{{ team.team_name }}" style="width: 90px; height: 90px; object-fit: cover; border-radius: 0.5rem;">
-          {% else %}
-            <div style="width: 90px; height: 90px; border-radius: 0.5rem; background: #1f2937; display: flex; align-items: center; justify-content: center; font-size: 2rem;">🏆</div>
-          {% endif %}
-          <a href="{% url 'awards:award_type_history' award.award_type.award_type_id %}" style="font-size: 0.85rem; font-weight: 600; color: #f3f6e7; line-height: 1.3; text-decoration: none;">
-            {{ award.award_type.short_name }}
-          </a>
-          {% if award.award_type.team_class %}
-            <span style="font-size: 0.7rem; color: #6b7280; background: #1f2937; padding: 0.1rem 0.4rem; border-radius: 4px;">{{ award.award_type.team_class.name }}</span>
-          {% endif %}
-          {% if award.placement %}
-            {% if award.placement == 1 %}
-              <span style="font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; background: rgba(245,158,11,0.15); color: #f59e0b;">{{ award.get_placement_display }}</span>
-            {% elif award.placement == 2 %}
-              <span style="font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; background: rgba(156,163,175,0.15); color: #9ca3af;">{{ award.get_placement_display }}</span>
-            {% else %}
-              <span style="font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; background: rgba(180,83,9,0.15); color: #b45309;">{{ award.get_placement_display }}</span>
-            {% endif %}
-          {% endif %}
-          <a href="{% url 'events:team_event_detail' award.event_team.event_id team.team_id %}" style="font-size: 0.75rem; color: #9ca3af; text-decoration: none;">
-            {{ award.event_team.event.event_name }}
-          </a>
-          {% if award.notes %}
-            <span style="font-size: 0.75rem; color: #9ca3af; font-style: italic;">{{ award.notes }}</span>
-          {% endif %}
-        </div>
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
   {% if team_photos %}
-    <section class="card" style="margin-top: 1.5rem;">
-      <h3>Team Photos</h3>
+    <section class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 md:p-6 mb-6">
+      <h2 class="font-headline-sm text-headline-sm text-navy-deep mb-1">Team Photos</h2>
 
       <div class="photo-grid">
         {% for photo in team_photos %}
           <figure data-photo-index="{{ forloop.counter0 }}">
-            <img src="/media/{{photo.photo_path }}"
+            <img src="/media/{{ photo.photo_path }}"
                  alt="{{ photo.caption|default:team.team_name }}">
 
             <figcaption>
@@ -528,14 +435,14 @@
         </button>
       </div>
     </div>
-    <div style="margin-top: 0.6rem;">
-    <a href="{% url 'events:team_profile_edit' team.team_id %}"
-       style="display:inline-block; padding:0.35rem 0.9rem; border-radius:999px; border:1px solid #1f2937; background:#111827; color:#F3F6E7; text-decoration:none;">
-      Edit profile
-    </a>
-  </div>
-  {% endif %}
 
+    <div class="mb-6">
+      <a href="{% url 'events:team_profile_edit' team.team_id %}"
+         class="inline-block px-4 py-1.5 rounded-full border border-outline-variant bg-surface-container-lowest text-navy-deep font-button-text text-button-text hover:border-royal-accent hover:text-royal-accent transition-colors">
+        Edit profile
+      </a>
+    </div>
+  {% endif %}
 {% endblock %}
 
 {% block extra_scripts %}

@@ -28,7 +28,7 @@
   {% if tractors %}
     <!-- Gallery grid -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-component-gap" id="tractorGrid">
-      {% for tractor in tractors %}
+      {% for tractor in featured_tractors %}
         <a
           href="{% url 'events:tractor_detail' tractor_id=tractor.tractor_id %}"
           class="tractor-card bg-surface-container-lowest border border-outline-variant p-4 rounded-lg flex flex-col gap-4 group transition-all hover:border-royal-accent hover:shadow-md"
@@ -77,6 +77,41 @@
       {% endfor %}
     </div>
 
+    {% if archive_tractors %}
+      <!-- Compact archive list for tractors without a photo -->
+      <div class="mt-8">
+        <h3 class="font-headline-sm text-headline-sm text-navy-deep mb-4 border-l-4 border-royal-accent pl-3">
+          Historical Archive
+        </h3>
+        <div class="space-y-3" id="tractorArchiveList">
+          {% for tractor in archive_tractors %}
+            <a
+              href="{% url 'events:tractor_detail' tractor_id=tractor.tractor_id %}"
+              class="tractor-row bg-surface-container-low p-3 rounded-lg flex justify-between items-center border border-transparent hover:border-outline-variant transition-all"
+              data-tractor-name="{{ tractor.tractor_name|default:'Unnamed Tractor'|lower }}"
+              data-tractor-nickname="{{ tractor.nickname_info|default:tractor.tractor_name|lower }}"
+              data-team-name="{% if tractor.original_team %}{{ tractor.original_team.team_name|lower }}{% endif %}"
+            >
+              <div class="flex flex-col">
+                <span class="font-headline-sm text-[16px] text-primary">
+                  {{ tractor.nickname_info|default:tractor.tractor_name|default:"Unnamed Tractor" }}
+                </span>
+                <span class="font-body-sm text-xs text-on-surface-variant">
+                  {% if tractor.original_team %}{{ tractor.original_team.team_name }}{% else %}Unknown Team{% endif %}
+                </span>
+              </div>
+              <div class="flex items-center gap-4">
+                {% if tractor.year %}
+                  <span class="font-label-caps text-label-caps text-on-surface-variant">{{ tractor.year }}</span>
+                {% endif %}
+                <span class="material-symbols-outlined text-on-surface-variant text-sm">chevron_right</span>
+              </div>
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+    {% endif %}
+
     <!-- No search results -->
     <div class="hidden py-12 text-center" id="noSearchResults">
       <span class="material-symbols-outlined text-4xl text-on-surface-variant mb-2">search_off</span>
@@ -92,18 +127,19 @@
   (function () {
     const input = document.getElementById('tractorSearchInput');
     const cards = Array.from(document.querySelectorAll('.tractor-card'));
+    const rows = Array.from(document.querySelectorAll('.tractor-row'));
     const noResultsEl = document.getElementById('noSearchResults');
 
-    if (!input || !cards.length) return;
+    if (!input || (!cards.length && !rows.length)) return;
 
     function applyFilter() {
       const query = input.value.trim().toLowerCase();
       let anyVisible = false;
 
-      cards.forEach(card => {
-        const name = card.getAttribute('data-tractor-name') || '';
-        const nickname = card.getAttribute('data-tractor-nickname') || '';
-        const team = card.getAttribute('data-team-name') || '';
+      [...cards, ...rows].forEach(el => {
+        const name = el.getAttribute('data-tractor-name') || '';
+        const nickname = el.getAttribute('data-tractor-nickname') || '';
+        const team = el.getAttribute('data-team-name') || '';
 
         const match =
           !query ||
@@ -111,7 +147,7 @@
           nickname.includes(query) ||
           team.includes(query);
 
-        card.style.display = match ? '' : 'none';
+        el.style.display = match ? '' : 'none';
         if (match) anyVisible = true;
       });
 

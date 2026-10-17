@@ -242,16 +242,18 @@ def tractor_list(request):
     nickname_sq = TractorInfo.objects.filter(
     tractor_id=OuterRef("tractor_id"),
     info_type=TractorInfo.InfoTypes.NICKNAME,).values("info")[:1]
-    tractors = Tractor.objects.select_related("original_team", "primary_photo").annotate(
+    tractors = list(Tractor.objects.select_related("original_team", "primary_photo").annotate(
         nickname_info=Subquery(nickname_sq),
         has_photo=Case(
             When(primary_photo__isnull=False, then=Value(0)),
             default=Value(1),
             output_field=IntegerField(),
         ),
-    ).order_by("has_photo", "original_team", "-year")
+    ).order_by("has_photo", "original_team", "-year"))
     context = {
         "tractors": tractors,
+        "featured_tractors": [t for t in tractors if t.has_photo == 0],
+        "archive_tractors": [t for t in tractors if t.has_photo == 1],
         "active_page": "tractors",
     }
     return render(request, "events/tractor_list.html", context)
@@ -372,8 +374,18 @@ def team_detail_page(request, team_id):
         .annotate(team_photo_path=Coalesce(Subquery(_official_photo), Subquery(_any_photo)))
         .order_by('-event_team__event__event_datetime', 'display_order')
     )
+    first_place_count = team_awards.filter(placement=1).count()
+
+    team_tractors = (
+        team.tractors
+        .select_related("primary_photo")
+        .distinct()
+        .order_by("-year")
+    )
 
     context = {
+        "team_tractors": team_tractors,
+        "first_place_count": first_place_count,
         "team": team,
         "event_teams": event_teams,
         "team_photos": team_photos,
@@ -535,6 +547,16 @@ def team_event_detail(request, event_id, team_id):
             if cat_id in score_breakdown:
                 score_breakdown[cat_id]["subs"].append(ss)
 
+    # This team's own furthest pull in the event (for delta vs. event-best)
+    team_pull_distances = [p.final_distance for p in pulls if p.final_distance is not None]
+    team_best_pull = max(team_pull_distances) if team_pull_distances else None
+
+    total_max_points = None
+    if score_breakdown:
+        total_max_points = sum(
+            data["cat"].category_instance.max_points for data in score_breakdown.values()
+        )
+
     context = {
         "team": team,
         "event": event,
@@ -542,6 +564,7 @@ def team_event_detail(request, event_id, team_id):
         "top3": top3,
         "team_in_top3": team_in_top3,
         "best_pull_overall": best_pull_overall,
+        "team_best_pull": team_best_pull,
         "pulls": pulls,
         "durability_runs": durability_runs,
         "maneuverability_runs": maneuverability_runs,
@@ -555,6 +578,7 @@ def team_event_detail(request, event_id, team_id):
         "can_edit": request.user.is_authenticated and can_edit_team(request.user, team),
         "event_awards": event_awards,
         "score_breakdown": score_breakdown,
+        "total_max_points": total_max_points,
     }
     return render(request, "events/team_event_detail.html", context)
 
@@ -1367,6 +1391,10 @@ def tractor_detail(request, tractor_id):
         .order_by("-created_at")
     )
 
+    # Best pull (furthest final_distance) for the stat strip / highlight banner
+    pulls_with_distance = [p for p in pulls if p.final_distance is not None]
+    best_pull = max(pulls_with_distance, key=lambda p: p.final_distance, default=None)
+
     context = {
         "tractor": tractor,
         "pulls": pulls,
@@ -1378,7 +1406,10 @@ def tractor_detail(request, tractor_id):
         "active_page": "tractors",
         "nickname":nickname,
         "website":website,
-        "bio":bio
+        "bio":bio,
+        "best_pull": best_pull,
+        "pulls_count": len(pulls),
+        "events_count": events.count(),
     }
     return render(request, "events/tractor_detail.html", context)
 

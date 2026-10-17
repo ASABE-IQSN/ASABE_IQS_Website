@@ -2,381 +2,181 @@
 
 {% block title %}Teams – International Quarter Scale{% endblock %}
 
-{% block extra_styles %}
-  h1 {
-    margin-bottom: 0.75rem;
-    font-size: 1.8rem;
-  }
-
-  /* Stats strip */
-  .stats-strip {
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    padding: 0.6rem 1.1rem;
-    background: #0b1120;
-    border: 1px solid #1f2937;
-    border-radius: 0.75rem;
-    margin-bottom: 1.25rem;
-    width: fit-content;
-  }
-
-  .stat-item {
-    display: flex;
-    align-items: baseline;
-    gap: 0.35rem;
-  }
-
-  .stat-value {
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: #F3F6E7;
-    line-height: 1;
-  }
-
-  .stat-label {
-    font-size: 0.8rem;
-    color: #6b7280;
-  }
-
-  .stat-divider {
-    width: 1px;
-    height: 1.4rem;
-    background: #1f2937;
-  }
-
-  /* Search bar */
-  .team-search-wrapper {
-    margin-bottom: 1rem;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  .team-search-input {
-    flex: 1;
-    min-width: 220px;
-    max-width: 400px;
-    padding: 0.45rem 0.75rem;
-    border-radius: 999px;
-    border: 1px solid #1f2937;
-    background: #020617;
-    color: #F3F6E7;
-    font-size: 0.9rem;
-  }
-
-  .team-search-input::placeholder {
-    color: #6b7280;
-  }
-
-  .team-search-input:focus {
-    outline: none;
-    border-color: #374151;
-  }
-
-  /* Top anchor nav */
-  .class-nav {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 1.5rem;
-  }
-
-  .class-nav a {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.65rem;
-    border-radius: 999px;
-    border: 1px solid #1f2937;
-    background: #020617;
-    color: #9ca3af;
-    text-decoration: none;
-    transition: color 0.12s, border-color 0.12s;
-  }
-
-  .class-nav a:hover {
-    color: #F3F6E7;
-    border-color: #374151;
-  }
-
-  /* Grid */
-  .class-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
-  }
-
-  @media (min-width: 900px) {
-    .class-grid {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    }
-  }
-
-  /* Class cards with per-class accent color via CSS variable */
-  .class-card {
-    padding: 1rem 1.25rem;
-    border-radius: 0.9rem;
-    background: #0b1120;
-    border: 1px solid #1f2937;
-    border-top: 3px solid var(--accent, #1f2937);
-  }
-
-  .class-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.75rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .class-card h2 {
-    margin: 0;
-    font-size: 1.15rem;
-  }
-
-  .class-count {
-    font-size: 0.75rem;
-    color: var(--accent, #9ca3af);
-    white-space: nowrap;
-    opacity: 0.85;
-  }
-
-  /* Team chips */
-  .team-chips {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-  }
-
-  .team-chip {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding: 0.28rem 0.55rem 0.28rem 0.28rem;
-    border-radius: 999px;
-    border: 1px solid #1f2937;
-    background: #020617;
-    text-decoration: none;
-    color: #d1d5db;
-    font-size: 0.83rem;
-    width: 100%;
-    transition: background 0.12s, border-color 0.12s, transform 0.1s;
-  }
-
-  .team-chip:hover {
-    background: #0f172a;
-    border-color: var(--accent, #374151);
-    color: #F3F6E7;
-    transform: translateY(-1px);
-  }
-
-  .chip-avatar {
-    width: 26px;
-    height: 26px;
-    border-radius: 999px;
-    flex-shrink: 0;
-    overflow: hidden;
-    background: color-mix(in srgb, var(--accent, #374151) 18%, #020617);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid color-mix(in srgb, var(--accent, #374151) 35%, transparent);
-  }
-
-  .chip-logo {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .chip-initials {
-    font-size: 0.6rem;
-    font-weight: 800;
-    color: var(--accent, #9ca3af);
-    letter-spacing: 0.02em;
-    line-height: 1;
-  }
-
-  .chip-name {
-    flex: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .chip-number {
-    font-size: 0.72rem;
-    color: #6b7280;
-    white-space: nowrap;
-    flex-shrink: 0;
-  }
-
-  .empty {
-    font-size: 0.9rem;
-    color: #6b7280;
-  }
-
-  .no-search-results {
-    font-size: 0.9rem;
-    color: #9ca3af;
-    margin-top: 0.75rem;
-  }
-{% endblock %}
-
 {% block content %}
-  <h1>Teams</h1>
+  <!-- Header -->
+  <section class="mb-8">
+    <h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-navy-deep mb-2">
+      Teams Directory
+    </h1>
+    <p class="font-body-md text-body-md text-on-surface-variant mb-6 max-w-2xl">
+      {{ total_teams }} programs competing across the International Quarter Scale competition.
+    </p>
 
-  <!-- Stats strip -->
-  <div class="stats-strip">
-    <div class="stat-item">
-      <span class="stat-value">{{ total_teams }}</span>
-      <span class="stat-label">teams</span>
-    </div>
-    <div class="stat-divider"></div>
-    <div class="stat-item">
-      <span class="stat-value">{{ team_classes|length }}</span>
-      <span class="stat-label">classes</span>
-    </div>
-  </div>
-
-  <div class="team-search-wrapper">
-    <input
-      id="teamSearchInput"
-      class="team-search-input"
-      type="text"
-      placeholder="Search teams by name or number..."
-      autocomplete="off"
-    >
-  </div>
-
-  <!-- Anchor nav -->
-  <div class="class-nav">
-    {% for tc in team_classes %}
-      <a href="#class-{{ tc.team_class_id }}">
-        {{ tc.name }} ({{ tc.teams.count }})
-      </a>
-    {% endfor %}
-    {% if unclassified_teams %}
-      <a href="#class-unclassified">Unclassified ({{ unclassified_teams|length }})</a>
-    {% endif %}
-  </div>
-
-  <div class="class-grid" id="classGrid">
-    {% for tc in team_classes %}
-      {# Cycle through accent colors per class card #}
-      {% if forloop.counter0|divisibleby:6 and not forloop.first %}
-        {# reset not needed; cycle handles wrap-around #}
-      {% endif %}
-      <section
-        class="class-card"
-        id="class-{{ tc.team_class_id }}"
-        style="--accent: {% cycle '#38bdf8' '#a78bfa' '#34d399' '#fb923c' '#f472b6' '#facc15' %};"
+    <!-- Search -->
+    <div class="relative max-w-xl mb-4">
+      <input
+        id="teamSearchInput"
+        class="w-full h-12 pl-12 pr-4 bg-surface-container-lowest border border-outline-variant rounded-lg focus:ring-2 focus:ring-royal-accent focus:border-royal-accent transition-all font-body-md text-on-surface"
+        type="text"
+        placeholder="Search school or team number..."
+        autocomplete="off"
       >
-        <div class="class-header">
-          <h2>{{ tc.name }}</h2>
-          <span class="class-count">
-            {% with n=tc.teams.count %}{{ n }} team{{ n|pluralize }}{% endwith %}
-          </span>
-        </div>
+      <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+    </div>
 
-        {% if tc.teams.all %}
-          <div class="team-chips">
-            {% for team in tc.teams.all %}
-              <a
-                href="{% url 'events:team_detail' team.team_id %}"
-                class="team-chip"
-                data-team-name="{{ team.team_name|lower }}"
-                data-team-number="{{ team.team_number }}"
-              >
-                <div class="chip-avatar">
-                  {% if team.logo_url %}
-                    <img class="chip-logo" src="{{ team.logo_url }}" alt="{{ team.team_abbreviation }}">
-                  {% else %}
-                    <span class="chip-initials">{{ team.team_abbreviation|slice:":2"|upper }}</span>
-                  {% endif %}
-                </div>
-                <span class="chip-name">{{ team.team_name }}</span>
-                <span class="chip-number">#{{ team.team_number }}</span>
-              </a>
-            {% endfor %}
-          </div>
-        {% else %}
-          <p class="empty">No teams in this class yet.</p>
-        {% endif %}
-      </section>
-    {% endfor %}
+    <!-- Class filter pills -->
+    <div class="flex gap-2 overflow-x-auto pb-2" id="classFilterPills">
+      <button
+        class="filter-pill active px-4 py-2 rounded-full border border-navy-deep bg-navy-deep text-white font-button-text text-button-text whitespace-nowrap transition-colors"
+        data-filter-class="all"
+      >
+        All ({{ total_teams }})
+      </button>
+      {% for tc in team_classes %}
+        <button
+          class="filter-pill px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant font-button-text text-button-text whitespace-nowrap transition-colors"
+          data-filter-class="{{ tc.team_class_id }}"
+        >
+          {{ tc.name }} ({{ tc.teams.count }})
+        </button>
+      {% endfor %}
+      {% if unclassified_teams %}
+        <button
+          class="filter-pill px-4 py-2 rounded-full border border-outline-variant bg-surface-container-lowest text-on-surface-variant font-button-text text-button-text whitespace-nowrap transition-colors"
+          data-filter-class="unclassified"
+        >
+          Unclassified ({{ unclassified_teams|length }})
+        </button>
+      {% endif %}
+    </div>
+  </section>
 
-    {% if unclassified_teams %}
-      <section class="class-card" id="class-unclassified" style="--accent: #6b7280;">
-        <div class="class-header">
-          <h2>Unclassified</h2>
-          <span class="class-count">{{ unclassified_teams|length }} team{{ unclassified_teams|length|pluralize }}</span>
-        </div>
-
-        <div class="team-chips">
-          {% for team in unclassified_teams %}
-            <a
-              href="{% url 'events:team_detail' team.team_id %}"
-              class="team-chip"
-              data-team-name="{{ team.team_name|lower }}"
-              data-team-number="{{ team.team_number }}"
-            >
-              <div class="chip-avatar">
+  {% if total_teams %}
+    <!-- Team list -->
+    <div class="grid grid-cols-1 gap-4" id="teamList">
+      {% for tc in team_classes %}
+        {% for team in tc.teams.all %}
+          <a
+            href="{% url 'events:team_detail' team.team_id %}"
+            class="team-item bg-surface-container-lowest border border-outline-variant p-4 rounded-lg flex items-center justify-between gap-3 transition-all hover:border-royal-accent hover:shadow-md"
+            data-class="{{ tc.team_class_id }}"
+            data-team-name="{{ team.team_name|lower }}"
+            data-team-number="{{ team.team_number|lower }}"
+          >
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-11 h-11 rounded-lg bg-surface-container flex items-center justify-center shrink-0 overflow-hidden border border-outline-variant">
                 {% if team.logo_url %}
-                  <img class="chip-logo" src="{{ team.logo_url }}" alt="{{ team.team_abbreviation }}">
+                  <img class="w-full h-full object-cover" src="{{ team.logo_url }}" alt="{{ team.team_abbreviation }}">
                 {% else %}
-                  <span class="chip-initials">{{ team.team_abbreviation|slice:":2"|upper }}</span>
+                  <span class="font-headline-sm font-bold text-navy-deep text-sm">{{ team.team_abbreviation|slice:":2"|upper }}</span>
                 {% endif %}
               </div>
-              <span class="chip-name">{{ team.team_name }}</span>
-              <span class="chip-number">#{{ team.team_number }}</span>
-            </a>
-          {% endfor %}
-        </div>
-      </section>
-    {% endif %}
-  </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2 mb-0.5">
+                  <span class="px-2 py-0.5 bg-royal-accent/10 text-royal-accent rounded font-label-caps text-[10px] tracking-widest">{{ tc.name|upper }}</span>
+                  <span class="font-body-sm text-body-sm text-on-surface-variant">#{{ team.team_number }}</span>
+                </div>
+                <h3 class="font-headline-sm text-headline-sm text-navy-deep leading-tight truncate">{{ team.team_name }}</h3>
+              </div>
+            </div>
+            <span class="material-symbols-outlined text-navy-deep/30 shrink-0">chevron_right</span>
+          </a>
+        {% endfor %}
+      {% endfor %}
 
-  <p id="noSearchResults" class="no-search-results" style="display:none;">
-    No teams match your search.
-  </p>
+      {% for team in unclassified_teams %}
+        <a
+          href="{% url 'events:team_detail' team.team_id %}"
+          class="team-item bg-surface-container-lowest border border-outline-variant p-4 rounded-lg flex items-center justify-between gap-3 transition-all hover:border-royal-accent hover:shadow-md"
+          data-class="unclassified"
+          data-team-name="{{ team.team_name|lower }}"
+          data-team-number="{{ team.team_number|lower }}"
+        >
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-11 h-11 rounded-lg bg-surface-container flex items-center justify-center shrink-0 overflow-hidden border border-outline-variant">
+              {% if team.logo_url %}
+                <img class="w-full h-full object-cover" src="{{ team.logo_url }}" alt="{{ team.team_abbreviation }}">
+              {% else %}
+                <span class="font-headline-sm font-bold text-navy-deep text-sm">{{ team.team_abbreviation|slice:":2"|upper }}</span>
+              {% endif %}
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-center gap-2 mb-0.5">
+                <span class="px-2 py-0.5 bg-surface-container text-on-surface-variant rounded font-label-caps text-[10px] tracking-widest">UNCLASSIFIED</span>
+                <span class="font-body-sm text-body-sm text-on-surface-variant">#{{ team.team_number }}</span>
+              </div>
+              <h3 class="font-headline-sm text-headline-sm text-navy-deep leading-tight truncate">{{ team.team_name }}</h3>
+            </div>
+          </div>
+          <span class="material-symbols-outlined text-navy-deep/30 shrink-0">chevron_right</span>
+        </a>
+      {% endfor %}
+    </div>
+
+    <!-- No search results -->
+    <div class="hidden py-12 text-center" id="noSearchResults">
+      <span class="material-symbols-outlined text-4xl text-on-surface-variant mb-2">search_off</span>
+      <p class="font-body-md text-body-md text-on-surface-variant">No teams match your search.</p>
+    </div>
+  {% else %}
+    <p class="empty">No teams recorded yet.</p>
+  {% endif %}
 {% endblock %}
 
 {% block extra_scripts %}
-  <script>
-    (function () {
-      const input = document.getElementById('teamSearchInput');
-      const classCards = Array.from(document.querySelectorAll('.class-card'));
-      const noResultsEl = document.getElementById('noSearchResults');
+<script>
+  (function () {
+    const input = document.getElementById('teamSearchInput');
+    const items = Array.from(document.querySelectorAll('.team-item'));
+    const pills = Array.from(document.querySelectorAll('.filter-pill'));
+    const noResultsEl = document.getElementById('noSearchResults');
 
-      if (!input || !classCards.length) return;
+    if (!items.length) return;
 
-      function applyFilter() {
-        const query = input.value.trim().toLowerCase();
-        let anyVisibleTeam = false;
+    let activeClass = 'all';
 
-        classCards.forEach(card => {
-          const chips = Array.from(card.querySelectorAll('.team-chip'));
-          if (!chips.length) return;
+    function applyFilter() {
+      const query = input ? input.value.trim().toLowerCase() : '';
+      let anyVisible = false;
 
-          let cardHasVisible = false;
-          chips.forEach(chip => {
-            const name = chip.getAttribute('data-team-name') || '';
-            const number = (chip.getAttribute('data-team-number') || '').toLowerCase();
-            const match = !query || name.includes(query) || number.includes(query);
-            chip.style.display = match ? '' : 'none';
-            if (match) { cardHasVisible = true; anyVisibleTeam = true; }
-          });
+      items.forEach(item => {
+        const name = item.getAttribute('data-team-name') || '';
+        const number = item.getAttribute('data-team-number') || '';
+        const matchesClass = activeClass === 'all' || item.getAttribute('data-class') === activeClass;
+        const matchesQuery = !query || name.includes(query) || number.includes(query);
+        const match = matchesClass && matchesQuery;
 
-          card.style.display = cardHasVisible || !query ? '' : 'none';
-        });
+        item.style.display = match ? '' : 'none';
+        if (match) anyVisible = true;
+      });
 
-        if (noResultsEl) {
-          noResultsEl.style.display = query && !anyVisibleTeam ? '' : 'none';
-        }
+      if (noResultsEl) {
+        noResultsEl.classList.toggle('hidden', anyVisible);
       }
+    }
 
+    if (input) {
       input.addEventListener('input', applyFilter);
-    })();
-  </script>
+    }
+
+    pills.forEach(pill => {
+      pill.addEventListener('click', () => {
+        activeClass = pill.getAttribute('data-filter-class');
+        pills.forEach(p => {
+          const isActive = p === pill;
+          p.classList.toggle('active', isActive);
+          p.classList.toggle('bg-navy-deep', isActive);
+          p.classList.toggle('border-navy-deep', isActive);
+          p.classList.toggle('text-white', isActive);
+          p.classList.toggle('bg-surface-container-lowest', !isActive);
+          p.classList.toggle('border-outline-variant', !isActive);
+          p.classList.toggle('text-on-surface-variant', !isActive);
+        });
+        applyFilter();
+      });
+    });
+
+    applyFilter();
+  })();
+</script>
 {% endblock %}

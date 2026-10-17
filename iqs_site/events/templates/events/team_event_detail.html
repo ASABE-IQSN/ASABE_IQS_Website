@@ -13,154 +13,10 @@
 {% endblock %}
 
 {% block extra_styles %}
-  .breadcrumbs {
-    font-size: 0.8rem;
-    color: #9ca3af;
-    margin-bottom: 0.75rem;
-    display: flex;
-    align-items: center;
-  }
-
-  .breadcrumbs a {
-    color: #9ca3af;
-  }
-
-  .breadcrumbs span {
-    margin: 0 0.25rem;
-  }
-
-  .hero {
-    margin-bottom: 1.5rem;
-    padding: 1rem 1.25rem;
-    border-radius: 0.9rem;
-    background: #0f172a;
-    border: 1px solid #1f2937;
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-  }
-
-  .hero-image {
-    width: 200px;
-    height: 200px;
-    border-radius: 0.9rem;
-    overflow: hidden;
-    flex-shrink: 0;
-    background: #020617;
-    border: 1px solid #1f2937;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    color: #6b7280;
-  }
-
-  .hero-image img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .hero-main {
-    flex: 1;
-  }
-
-  .hero-main h1 {
-    margin: 0 0 0.4rem;
-    font-size: 1.6rem;
-  }
-
-  .hero-meta {
-    font-size: 0.95rem;
-    color: #9ca3af;
-    line-height: 1.5;
-  }
-
-  .hero-badge {
-    margin-top: 0.6rem;
-    display: inline-block;
-    padding: 0.25rem 0.7rem;
-    border-radius: 999px;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.14em;
-    border: 1px solid #1f2937;
-    color: #9ca3af;
-  }
-
-  .hero-badge.highlight {
-    border-color: #22c55e;
-    color: #bbf7d0;
-  }
-
-  h2 {
-    margin-top: 1.5rem;
-    margin-bottom: 0.5rem;
-    font-size: 1.3rem;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    background: #020617;
-    border-radius: 0.75rem;
-    overflow: hidden;
-    margin-bottom: 1.5rem;
-  }
-
-  th, td {
-    padding: 0.55rem 0.75rem;
-    border-bottom: 1px solid #1f2937;
-    font-size: 0.9rem;
-    text-align: left;
-  }
-
-  th {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: #9ca3af;
-    background: #030712;
-  }
-
-  tr:last-child td {
-    border-bottom: none;
-  }
-
-  tbody tr:nth-child(even) {
-    background: #0b1220;
-  }
-
-  .empty {
-    font-size: 0.9rem;
-    color: #9ca3af;
-    margin-bottom: 1.5rem;
-  }
-
-  .grid {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr);
-    gap: 1.25rem;
-    margin-top: 1.5rem;
-  }
-
-  .card {
-    padding: 1rem 1.25rem;
-    border-radius: 0.9rem;
-    background: #0b1120;
-    border: 1px solid #1f2937;
-  }
-
-  .card h3 {
-    margin-top: 0;
-    margin-bottom: 0.5rem;
-    font-size: 1.05rem;
-  }
-
   canvas {
     width: 100%;
     max-width: 100%;
-    height: 280px;
+    height: 240px;
   }
 
   /* Event photos grid */
@@ -180,28 +36,28 @@
   .event-photo-grid img {
     width: 100%;
     border-radius: 0.5rem;
-    border: 1px solid #1f2937;
+    border: 1px solid #c4c6d0;
     display: block;
     transition: transform 0.15s ease, box-shadow 0.15s ease;
   }
 
   .event-photo-grid img:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+    box-shadow: 0 10px 25px rgba(0, 40, 85, 0.15);
   }
 
   .event-photo-grid figcaption {
     font-size: 0.8rem;
-    color: #9ca3af;
+    color: #43474f;
     margin-top: 0.25rem;
     line-height: 1.3;
   }
 
-  /* Lightbox styles (same as team page) */
+  /* Lightbox styles */
   .lightbox-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(0, 20, 48, 0.92);
     display: none;
     align-items: center;
     justify-content: center;
@@ -214,7 +70,6 @@
 
   .lightbox-inner {
     position: relative;
-    <!-- object-fit: cover; -->
     max-width: 100vw;
     max-height: 95vh;
     height: 90vh;
@@ -228,30 +83,22 @@
   .lightbox-image-wrapper {
     max-width: 90vw;
     max-height: 90vh;
-    <!-- height: 100%; -->
-    <!-- padding: 5px; -->
     display: flex;
-    <!-- align-items: center;
-    justify-content: center;
-    object-fit: contain; -->
   }
 
   .lightbox-image-wrapper img {
     height: 90vh;
     width: auto;
     max-width: 100%;
-    align-items: center;
-    justify-content: center;
     object-fit: contain;
-    <!-- max-height: 100%; -->
     border-radius: 0.75rem;
-    border: 1px solid #1f2937;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+    border: 1px solid #c4c6d0;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
   }
 
   .lightbox-caption {
     font-size: 0.9rem;
-    color: #F3F6E7;
+    color: #ffffff;
     text-align: center;
     max-width: 70ch;
   }
@@ -260,67 +107,55 @@
     position: absolute;
     top: -0.5rem;
     right: -0.5rem;
-    background: #111827;
+    background: #ffffff;
     border-radius: 999px;
     width: 32px;
     height: 32px;
-    border: 1px solid #374151;
+    border: 1px solid #c4c6d0;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     font-size: 1rem;
-    color: #F3F6E7;
+    color: #001430;
   }
 
   .lightbox-arrow {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    background: #111827;
+    background: #ffffff;
     border-radius: 999px;
     width: 36px;
     height: 36px;
-    border: 1px solid #374151;
+    border: 1px solid #c4c6d0;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
     font-size: 1.1rem;
-    color: #F3F6E7;
+    color: #001430;
   }
 
-  .lightbox-arrow.left {
-    left: -2.5rem;
-  }
-
-  .lightbox-arrow.right {
-    right: -2.5rem;
-  }
+  .lightbox-arrow.left { left: -2.5rem; }
+  .lightbox-arrow.right { right: -2.5rem; }
 
   @media (max-width: 768px) {
-    .lightbox-arrow.left {
-      left: 0.5rem;
-    }
-    .lightbox-arrow.right {
-      right: 0.5rem;
-    }
-    .report-grid {
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
-    }
+    .lightbox-arrow.left { left: 0.5rem; }
+    .lightbox-arrow.right { right: 0.5rem; }
   }
 
   /* Report thumbnail grid */
   .report-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
     gap: 1rem;
     margin-bottom: 1rem;
   }
 
   .report-thumb {
-    background: #020617;
-    border: 1px solid #1f2937;
+    background: #ffffff;
+    border: 1px solid #c4c6d0;
     border-radius: 0.75rem;
     overflow: hidden;
     cursor: pointer;
@@ -329,16 +164,14 @@
 
   .report-thumb:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(15, 23, 42, 0.9);
+    box-shadow: 0 10px 25px rgba(0, 40, 85, 0.15);
   }
 
-  .report-thumb .report-canvas {
-    display: none;
-  }
+  .report-thumb .report-canvas { display: none; }
 
   .report-thumb .report-preview {
     width: 100%;
-    height: 240px;
+    height: 220px;
     display: block;
     background: #fff;
     object-fit: contain;
@@ -347,7 +180,7 @@
   .report-label {
     padding: 0.5rem 0.6rem;
     font-size: 0.78rem;
-    color: #9ca3af;
+    color: #43474f;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -357,16 +190,14 @@
   .pdf-modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.95);
+    background: rgba(0, 20, 48, 0.92);
     display: none;
     align-items: center;
     justify-content: center;
     z-index: 50;
   }
 
-  .pdf-modal-overlay.open {
-    display: flex;
-  }
+  .pdf-modal-overlay.open { display: flex; }
 
   .pdf-modal-inner {
     position: relative;
@@ -378,7 +209,7 @@
     width: 100%;
     height: 100%;
     border-radius: 0.75rem;
-    border: 1px solid #1f2937;
+    border: 1px solid #c4c6d0;
   }
 
   .pdf-modal-inner .lightbox-close {
@@ -391,403 +222,399 @@
 {% block content %}
 
   <!-- Breadcrumbs -->
-  <div class="breadcrumbs">
-    <a href="{% url 'events:event_list' %}">Events</a>
-    <span>›</span>
-    <a href="{% url 'events:event_detail' event.event_id %}">{{ event.event_name }}</a>
-    <span>›</span>
+  <div class="flex items-center flex-wrap gap-2 font-body-sm text-body-sm text-on-surface-variant mb-4">
+    <a href="{% url 'events:event_list' %}" class="hover:text-royal-accent">Events</a>
+    <span>&rsaquo;</span>
+    <a href="{% url 'events:event_detail' event.event_id %}" class="hover:text-royal-accent">{{ event.event_name }}</a>
+    <span>&rsaquo;</span>
     <span>{{ team.team_name }}</span>
-    
+    {% if can_edit %}
       <a href="{% url 'events:team_event_edit' event.event_id team.team_id %}"
-         style="margin-left: auto; padding: 0.3rem 0.75rem; border-radius: 999px; border: 1px solid #1f2937; background: #111827; color: #F3F6E7; font-size: 0.8rem; text-decoration: none;">
+         class="ml-auto px-3 py-1 rounded-full border border-outline-variant bg-surface-container-lowest text-navy-deep font-label-caps text-label-caps hover:border-royal-accent hover:text-royal-accent transition-colors">
         Edit
       </a>
-   
+    {% endif %}
   </div>
 
-  <!-- Hero area -->
-  <section class="hero">
-    <div class="hero-image">
-      {% if hero_photo %}
-        <img src="/media/{{hero_photo.photo_path}}"
-             alt="{{ team.team_name }}">
-      {% else %}
-        No image
+  <!-- Team / event header -->
+  <section class="mb-4">
+    <div class="flex flex-wrap items-center gap-2 mb-2">
+      <span class="bg-navy-deep text-white px-2.5 py-0.5 font-label-caps text-[11px] font-bold rounded-xs tracking-wider">TEAM #{{ team.team_number }}</span>
+      {% if team.team_class %}
+        <span class="bg-royal-accent text-white px-2.5 py-0.5 font-label-caps text-[11px] font-bold rounded-xs tracking-wider">{{ team.team_class.name|upper }}</span>
+      {% endif %}
+      {% if team_in_top3 %}
+        <span class="bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 font-label-caps text-[11px] font-bold rounded-xs flex items-center gap-1">
+          <span class="material-symbols-outlined text-[13px]" style="font-variation-settings: 'FILL' 1;">military_tech</span>
+          TOP 3 IN CLASS
+        </span>
       {% endif %}
     </div>
 
-    <div class="hero-main">
-      <style>
-        h1 + h2 {
-          margin-top: -0.25rem;
-        }
-      </style>
-      <h1>{{ team.team_name }}</h1>
-      <h2>{{ event.event_name }}</h2>
-      <div class="hero-meta">
-        <div><strong>Team #:</strong> {{ team.team_number }}</div>
-        <div>
-          <strong>Overall Event Score:</strong>
-          {{ event_team.total_score|default:"N/A" }}
-        </div>
-        {% if event.event_datetime %}
-          <div>
-            <strong>Date:</strong> {{ event.event_datetime|date:"F Y" }}
-          </div>
-        {% endif %}
+    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-4">
+      <div>
+        <h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-navy-deep leading-tight">
+          {{ team.team_name }}
+        </h1>
+        <p class="font-body-md text-body-md text-on-surface-variant mt-1">
+          {{ event.event_name }}{% if event.event_datetime %} &middot; {{ event.event_datetime|date:"F Y" }}{% endif %}
+        </p>
       </div>
 
-      {% if team_in_top3 %}
-        <div class="hero-badge highlight">
-          Top 3 in Event
-        </div>
-      {% else %}
-        <div class="hero-badge">
-          Event Standings
+      {% if event_team.total_score is not None %}
+        <div class="bg-surface-container-low border border-outline-variant p-4 rounded-lg flex items-center gap-6">
+          <div>
+            <div class="font-label-caps text-label-caps text-on-surface-variant uppercase">Event Total</div>
+            <div class="font-mono text-2xl font-bold text-navy-deep">{{ event_team.total_score|floatformat:1 }}</div>
+            {% if total_max_points %}
+              <div class="font-body-sm text-body-sm text-on-surface-variant">
+                of {{ total_max_points|floatformat:1 }} max pts
+                ({% widthratio event_team.total_score total_max_points 100 %}%)
+              </div>
+            {% endif %}
+          </div>
         </div>
       {% endif %}
+    </div>
+  </section>
+
+  <!-- Hero photo -->
+  {% if hero_photo %}
+    <section class="mb-4">
+      <div class="relative w-full rounded-xl overflow-hidden shadow-sm bg-navy-deep aspect-[16/9] md:aspect-[21/9]">
+        <img src="/media/{{ hero_photo.photo_path }}" alt="{{ team.team_name }}" class="w-full h-full object-cover">
+        {% if hero_photo.caption %}
+          <div class="absolute inset-0 bg-gradient-to-t from-navy-deep/90 via-navy-deep/10 to-transparent"></div>
+          <p class="absolute bottom-3 left-3 right-3 font-body-sm text-body-sm text-white drop-shadow-sm">{{ hero_photo.caption }}</p>
+        {% endif %}
+      </div>
+    </section>
+  {% endif %}
+
+  <!-- Fast fact strip -->
+  <section class="grid grid-cols-2 md:grid-cols-4 gap-2 mb-6">
+    <div class="p-3 rounded-lg bg-surface-container-low flex flex-col">
+      <span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Pulls Logged</span>
+      <span class="font-headline-sm text-headline-sm text-navy-deep font-bold mt-0.5">{{ pulls|length }}</span>
+    </div>
+    <div class="p-3 rounded-lg bg-surface-container-low flex flex-col">
+      <span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Best Pull</span>
+      <span class="font-headline-sm text-headline-sm text-royal-accent font-bold mt-0.5">
+        {% if team_best_pull %}{{ team_best_pull }} ft{% else %}&mdash;{% endif %}
+      </span>
+    </div>
+    <div class="p-3 rounded-lg bg-surface-container-low flex flex-col">
+      <span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Durability</span>
+      <span class="font-headline-sm text-headline-sm text-navy-deep font-bold mt-0.5">
+        {% with run=durability_runs.last %}
+          {% if run %}{{ run.total_laps|default:"0" }} laps{% else %}&mdash;{% endif %}
+        {% endwith %}
+      </span>
+    </div>
+    <div class="p-3 rounded-lg bg-surface-container-low flex flex-col">
+      <span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Maneuverability</span>
+      <span class="font-headline-sm text-headline-sm text-navy-deep font-bold mt-0.5">
+        {% with run=maneuverability_runs.last %}
+          {% if run %}{{ run.state|title }}{% else %}&mdash;{% endif %}
+        {% endwith %}
+      </span>
     </div>
   </section>
 
   {% if event_awards %}
-  <!-- Awards section -->
-  <section style="margin-top: 1.5rem;">
-    <h2 style="margin-bottom: 0.75rem;">Awards</h2>
-    <div style="display: flex; flex-wrap: wrap; gap: 1rem;">
-      {% for award in event_awards %}
-        <div style="background: #0b1120; border: 1px solid #1f2937; border-radius: 0.9rem; padding: 1rem; display: flex; flex-direction: column; align-items: center; text-align: center; width: 150px; gap: 0.5rem;">
-          {% if award.team_photo_path %}
-            <img src="/media/{{ award.team_photo_path }}" alt="{{ team.team_name }}" style="width: 90px; height: 90px; object-fit: cover; border-radius: 0.5rem;">
-          {% else %}
-            <div style="width: 90px; height: 90px; border-radius: 0.5rem; background: #1f2937; display: flex; align-items: center; justify-content: center; font-size: 2rem;">🏆</div>
-          {% endif %}
-          <a href="{% url 'awards:award_type_history' award.award_type.award_type_id %}" style="font-size: 0.85rem; font-weight: 600; color: #f3f6e7; line-height: 1.3; text-decoration: none;">
-            {{ award.award_type.short_name }}
-          </a>
-          {% if award.award_type.team_class %}
-            <span style="font-size: 0.7rem; color: #6b7280; background: #1f2937; padding: 0.1rem 0.4rem; border-radius: 4px;">{{ award.award_type.team_class.name }}</span>
-          {% endif %}
-          {% if award.placement %}
-            {% if award.placement == 1 %}
-              <span style="font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; background: rgba(245,158,11,0.15); color: #f59e0b;">{{ award.get_placement_display }}</span>
-            {% elif award.placement == 2 %}
-              <span style="font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; background: rgba(156,163,175,0.15); color: #9ca3af;">{{ award.get_placement_display }}</span>
+    <section class="mb-6">
+      <h2 class="font-headline-sm text-headline-sm text-navy-deep mb-3">Awards</h2>
+      <div class="flex flex-wrap gap-3">
+        {% for award in event_awards %}
+          <div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 flex flex-col items-center text-center w-36 gap-2">
+            {% if award.team_photo_path %}
+              <img src="/media/{{ award.team_photo_path }}" alt="{{ team.team_name }}" class="w-20 h-20 object-cover rounded">
             {% else %}
-              <span style="font-size: 0.75rem; font-weight: 700; padding: 0.15rem 0.5rem; border-radius: 999px; background: rgba(180,83,9,0.15); color: #b45309;">{{ award.get_placement_display }}</span>
+              <div class="w-20 h-20 rounded bg-surface-container flex items-center justify-center text-3xl">🏆</div>
             {% endif %}
-          {% endif %}
-          {% if award.notes %}
-            <span style="font-size: 0.75rem; color: #9ca3af; font-style: italic;">{{ award.notes }}</span>
-          {% endif %}
-        </div>
-      {% endfor %}
-    </div>
-  </section>
-  {% endif %}
-
-  <!-- Comparison vs top 3 + Best pull info -->
-  <section class="grid">
-    <!-- Left: comparison vs top 3 -->
-    <div class="card">
-      <h3>{{ team.team_class }} Standings (Top 3)</h3>
-      {% if top3 %}
-        <table>
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Team</th>
-              <th>Score</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for et in top3 %}
-              <tr {% if et.team_id == team.team_id %}style="font-weight: 600;"{% endif %}>
-                <td>{{ forloop.counter }}</td>
-                <td>{{ et.team.team_name }}</td>
-                <td>{{ et.total_score|default:"N/A" }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <p class="empty">No standings available.</p>
-      {% endif %}
-    </div>
-
-    
-
-    <!-- Right: best pull of event -->
-    <div class="card">
-      <h3>Best Pull of Event</h3>
-      {% if best_pull_overall %}
-        <p class="hero-meta" style="margin-bottom: 0.75rem;">
-          <strong>Team:</strong> {{ best_pull_overall.team.team_name }}<br>
-          <strong>Distance:</strong>
-          {{ best_pull_overall.final_distance|default:"N/A" }}<br>
-          <strong>Hook:</strong>
-          {% if best_pull_overall.hook and best_pull_overall.hook.hook_name %}
-            {{ best_pull_overall.hook.hook_name }}
-          {% else %}
-            Hook {{ best_pull_overall.hook_id }}
-          {% endif %}
-        </p>
-        {% if best_pull_overall.team_id == team.team_id %}
-          <p class="hero-meta" style="color: #bbf7d0;">
-            This team holds the best pull of the event.
-          </p>
-        {% endif %}
-      {% else %}
-        <p class="empty">No pulls recorded for this event yet.</p>
-      {% endif %}
-    </div>
-  </section>
-
-  <!-- Score Breakdown -->
-  {% if score_breakdown %}
-  <section class="card" style="margin-top: 1.5rem;">
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
-      <h3 style="margin: 0;">Score Breakdown</h3>
-      <a href="{% url 'events:event_scores' event.event_id %}?class={{ team.team_class_id }}"
-         style="font-size: 0.8rem; color: #9ca3af; text-decoration: none; border: 1px solid #1f2937; padding: 0.25rem 0.6rem; border-radius: 999px;">
-        Full event scores &rarr;
-      </a>
-    </div>
-    <table style="margin-bottom: 0;">
-      <thead>
-        <tr>
-          <th>Category</th>
-          <th style="text-align: right;">Score</th>
-          <th style="text-align: right;">Max</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for cat_id, data in score_breakdown.items %}
-          <tr>
-            <td style="font-weight: 600;">{{ data.cat.category_instance.score_category.category_name }}</td>
-            <td style="text-align: right;">{{ data.cat.score|floatformat:1 }}</td>
-            <td style="text-align: right; color: #6b7280;">{{ data.cat.category_instance.max_points }}</td>
-          </tr>
-          {% for ss in data.subs %}
-            <tr style="background: transparent;">
-              <td style="padding-left: 1.75rem; color: #9ca3af; font-size: 0.85rem;">{{ ss.subcategory.score_subcategory.subcategory_name }}</td>
-              <td style="text-align: right; font-size: 0.85rem; color: #9ca3af;">{{ ss.score|floatformat:1 }}</td>
-              <td style="text-align: right; font-size: 0.85rem; color: #4b5563;">{{ ss.subcategory.max_points }}</td>
-            </tr>
-          {% endfor %}
-        {% endfor %}
-        <tr style="border-top: 1px solid #374151; font-weight: 700;">
-          <td>Total</td>
-          <td style="text-align: right;">{{ event_team.total_score|floatformat:2 }}</td>
-          <td></td>
-        </tr>
-      </tbody>
-    </table>
-  </section>
-  {% endif %}
-
-  <!-- Pulls table + chart -->
-  <section style="margin-top: 1.5rem;">
-    <h2>Pulls</h2>
-
-    {% if pulls %}
-      <table>
-        <thead>
-          <tr>
-            <th>Hook</th>
-            <th>Final Distance</th>
-            <th>Detail</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for p in pulls %}
-            <tr>
-              <td>
-                {% if p.hook and p.hook.hook_name %}
-                  {{ p.hook.hook_name }}
-                {% else %}
-                  Hook {{ p.hook_id }}
-                {% endif %}
-              </td>
-              <td>{{ p.final_distance|default:"N/A" }}</td>
-              <td>
-                <a href="{% url 'events:pull_detail' p.pull_id %}">
-                  Charts / Data
-                </a>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-
-      <!-- Chart of this team's pulls -->
-      <div class="card">
-        <h3>Pull Distances by Hook</h3>
-        <canvas id="pullChart"></canvas>
-      </div>
-    {% else %}
-      <p class="empty">No pulls recorded for this team in this event.</p>
-    {% endif %}
-  </section>
-  {% if reports %}
-  <section style="margin-top: 1.5rem;">
-    <h2>Reports</h2>
-    <div class="report-grid">
-      {% for report in reports %}
-        <div class="report-thumb" data-pdf-url="/report/{{ report.report_id }}">
-          <canvas class="report-canvas"></canvas>
-          <div class="report-label">{% if report.report_type == 1 %}Design Report{% elif report.report_type == 2 %}Cost Report{% elif report.report_type == 3 %}Design Log{% else %}Report{% endif %}</div>
-        </div>
-      {% endfor %}
-    </div>
-
-    <!-- PDF modal overlay -->
-    <div class="pdf-modal-overlay" id="pdfModal">
-      <div class="pdf-modal-inner">
-        <button class="lightbox-close" type="button" id="pdfModalClose" aria-label="Close">&times;</button>
-        <iframe id="pdfModalFrame" src="" frameborder="0"></iframe>
-      </div>
-    </div>
-  </section>
-  {% endif %}
-  <section style="margin-top: 1.5rem;">
-    <h2>Durability Runs</h2>
-
-    {% if durability_runs %}
-      <table>
-        <thead>
-          <tr>
-            <th>Run Order</th>
-            <th>Tractor</th>
-            <th>Laps</th>
-            <th>State</th>
-            <th>Detail</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for run in durability_runs %}
-            <tr>
-              <td>{{ run.run_order }}</td>
-              <td>{{ run.tractor.tractor_name|default:"—" }}</td>
-              <td>{{ run.total_laps|default:"—" }}</td>
-              <td>{{ run.state }}</td>
-              <td>
-                <a href="{% url 'events:durability_run_detail' run.durability_run_id %}">
-                  View run
-                </a>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p class="empty">No durability runs recorded for this team in this event.</p>
-    {% endif %}
-  </section>
-  <section style="margin-top: 1.5rem;">
-    <h2>Maneuverability Runs</h2>
-
-    {% if maneuverability_runs %}
-      <table>
-        <thead>
-          <tr>
-            <th>Run Order</th>
-            <th>State</th>
-            <th>Detail</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for run in maneuverability_runs %}
-            <tr>
-              <td>{{ run.run_order }}</td>
-              <td>{{ run.state }}</td>
-              <td>
-                <a href="{% url 'events:maneuverability_run_detail' run.maneuverability_run_id %}">
-                  View run
-                </a>
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    {% else %}
-      <p class="empty">No maneuverability runs recorded for this team in this event.</p>
-    {% endif %}
-  </section>
-<section class="grid">
-    <!-- Left: comparison vs top 3 -->
-    <div class="card">
-      <h3>Event Schedule</h3>
-      {% if schedule_items %}
-        <table>
-          <thead>
-            <tr>
-              <th>Schedule Item</th>
-              <th>Time</th>
-              <th>Type</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for si in schedule_items %}
-              <tr>
-                <td>{{ si.name }}</td>
-                <td>{{ si.datetime }}</td>
-                <td>{{ si.type.name }}</td>
-              </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <p class="empty">No schedule available.</p>
-      {% endif %}
-    </div>
-</section>
-  {% if event_team %}
-    <section class="card" style="margin-top: 1.5rem;">
-      <h3>Event Photos</h3>
-
-      {% if event_photos %}
-        <div class="event-photo-grid">
-          {% for photo in event_photos %}
-            <figure data-photo-index="{{ forloop.counter0 }}">
-              <img src="/media/{{photo.photo_path}}"
-                   alt="{{ photo.caption|default:team.team_name }}">
-              {% if photo.caption %}
-                <figcaption>
-                  {{ photo.caption }}
-                </figcaption>
+            <a href="{% url 'awards:award_type_history' award.award_type.award_type_id %}"
+               class="font-body-sm text-body-sm font-semibold text-navy-deep leading-tight hover:text-royal-accent">
+              {{ award.award_type.short_name }}
+            </a>
+            {% if award.award_type.team_class %}
+              <span class="font-label-caps text-[10px] text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded">{{ award.award_type.team_class.name }}</span>
+            {% endif %}
+            {% if award.placement %}
+              {% if award.placement == 1 %}
+                <span class="font-label-caps text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">{{ award.get_placement_display }}</span>
+              {% elif award.placement == 2 %}
+                <span class="font-label-caps text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant">{{ award.get_placement_display }}</span>
+              {% else %}
+                <span class="font-label-caps text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-800">{{ award.get_placement_display }}</span>
               {% endif %}
-            </figure>
-          {% endfor %}
-        </div>
-
-        <!-- Lightbox overlay -->
-        <div class="lightbox-overlay" id="photoLightbox">
-          <div class="lightbox-inner">
-            <div class="lightbox-image-wrapper">
-              <button class="lightbox-arrow left" type="button" id="lightboxPrev" aria-label="Previous photo">
-                &#10094;
-              </button>
-
-              <img id="lightboxImage" src="" alt="">
-
-              <button class="lightbox-arrow right" type="button" id="lightboxNext" aria-label="Next photo">
-                &#10095;
-              </button>
-            </div>
-
-            <div class="lightbox-caption" id="lightboxCaption"></div>
-
-            <button class="lightbox-close" type="button" id="lightboxClose" aria-label="Close">
-              &times;
-            </button>
+            {% endif %}
+            {% if award.notes %}
+              <span class="font-body-sm text-[11px] text-on-surface-variant italic">{{ award.notes }}</span>
+            {% endif %}
           </div>
-        </div>
-      {% else %}
-        <p class="empty">No photos uploaded for this team at this event yet.</p>
-      {% endif %}
-
+        {% endfor %}
+      </div>
     </section>
   {% endif %}
+
+  <!-- Standings & Best pull benchmark -->
+  <section class="mb-6">
+    <div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 md:p-5">
+      <div class="flex items-center gap-2.5 pb-4 mb-4 border-b border-outline-variant">
+        <span class="material-symbols-outlined text-navy-deep text-2xl">leaderboard</span>
+        <div>
+          <h3 class="font-headline-sm text-headline-sm text-navy-deep">{{ team.team_class|default:"Overall" }} Standings (Top 3)</h3>
+          <p class="font-body-sm text-body-sm text-on-surface-variant">Podium standing at time of this event record</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-4 items-stretch">
+        <div class="md:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {% if top3 %}
+            {% for et in top3 %}
+              <div class="p-3 bg-surface-container-low rounded-lg {% if et.team_id == team.team_id %}border-2 border-royal-accent{% else %}border border-outline-variant{% endif %}">
+                <p class="font-label-caps text-[10px] text-on-surface-variant uppercase">{{ forloop.counter }}{% if forloop.counter == 1 %}st{% elif forloop.counter == 2 %}nd{% elif forloop.counter == 3 %}rd{% endif %} Place</p>
+                <h4 class="font-headline-sm font-bold text-navy-deep text-base mt-0.5">{{ et.team.team_name }}</h4>
+                <p class="font-mono text-xl font-bold text-navy-deep mt-1">{{ et.total_score|default:"N/A"|floatformat:1 }} <span class="text-[11px] font-normal text-on-surface-variant">pts</span></p>
+                {% if top3.0.total_score %}
+                  <div class="mt-2 w-full bg-surface-container-highest h-1.5 rounded-full overflow-hidden">
+                    <div class="bg-royal-accent h-full" style="width: {% widthratio et.total_score|default:0 top3.0.total_score 100 %}%;"></div>
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          {% else %}
+            <p class="empty col-span-3">No standings available.</p>
+          {% endif %}
+        </div>
+
+        <div class="md:col-span-4 bg-navy-deep text-white p-3.5 rounded-lg flex flex-col justify-between">
+          {% if best_pull_overall %}
+            <div>
+              <span class="text-[10px] font-label-caps tracking-widest text-amber-300 font-bold uppercase flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">flag</span> Best Pull of Event
+              </span>
+              <div class="mt-1 font-headline-sm text-lg font-bold text-white">{{ best_pull_overall.team.team_name }}</div>
+              <div class="font-mono text-2xl font-bold text-amber-300 mt-0.5">{{ best_pull_overall.final_distance }} <span class="text-sm font-normal text-white">ft</span></div>
+              {% if team_best_pull and best_pull_overall.team_id != team.team_id %}
+                <p class="text-[11px] text-white/75 mt-0.5">
+                  {{ team.team_name }} best: <strong class="text-white font-mono">{{ team_best_pull }} ft</strong>
+                </p>
+              {% endif %}
+              {% if best_pull_overall.team_id == team.team_id %}
+                <p class="text-[11px] text-emerald-300 font-semibold mt-1.5 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-[14px]">check_circle</span> This team holds the best pull of the event
+                </p>
+              {% endif %}
+            </div>
+          {% else %}
+            <p class="text-white/70 text-body-sm">No pulls recorded for this event yet.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div class="lg:col-span-8 space-y-6">
+      <!-- Score breakdown -->
+      {% if score_breakdown %}
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 md:p-5">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-outline-variant">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-navy-deep text-xl">analytics</span>
+              <h2 class="font-headline-sm text-headline-sm text-navy-deep">Official Score Breakdown</h2>
+            </div>
+            <a href="{% url 'events:event_scores' event.event_id %}?class={{ team.team_class_id }}"
+               class="font-label-caps text-label-caps text-on-surface-variant border border-outline-variant px-3 py-1 rounded-full hover:border-royal-accent hover:text-royal-accent transition-colors whitespace-nowrap">
+              Full event scores &rarr;
+            </a>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse">
+              <thead>
+                <tr class="text-left border-b border-outline text-[11px] font-label-caps text-on-surface-variant">
+                  <th class="pb-2.5 font-bold">CATEGORY</th>
+                  <th class="pb-2.5 text-right font-bold">SCORE</th>
+                  <th class="pb-2.5 text-right font-bold">MAX</th>
+                </tr>
+              </thead>
+              <tbody class="text-sm font-body-sm divide-y divide-outline-variant/70">
+                {% for cat_id, data in score_breakdown.items %}
+                  <tr>
+                    <td class="py-2.5 font-semibold text-navy-deep">{{ data.cat.category_instance.score_category.category_name }}</td>
+                    <td class="py-2.5 text-right font-mono font-bold text-navy-deep">{{ data.cat.score|floatformat:1 }}</td>
+                    <td class="py-2.5 text-right font-mono text-on-surface-variant">{{ data.cat.category_instance.max_points }}</td>
+                  </tr>
+                  {% for ss in data.subs %}
+                    <tr>
+                      <td class="py-1.5 pl-6 text-on-surface-variant text-xs">{{ ss.subcategory.score_subcategory.subcategory_name }}</td>
+                      <td class="py-1.5 text-right font-mono text-xs text-on-surface-variant">{{ ss.score|floatformat:1 }}</td>
+                      <td class="py-1.5 text-right font-mono text-xs text-outline">{{ ss.subcategory.max_points }}</td>
+                    </tr>
+                  {% endfor %}
+                {% endfor %}
+              </tbody>
+              <tfoot>
+                <tr class="bg-navy-deep text-white">
+                  <td class="py-3 px-3 font-bold font-label-caps text-xs tracking-wider rounded-l">Total</td>
+                  <td class="py-3 text-right font-mono font-bold text-base text-amber-300">{{ event_team.total_score|floatformat:2 }}</td>
+                  <td class="py-3 text-right font-mono text-xs text-slate-300 pr-3 rounded-r">{{ total_max_points|default:"" }}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      {% endif %}
+
+      <!-- Pulls -->
+      <div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 md:p-5">
+        <div class="flex items-center justify-between pb-4 mb-4 border-b border-outline-variant">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-royal-accent text-xl">straighten</span>
+            <h2 class="font-headline-sm text-headline-sm text-navy-deep">Pull Distances by Hook</h2>
+          </div>
+        </div>
+
+        {% if pulls %}
+          <div class="space-y-3">
+            {% for p in pulls %}
+              <div class="p-3.5 bg-surface-container-low rounded-lg">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <span class="font-bold text-navy-deep text-sm">
+                    {% if p.hook and p.hook.hook_name %}{{ p.hook.hook_name }}{% else %}Hook {{ p.hook_id }}{% endif %}
+                  </span>
+                  <a href="{% url 'events:pull_detail' p.pull_id %}" class="font-mono font-bold text-lg text-royal-accent hover:underline">
+                    {{ p.final_distance|default:"N/A" }}{% if p.final_distance %} ft{% endif %}
+                  </a>
+                </div>
+                {% if p.final_distance and best_pull_overall.final_distance %}
+                  <div class="w-full bg-surface-container-highest h-2 rounded-full overflow-hidden mt-2">
+                    <div class="bg-navy-deep h-full" style="width: {% widthratio p.final_distance best_pull_overall.final_distance 100 %}%;"></div>
+                  </div>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="mt-4">
+            <canvas id="pullChart"></canvas>
+          </div>
+        {% else %}
+          <p class="empty">No pulls recorded for this team in this event.</p>
+        {% endif %}
+      </div>
+
+      {% if reports %}
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 md:p-5">
+          <h2 class="font-headline-sm text-headline-sm text-navy-deep mb-3">Reports</h2>
+          <div class="report-grid">
+            {% for report in reports %}
+              <div class="report-thumb" data-pdf-url="/report/{{ report.report_id }}">
+                <canvas class="report-canvas"></canvas>
+                <div class="report-label">{% if report.report_type == 1 %}Design Report{% elif report.report_type == 2 %}Cost Report{% elif report.report_type == 3 %}Design Log{% else %}Report{% endif %}</div>
+              </div>
+            {% endfor %}
+          </div>
+
+          <div class="pdf-modal-overlay" id="pdfModal">
+            <div class="pdf-modal-inner">
+              <button class="lightbox-close" type="button" id="pdfModalClose" aria-label="Close">&times;</button>
+              <iframe id="pdfModalFrame" src="" frameborder="0"></iframe>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+
+      {% if event_photos %}
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 md:p-5">
+          <h2 class="font-headline-sm text-headline-sm text-navy-deep mb-1">Event Photos</h2>
+          <div class="event-photo-grid">
+            {% for photo in event_photos %}
+              <figure data-photo-index="{{ forloop.counter0 }}">
+                <img src="/media/{{photo.photo_path}}" alt="{{ photo.caption|default:team.team_name }}">
+                {% if photo.caption %}<figcaption>{{ photo.caption }}</figcaption>{% endif %}
+              </figure>
+            {% endfor %}
+          </div>
+
+          <div class="lightbox-overlay" id="photoLightbox">
+            <div class="lightbox-inner">
+              <div class="lightbox-image-wrapper">
+                <button class="lightbox-arrow left" type="button" id="lightboxPrev" aria-label="Previous photo">&#10094;</button>
+                <img id="lightboxImage" src="" alt="">
+                <button class="lightbox-arrow right" type="button" id="lightboxNext" aria-label="Next photo">&#10095;</button>
+              </div>
+              <div class="lightbox-caption" id="lightboxCaption"></div>
+              <button class="lightbox-close" type="button" id="lightboxClose" aria-label="Close">&times;</button>
+            </div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="lg:col-span-4 space-y-6">
+      <!-- Track runs -->
+      <div class="bg-surface-container-lowest border border-outline-variant rounded-lg p-4 md:p-5">
+        <h3 class="font-headline-sm text-headline-sm text-navy-deep mb-3">Track Runs</h3>
+
+        {% if durability_runs %}
+          <div class="mb-3">
+            <p class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">Durability</p>
+            <div class="space-y-2">
+              {% for run in durability_runs %}
+                <a href="{% url 'events:durability_run_detail' run.durability_run_id %}"
+                   class="block p-3 bg-surface-container-low rounded-lg hover:border-outline-variant border border-transparent transition-all">
+                  <div class="flex justify-between items-center">
+                    <span class="font-body-sm text-body-sm text-navy-deep font-semibold">Run #{{ run.run_order }}{% if run.tractor %} &middot; {{ run.tractor.tractor_name|default:"—" }}{% endif %}</span>
+                    <span class="font-label-caps text-[10px] bg-surface-container-high text-navy-deep font-bold px-2 py-0.5 rounded-xs">{{ run.state|title }}</span>
+                  </div>
+                  <div class="font-mono text-sm text-on-surface-variant mt-1">{{ run.total_laps|default:"0" }} laps</div>
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        {% if maneuverability_runs %}
+          <div>
+            <p class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-1.5">Maneuverability</p>
+            <div class="space-y-2">
+              {% for run in maneuverability_runs %}
+                <a href="{% url 'events:maneuverability_run_detail' run.maneuverability_run_id %}"
+                   class="block p-3 bg-surface-container-low rounded-lg hover:border-outline-variant border border-transparent transition-all">
+                  <div class="flex justify-between items-center">
+                    <span class="font-body-sm text-body-sm text-navy-deep font-semibold">Run #{{ run.run_order }}</span>
+                    <span class="font-label-caps text-[10px] bg-surface-container-high text-navy-deep font-bold px-2 py-0.5 rounded-xs">{{ run.state|title }}</span>
+                  </div>
+                </a>
+              {% endfor %}
+            </div>
+          </div>
+        {% endif %}
+
+        {% if not durability_runs and not maneuverability_runs %}
+          <p class="empty">No durability or maneuverability runs recorded for this team in this event.</p>
+        {% endif %}
+      </div>
+
+      <!-- Schedule -->
+      {% if schedule_items %}
+        <div class="bg-navy-deep text-white rounded-lg p-4 md:p-5">
+          <h3 class="font-headline-sm text-headline-sm text-white mb-3">Event Schedule</h3>
+          <div class="space-y-3 text-xs font-body-sm">
+            {% for si in schedule_items %}
+              <div class="relative pl-4 border-l-2 border-white/30">
+                <div class="absolute -left-[5px] top-0.5 w-2 h-2 rounded-full bg-white/70"></div>
+                {% if si.datetime %}<span class="text-[10px] font-mono text-white/70 block">{{ si.datetime }}</span>{% endif %}
+                <span class="font-bold text-white text-sm">{{ si.name }}</span>
+                {% if si.type %}<p class="text-white/70 text-[11px] mt-0.5">{{ si.type.name }}</p>{% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
 
 {% endblock %}
 
@@ -804,23 +631,18 @@
         labels: labels,
         datasets: [{
           label: 'Final distance',
-          data: distances
+          data: distances,
+          backgroundColor: '#2D5AF0'
         }]
       },
       options: {
         responsive: true,
         scales: {
           x: {
-            title: {
-              display: true,
-              text: 'Hook'
-            }
+            title: { display: true, text: 'Hook' }
           },
           y: {
-            title: {
-              display: true,
-              text: 'Distance'
-            },
+            title: { display: true, text: 'Distance' },
             beginAtZero: true
           }
         }
@@ -834,7 +656,6 @@
     import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs';
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
 
-    // Render first page of each PDF as thumbnail image
     document.querySelectorAll('.report-thumb').forEach(async (thumb) => {
       const url = thumb.dataset.pdfUrl;
       const canvas = thumb.querySelector('.report-canvas');
@@ -853,7 +674,6 @@
           viewport: scaledViewport
         }).promise;
 
-        // Convert canvas to img for proper aspect-ratio handling
         const img = document.createElement('img');
         img.src = canvas.toDataURL();
         img.className = 'report-preview';
@@ -862,13 +682,12 @@
       } catch (e) {
         canvas.remove();
         const fallback = document.createElement('div');
-        fallback.style.cssText = 'padding:2rem;text-align:center;color:#6b7280;font-size:0.85rem;';
+        fallback.style.cssText = 'padding:2rem;text-align:center;color:#43474f;font-size:0.85rem;';
         fallback.textContent = 'PDF preview unavailable';
         thumb.insertBefore(fallback, thumb.firstChild);
       }
     });
 
-    // PDF modal open/close
     const modal = document.getElementById('pdfModal');
     const modalFrame = document.getElementById('pdfModalFrame');
     const modalClose = document.getElementById('pdfModalClose');
